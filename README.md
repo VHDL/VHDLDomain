@@ -12,6 +12,14 @@ This sphinx extension adds a new language domain to Sphinx. It allows the docume
 
 ## Directives
 
+#### Library
+
+```rst
+.. vhdl:library:: myLibrary
+
+   Description text
+```
+
 ### Design Unit Directives
 
 
@@ -201,11 +209,10 @@ This sphinx extension adds a new language domain to Sphinx. It allows the docume
 #### Function
 
 ```rst
-.. vhdl:function:: myfunction
+.. vhdl:function:: function myfunction(a : integer) return string;
    :method:
    :pure:
    :impure:
-   :returnType:
 
    Description text
 ```
@@ -213,8 +220,24 @@ This sphinx extension adds a new language domain to Sphinx. It allows the docume
 #### Procedure
 
 ```rst
-.. vhdl:function:: myfunction
+.. vhdl:procedure:: myprocedure(a : integer)
    :method:
+
+   Description text
+```
+
+#### Parameter
+
+```rst
+.. vhdl:parameter:: a : integer
+
+   Description text
+```
+
+#### Return Type
+
+```rst
+.. vhdl:returntype:: string
 
    Description text
 ```
