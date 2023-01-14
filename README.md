@@ -1,275 +1,44 @@
-# sphinxcontrib-vhdldomain
+[![Sourcecode on GitHub](https://img.shields.io/badge/VHDL-VHDLDomain-29b6f6.svg?longCache=true&style=flat-square&logo=GitHub&labelColor=0277bd)](https://github.com/vhdl/VHDLDomain)
+[![Sourcecode License](https://img.shields.io/pypi/l/VHDLDomain?longCache=true&style=flat-square&logo=Apache&label=code)](LICENSE.md)
+
+<!--
+[![Dependent repos (via libraries.io)](https://img.shields.io/librariesio/dependent-repos/pypi/VHDLDomain?longCache=true&style=flat-square&logo=GitHub)](https://github.com/vhdl/VHDLDomain/network/dependents)
+[![Libraries.io SourceRank](https://img.shields.io/librariesio/sourcerank/pypi/VHDLDomain?longCache=true&style=flat-square)](https://libraries.io/github/vhdl/VHDLDomain/sourcerank)
+-->
+
+A Sphinx domain providing VHDL language support.
+
+
+# Main Goals
 
 This sphinx extension adds a new language domain to Sphinx. It allows the documentation of VHDL source files.
 
+<!--
+This package provides a unified abstract language model for VHDL.
+Projects reading from source files can derive own classes and implement additional logic to create a concrete language
+model for their tools.
 
+Projects consuming pre-processed VHDL data (parsed, analyzed or elaborated) can build higher level features and services
+on such a model, while supporting multiple frontends.
+-->
 
+# Use Cases
 
-**License: Apache 2.0**
+TBD
 
 
-# VHDL Domain
 
-## Directives
 
-#### Library
+# Contributors
 
-```rst
-.. vhdl:library:: myLibrary
+* [Patrick Lehmann](https://GitHub.com/Paebbels) (Maintainer)
+* [and more...](https://GitHub.com/VHDL/VHDLDomain/graphs/contributors)
 
-   Description text
-```
 
-### Design Unit Directives
+# License
 
+This Python package (source code) licensed under [Apache License 2.0](LICENSE.md).  
+The accompanying documentation is licensed under [Creative Commons - Attribution 4.0 (CC-BY 4.0)](doc/Doc-License.rst).
 
-#### Context
-
-```rst
-.. vhdl:context:: myContext
-
-   Description text
-```
-
-#### Entity
-
-```rst
-.. vhdl:entity:: myEntity
-
-   Description text
-```
-
-
-#### Architecture
-
-```rst
-.. vhdl:architecture:: rtl
-   :entity: myEntity
-
-   Description text
-```
-
-
-#### Package
-
-```rst
-.. vhdl:package:: myPackage
-
-   Description text
-```
-
-
-#### Package Body
-
-```rst
-.. vhdl:packagebody:: myPackage
-
-   Description text
-```
-
-
-#### Configuration
-
-```rst
-.. vhdl:package:: myConfiguration
-
-   Description text
-```
-
-
-### Nested Directives
-
-#### UseClause
-
-```rst
-.. vhdl:use:: IEEE.std_logic_1164.all
-
-   Description text
-```
-
-
-#### ContextClause
-
-```rst
-.. vhdl:ctx:: work.myContext
-
-   Description text
-```
-
-
-#### EnumerationType
-
-```rst
-.. vhdl:enum:: myState
-   :literals: IDLE, WORKING, ERROR
-
-   Description text
-```
-
-
-#### IntegerType
-
-```rst
-.. vhdl:integer:: myInteger
-   :range: 0 to 255
-
-   Description text
-```
-
-
-#### PhysicalType
-
-```rst
-.. vhdl:physical:: myFrequency
-   :primary: Hz
-   :secondary: kHz=1000 Hz, MHz=1000kHz, GHz=1000MHz
-
-   Description text
-```
-
-
-#### FloatingType
-
-```rst
-.. vhdl:float:: myReal
-   :range: 0.0 to 1.0
-
-   Description text
-```
-
-
-#### ArrayType
-
-```rst
-.. vhdl:array:: myArray
-   :elementType: bit
-   :indexTypes: natural range <>, natural range <>
-
-   Description text
-```
-
-#### RecordType
-
-```rst
-.. vhdl:record:: myRecord
-   :elements: element1:string, element2:integer
-
-   Description text
-```
-
-#### Access Type
-
-
-#### File Type
-
-
-#### Protected Type
-
-```rst
-.. vhdl:protected:: myProtected
-
-   Description text
-```
-
-#### SubType
-
-
-#### Alias
-
-
-#### Constant
-
-```rst
-.. vhdl:constant:: myConstant
-   :type:
-   :init:
-
-   Description text
-```
-
-#### Signal
-
-```rst
-.. vhdl:signal:: mySignal
-   :type:
-   :init:
-
-   Description text
-```
-
-#### SharedVariable
-
-```rst
-.. vhdl:sharedvar:: mySharedVariable
-   :type:
-
-   Description text
-```
-
-#### Function
-
-```rst
-.. vhdl:function:: function myfunction(a : integer) return string;
-   :method:
-   :pure:
-   :impure:
-
-   Description text
-```
-
-#### Procedure
-
-```rst
-.. vhdl:procedure:: myprocedure(a : integer)
-   :method:
-
-   Description text
-```
-
-#### Parameter
-
-```rst
-.. vhdl:parameter:: a : integer
-
-   Description text
-```
-
-#### Return Type
-
-```rst
-.. vhdl:returntype:: string
-
-   Description text
-```
-
-## Roles
-
-### Design Unit Roles
-
-#### Context
-
-#### Entity
-
-#### Architecture
-
-#### Package
-
-#### Configuration
-
-### Other Roles
-
-#### Type
-
-#### Function
-
-#### Procedure
-
-#### Subprogram
-
-## Indices
-
-#### EntityIndex
-
-#### PackageIndex
-
-#### TypeIndex
+-------------------------
+SPDX-License-Identifier: Apache-2.0
