@@ -189,6 +189,7 @@ extensions = [
 	"sphinx_fontawesome",
 	"sphinx_autodoc_typehints",
 	"autoapi.sphinx",
+	"VHDLDomain",
 ]
 
 

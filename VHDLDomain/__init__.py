@@ -43,3 +43,31 @@ __email__ =     "Paebbels@gmail.com"
 __copyright__ = "2016-2023, Patrick Lehmann"
 __license__ =   "Apache License, Version 2.0"
 __version__ =   "0.1.0"
+
+from sphinx.application import Sphinx
+from sphinx.domains import Domain
+
+from VHDLDomain.Index import ComponentIndex, PackageIndex, SubprogramIndex, TypeIndex
+
+
+class VHDLDomain(Domain):
+	name =  "vhdl"
+	label = "VHDL"
+	initial_data = {}
+	directives = {}
+	roles = {}
+	indices = {
+		ComponentIndex,
+		PackageIndex,
+		SubprogramIndex,
+		TypeIndex
+	}
+
+
+def setup(sphinxApplication: Sphinx):
+	sphinxApplication.add_domain(VHDLDomain)
+	# sphinxApplication.add_config_value('vhdl_autodoc_source_path', '.', 'env', [str])
+
+	return {
+		"version": "0.1"
+	}
