@@ -44,6 +44,9 @@ __copyright__ = "2016-2023, Patrick Lehmann"
 __license__ =   "Apache License, Version 2.0"
 __version__ =   "0.1.0"
 
+from pathlib import Path
+
+from pyGHDL.dom.NonStandard import Design, Document
 from sphinx.application import Sphinx
 from sphinx.domains import Domain
 
@@ -68,6 +71,48 @@ def setup(sphinxApplication: Sphinx):
 	sphinxApplication.add_domain(VHDLDomain)
 	# sphinxApplication.add_config_value('vhdl_autodoc_source_path', '.', 'env', [str])
 
+	_packageFiles = (
+		("lib_Utilities", Path("Utilities.pkg.vhdl")),
+		("lib_Utilities", Path("Utilities.ctx.vhdl")),
+		("lib_StopWatch", Path("StopWatch.pkg.vhdl")),
+		("lib_StopWatch", Path("StopWatch.ctx.vhdl")),
+	)
+	_encoderFiles = _packageFiles + (
+		("lib_StopWatch", Path("seg7_Encoder.vhdl")),
+		("lib_StopWatch", Path("toplevel.Encoder.vhdl")),
+	)
+	_displayFiles = _packageFiles + (
+		("lib_StopWatch", Path("Counter.vhdl")),
+		("lib_StopWatch", Path("seg7_Encoder.vhdl")),
+		("lib_StopWatch", Path("seg7_Display.vhdl")),
+		("lib_StopWatch", Path("seg7_Display.cfg.vhdl")),
+		("lib_StopWatch", Path("toplevel.Display.vhdl")),
+	)
+	_stopwatchFiles = _packageFiles + (
+		("lib_Utilities", Path("Counter.vhdl")),
+		("lib_StopWatch", Path("seg7_Encoder.vhdl")),
+		("lib_StopWatch", Path("seg7_Display.vhdl")),
+		("lib_StopWatch", Path("seg7_Display.cfg.vhdl")),
+		("lib_StopWatch", Path("StopWatch.vhdl")),
+		("lib_Utilities", Path("sync_Bits.vhdl")),
+		("lib_Utilities", Path("Debouncer.vhdl")),
+		("lib_StopWatch", Path("toplevel.StopWatch.vhdl")),
+	)
+
+	print("=" * 40)
+	print(Path.cwd())
+	design = Design()
+	design.LoadDefaultLibraries()
+	designRoot = (Path.cwd() / "../examples/StopWatch").resolve()
+	for libraryName, file in _stopwatchFiles:
+		document = Document(designRoot / file)
+		design.AddDocument(document, design.GetLibrary(libraryName))
+	print("-" * 40)
+	design.Analyze()
+	print("=" * 40)
+
 	return {
-		"version": "0.1"
+		"version": __version__,
+		'parallel_read_safe': False,
+		'parallel_write_safe': False,
 	}

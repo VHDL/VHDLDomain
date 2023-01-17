@@ -122,10 +122,23 @@ License
    :caption: Main Documentation
    :hidden:
 
-   LanguageModel/index
-   Analyze/index
-   DataStructure/index
+   Directives/index
+   Roles/index
+   Indices/index
 
+.. raw:: latex
+
+   \part{Examples}
+
+.. toctree::
+   :caption: Examples
+   :hidden:
+
+   StopWatch/index
+   Components <vhdl-compindex>
+   Packages <vhdl-packindex>
+   Subprograms <vhdl-subindex>
+   Types <vhdl-typeindex>
 
 .. raw:: latex
 
@@ -142,6 +155,7 @@ License
 
 
 .. raw:: latex
+
 
    \part{Appendix}
 
