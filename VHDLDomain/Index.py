@@ -1,7 +1,13 @@
 from typing import Iterable, Optional as Nullable, List, Tuple
 
+from pyGHDL.dom.NonStandard import Design
 from pyTooling.Decorators import export
+from pyVHDLModel import DesignUnitKind
 from sphinx.domains import Index, IndexEntry
+
+
+class DUMMY:
+	VAR = None
 
 
 @export
@@ -17,8 +23,17 @@ class ComponentIndex(Index):
 	def generate(self, docnames: Iterable[str] = None) -> Tuple[List[Tuple[str, List[IndexEntry]]], bool]:
 		result: List[Tuple[str, List[IndexEntry]]] = []
 
-		entry = ("Counter", 0, "lib_Utilities/Counter", "lib_Utilities-Counter", "lib_Utilities/Counter", "", "A generic counter.")
-		group = ("C", [entry])
+		entries = []
+
+		design: Design = DUMMY.VAR
+		for entity in design.IterateDesignUnits(DesignUnitKind.Entity):
+			entryName = entity.Identifier
+			entryKind = 0
+			document = f"{entity.Library.Identifier}/{entity.Identifier}"
+			link = f"{entity.Library.Identifier}-{entity.Identifier}"
+			entries.append((entryName, entryKind, document, link, document, "", entity.Documentation))
+
+		group = ("C", entries)
 
 		result.append(group)
 

@@ -50,7 +50,7 @@ from pyGHDL.dom.NonStandard import Design, Document
 from sphinx.application import Sphinx
 from sphinx.domains import Domain
 
-from VHDLDomain.Index import ComponentIndex, PackageIndex, SubprogramIndex, TypeIndex
+from VHDLDomain.Index import ComponentIndex, PackageIndex, SubprogramIndex, TypeIndex, DUMMY
 
 
 class VHDLDomain(Domain):
@@ -109,6 +109,8 @@ def setup(sphinxApplication: Sphinx):
 		design.AddDocument(document, design.GetLibrary(libraryName))
 	print("-" * 40)
 	design.Analyze()
+
+	DUMMY.VAR = design
 	print("=" * 40)
 
 	return {
