@@ -45,31 +45,100 @@ __license__ =   "Apache License, Version 2.0"
 __version__ =   "0.1.0"
 
 from pathlib import Path
+from typing import Dict, Tuple, Any, Optional as Nullable
 
+from docutils import nodes
 from pyGHDL.dom.NonStandard import Design, Document
+from sphinx.addnodes import pending_xref
 from sphinx.application import Sphinx
 from sphinx.domains import Domain
 
+from VHDLDomain.Directive import DescribeDesign, DescribeLibrary, DescribeDocument, DescribeEntity, DescribeArchitecture
+from VHDLDomain.Directive import DescribePackage, DescribePackageBody, DescribeConfiguration, DescribeContext
 from VHDLDomain.Index import ComponentIndex, PackageIndex, SubprogramIndex, TypeIndex, DUMMY
+from VHDLDomain.Role import DesignRole, LibraryRole, DocumentRole, ContextRole, EntityRole, ArchitectureRole, PackageRole, PackageBodyRole, ConfigurationRole
 
 
 class VHDLDomain(Domain):
-	name =  "vhdl"
-	label = "VHDL"
-	initial_data = {}
-	directives = {}
-	roles = {}
+	name =  "vhdl"  #: The name of this domain
+	label = "VHDL"  #: The label of this domain
+
+	dependencies = [
+	]  #: A list of other extensions this domain depends on.
+
+	directives = {
+		# "describedesign":        DescribeDesign,
+		"describelibrary":       DescribeLibrary,
+		# "describedocument":      DescribeDocument,
+		# "describecontext":       DescribeContext,
+		"describeentity":        DescribeEntity,
+		# "describearchitecture":  DescribeArchitecture,
+		# "describepackage":       DescribePackage,
+		# "describepackagebody":   DescribePackageBody,
+		# "describeconfiguration": DescribeConfiguration,
+	}  #: A dictionary of all directives in this domain.
+
+	roles = {
+		# "design":   DesignRole,
+		# "lib":      LibraryRole,
+		# "doc":      DocumentRole,
+		# "ctx":      ContextRole,
+		"ent":      EntityRole,
+		# "arch":     ArchitectureRole,
+		# "pack":     PackageRole,
+		# "packbody": PackageBodyRole,
+		# "config":   ConfigurationRole,
+	}  #: A dictionary of all roles in this domain.
+
 	indices = {
 		ComponentIndex,
 		PackageIndex,
 		SubprogramIndex,
 		TypeIndex
+	}  #: A dictionary of all indices in this domain.
+
+	configValues: Dict[str, Tuple[Any, str, Any]] = {
+		"designs": ({}, "env", Dict),
+	}  #: A dictionary of all configuration values used by this domain.
+
+	initial_data = {
 	}
+
+	@staticmethod
+	def ReadDesigns(app: Sphinx, docname: str, source: str) -> None:
+		print(f"Callback: source-read -> ReadDesigns")
+		print(docname)
+#		print(source)
+
+	callbacks = {
+		"source-read": ReadDesigns
+	}  #: A dictionary of all callbacks used by this domain.
+
+	def resolve_xref(
+		self,
+		env: 'BuildEnvironment',
+		fromdocname: str,
+		builder: 'Builder',
+		typ: str,
+		target: str,
+		node: pending_xref,
+		contnode: nodes.Element
+	) -> Nullable[nodes.Element]:
+		raise NotImplementedError()
 
 
 def setup(sphinxApplication: Sphinx):
+	"""
+	Extension setup function registering the VHDL domain in Sphinx.
+
+	:param sphinxApplication: The Sphinx application.
+	:return:                  Dictionary containing the extension version and some properties.
+	"""
 	sphinxApplication.add_domain(VHDLDomain)
-	# sphinxApplication.add_config_value('vhdl_autodoc_source_path', '.', 'env', [str])
+	for eventName, callback in VHDLDomain.callbacks.items():
+		sphinxApplication.connect(eventName, callback)
+	for configName, (configDefault, configRebuilt, configTypes) in VHDLDomain.configValues.items():
+		sphinxApplication.add_config_value(f"{VHDLDomain.name}_{configName}", configDefault, configRebuilt, configTypes)
 
 	_packageFiles = (
 		("lib_Utilities", Path("Utilities.pkg.vhdl")),

@@ -43,3 +43,22 @@ begin
 	Value      <= resize(CounterValue, BITS);
 	WrapAround <= Enable when (CounterValue = MODULO - 1) else '0';
 end architecture;
+
+
+architecture sim of Counter is
+	signal CounterValue : unsigned(log2(MODULO) - 1 downto 0) := (others => '0');
+begin
+	process (Clock)
+	begin
+		if rising_edge(Clock) then
+			if ((Reset or WrapAround) = '1') then
+				CounterValue <= (others => '0');
+			elsif (Enable = '1') then
+				CounterValue <= CounterValue + 1;
+			end if;
+		end if;
+	end process;
+
+	Value      <= resize(CounterValue, BITS);
+	WrapAround <= Enable when (CounterValue = MODULO - 1) else '0';
+end architecture;

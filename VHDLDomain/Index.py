@@ -6,12 +6,13 @@ from pyVHDLModel import DesignUnitKind
 from sphinx.domains import Index, IndexEntry
 
 
-class DUMMY:
-	VAR = None
+@export
+class BaseIndex(Index):
+	pass
 
 
 @export
-class ComponentIndex(Index):
+class ComponentIndex(BaseIndex):
 	"""
 	An index for VHDL components.
 	"""
@@ -23,25 +24,31 @@ class ComponentIndex(Index):
 	def generate(self, docnames: Iterable[str] = None) -> Tuple[List[Tuple[str, List[IndexEntry]]], bool]:
 		result: List[Tuple[str, List[IndexEntry]]] = []
 
-		entries = []
-
 		design: Design = DUMMY.VAR
-		for entity in design.IterateDesignUnits(DesignUnitKind.Entity):
-			entryName = entity.Identifier
-			entryKind = 0
-			document = f"{entity.Library.Identifier}/{entity.Identifier}"
-			link = f"{entity.Library.Identifier}-{entity.Identifier}"
-			entries.append((entryName, entryKind, document, link, document, "", entity.Documentation))
+		for library in design.Libraries.values():
+			entries = []
+			for entity in library.Entities.values():
+				entryName = entity.Identifier
+				entryKind = 0 if len(entity.Architectures) == 1 else 1
+				document = f"{entity.Library.Identifier}/{entity.Identifier}"
+				link = f"{entity.Library.Identifier}-{entity.Identifier}"
+				entries.append((entryName, entryKind, document, link, document, "", entity.Documentation))
+				if entryKind == 1:
+					for architecture in entity.Architectures.values():
+						architectureName = architecture.Identifier
+						architectureKind = 2
+						doc = f"{entity.Library.Identifier}/{entity.Identifier}-{architecture.Identifier}"
+						lnk = f"{entity.Library.Identifier}-{entity.Identifier}-{architecture.Identifier}"
+						entries.append((architectureName, architectureKind, doc, lnk, doc, "", architecture.Documentation))
 
-		group = ("C", entries)
-
-		result.append(group)
+			group = (library.Identifier, entries)
+			result.append(group)
 
 		return result, True
 
 
 @export
-class PackageIndex(Index):
+class PackageIndex(BaseIndex):
 	"""
 	An index for VHDL packages.
 	"""
@@ -53,16 +60,24 @@ class PackageIndex(Index):
 	def generate(self, docnames: Iterable[str] = None) -> Tuple[List[Tuple[str, List[IndexEntry]]], bool]:
 		result: List[Tuple[str, List[IndexEntry]]] = []
 
-		entry = ("Utilities", 0, "lib_Utilities/Utilities", "lib_Utilities-Utilities", "lib_Utilities/Utilities", "", "A collection of utilities.")
-		group = ("U", [entry])
+		design: Design = DUMMY.VAR
+		for library in design.Libraries.values():
+			entries = []
+			for package in library.Packages.values():
+				entryName = package.Identifier
+				entryKind = 0
+				document = f"{package.Library.Identifier}/{package.Identifier}"
+				link = f"{package.Library.Identifier}-{package.Identifier}"
+				entries.append((entryName, entryKind, document, link, document, "", package.Documentation))
 
-		result.append(group)
+			group = (library.Identifier, entries)
+			result.append(group)
 
 		return result, True
 
 
 @export
-class SubprogramIndex(Index):
+class SubprogramIndex(BaseIndex):
 	"""
 	An index for VHDL functions or procedures.
 	"""
@@ -83,7 +98,7 @@ class SubprogramIndex(Index):
 
 
 @export
-class TypeIndex(Index):
+class TypeIndex(BaseIndex):
 	"""
 	An index for types and subtypes in VHDL.
 	"""
