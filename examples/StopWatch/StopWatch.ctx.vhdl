@@ -1,7 +1,7 @@
 -- Author:  Patrick Lehmann
 -- License: MIT
 --
--- undocumented
+-- A context summarizing other contexts and a stopwatch package.
 --
 context StopWatch_ctx is
 	library lib_Utilities;

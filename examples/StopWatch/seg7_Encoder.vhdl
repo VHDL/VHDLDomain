@@ -1,7 +1,8 @@
 -- Author:  Patrick Lehmann
 -- License: MIT
 --
--- A generic counter module used in the StopWatch example.
+-- A 7-segment encoder translating 4-bit binary input to 7-segment code.
+-- In addition, a dot input port is provided to control the 8th port.
 --
 context work.StopWatch_ctx;
 
@@ -18,7 +19,6 @@ end entity;
 
 
 architecture rtl of seg7_Encoder is
-
 begin
 	process(BCDValue, Dot)
 		variable temp : std_logic_vector(6 downto 0);

@@ -1,7 +1,7 @@
 -- Author:  Patrick Lehmann
 -- License: MIT
 --
--- A generic counter module used in the StopWatch example.
+-- The stopwatch implementation for seconds and minutes.
 --
 library IEEE;
 use     IEEE.std_logic_1164.all;

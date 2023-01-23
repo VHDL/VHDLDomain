@@ -1,7 +1,7 @@
 -- Author:  Patrick Lehmann
 -- License: MIT
 --
--- undocumented
+-- A context to simplify the usage of packages.
 --
 context Utilities_ctx is
 	library IEEE;
