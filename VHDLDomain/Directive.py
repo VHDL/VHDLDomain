@@ -91,7 +91,17 @@ class DescribeDesign(BaseDirective):
 
 		paragraph = nodes.paragraph(text="Describe design")
 
-		return [paragraph] + [nodes.paragraph(text=f"{doc.Path}") for doc in design.Documents]
+		items = []
+		for document in design.Documents:
+			term = nodes.term(text=f"{document.Path}")
+			description = nodes.paragraph(text=f"{document.Documentation}")
+			definition = nodes.definition("", description)
+
+			items.append(nodes.definition_list_item("", term, definition))
+
+		definitionList = nodes.definition_list("", *items)
+
+		return [paragraph, definitionList]
 
 
 @export
