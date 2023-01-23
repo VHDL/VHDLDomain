@@ -7,3 +7,6 @@ StopWatch
 :ref:`vhdl-packindex`
 :ref:`vhdl-subindex`
 :ref:`vhdl-typeindex`
+
+.. vhdl:describedesign::
+

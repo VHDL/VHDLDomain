@@ -283,6 +283,14 @@ autoapi_modules = {
 	},
 }
 
+
+# ==============================================================================
+# AutoAPI.Sphinx
+# ==============================================================================
+vhdl_designs = {
+	"StopWatch": (Path.cwd() / "../examples/StopWatch").resolve(),
+}
+
 # for directory in [mod for mod in Path("../VHDLDomain").iterdir() if mod.is_dir() and mod.name != "__pycache__"]:
 # 	print(f"Adding module rule for '{project}.{directory.name}'")
 # 	autoapi_modules[f"{project}.{directory.name}"] = {
