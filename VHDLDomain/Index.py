@@ -1,4 +1,40 @@
-from typing import Iterable, Optional as Nullable, List, Tuple
+# ==================================================================================================================== #
+# __     ___   _ ____  _     ____                        _                                                             #
+# \ \   / / | | |  _ \| |   |  _ \  ___  _ __ ___   __ _(_)_ __                                                        #
+#  \ \ / /| |_| | | | | |   | | | |/ _ \| '_ ` _ \ / _` | | '_ \                                                       #
+#   \ V / |  _  | |_| | |___| |_| | (_) | | | | | | (_| | | | | |                                                      #
+#    \_/  |_| |_|____/|_____|____/ \___/|_| |_| |_|\__,_|_|_| |_|                                                      #
+#                                                                                                                      #
+# ==================================================================================================================== #
+# Authors:                                                                                                             #
+#   Patrick Lehmann                                                                                                    #
+#                                                                                                                      #
+# License:                                                                                                             #
+# ==================================================================================================================== #
+# Copyright 2017-2023 Patrick Lehmann - Boetzingen, Germany                                                            #
+# Copyright 2016-2017 Patrick Lehmann - Dresden, Germany                                                               #
+#                                                                                                                      #
+# Licensed under the Apache License, Version 2.0 (the "License");                                                      #
+# you may not use this file except in compliance with the License.                                                     #
+# You may obtain a copy of the License at                                                                              #
+#                                                                                                                      #
+#   http://www.apache.org/licenses/LICENSE-2.0                                                                         #
+#                                                                                                                      #
+# Unless required by applicable law or agreed to in writing, software                                                  #
+# distributed under the License is distributed on an "AS IS" BASIS,                                                    #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.                                             #
+# See the License for the specific language governing permissions and                                                  #
+# limitations under the License.                                                                                       #
+#                                                                                                                      #
+# SPDX-License-Identifier: Apache-2.0                                                                                  #
+# ==================================================================================================================== #
+#
+"""
+**A Sphinx domain providing VHDL language support.**
+
+This module contains all the indices of the VHDL domain.
+"""
+from typing import Iterable, Optional as Nullable, List, Tuple, Dict
 
 from pyGHDL.dom.NonStandard import Design
 from pyTooling.Decorators import export
@@ -24,7 +60,8 @@ class ComponentIndex(BaseIndex):
 	def generate(self, docnames: Iterable[str] = None) -> Tuple[List[Tuple[str, List[IndexEntry]]], bool]:
 		result: List[Tuple[str, List[IndexEntry]]] = []
 
-		design: Design = DUMMY.VAR
+		designs: Dict[str, Design] = self.domain.data["designs"]
+		design = designs["StopWatch"]
 		for library in design.Libraries.values():
 			entries = []
 			for entity in library.Entities.values():
@@ -60,7 +97,8 @@ class PackageIndex(BaseIndex):
 	def generate(self, docnames: Iterable[str] = None) -> Tuple[List[Tuple[str, List[IndexEntry]]], bool]:
 		result: List[Tuple[str, List[IndexEntry]]] = []
 
-		design: Design = DUMMY.VAR
+		designs: Dict[str, Design] = self.domain.data["designs"]
+		design = designs["StopWatch"]
 		for library in design.Libraries.values():
 			entries = []
 			for package in library.Packages.values():

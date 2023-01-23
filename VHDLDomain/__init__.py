@@ -52,10 +52,11 @@ from pyGHDL.dom.NonStandard import Design, Document
 from sphinx.addnodes import pending_xref
 from sphinx.application import Sphinx
 from sphinx.domains import Domain
+from sphinx.extension import Extension
 
 from VHDLDomain.Directive import DescribeDesign, DescribeLibrary, DescribeDocument, DescribeEntity, DescribeArchitecture
 from VHDLDomain.Directive import DescribePackage, DescribePackageBody, DescribeConfiguration, DescribeContext
-from VHDLDomain.Index import ComponentIndex, PackageIndex, SubprogramIndex, TypeIndex, DUMMY
+from VHDLDomain.Index import ComponentIndex, PackageIndex, SubprogramIndex, TypeIndex
 from VHDLDomain.Role import DesignRole, LibraryRole, DocumentRole, ContextRole, EntityRole, ArchitectureRole, PackageRole, PackageBodyRole, ConfigurationRole
 
 
@@ -67,8 +68,8 @@ class VHDLDomain(Domain):
 	]  #: A list of other extensions this domain depends on.
 
 	directives = {
-		# "describedesign":        DescribeDesign,
-		"describelibrary":       DescribeLibrary,
+		"describedesign":        DescribeDesign,
+		# "describelibrary":       DescribeLibrary,
 		# "describedocument":      DescribeDocument,
 		# "describecontext":       DescribeContext,
 		"describeentity":        DescribeEntity,
@@ -83,7 +84,7 @@ class VHDLDomain(Domain):
 		# "lib":      LibraryRole,
 		# "doc":      DocumentRole,
 		# "ctx":      ContextRole,
-		"ent":      EntityRole,
+		"ent":      EntityRole(),
 		# "arch":     ArchitectureRole,
 		# "pack":     PackageRole,
 		# "packbody": PackageBodyRole,
@@ -102,16 +103,94 @@ class VHDLDomain(Domain):
 	}  #: A dictionary of all configuration values used by this domain.
 
 	initial_data = {
-	}
+		"designs": {}
+	}  #: A dictionary of all global data fields used by this domain.
+
+	@property
+	def Designs(self) -> Dict[str, Design]:
+		return self.data["designs"]
 
 	@staticmethod
-	def ReadDesigns(app: Sphinx, docname: str, source: str) -> None:
-		print(f"Callback: source-read -> ReadDesigns")
-		print(docname)
-#		print(source)
+	def ReadDesigns(sphinxApplication: Sphinx) -> None:
+		"""
+		Call back for Sphinx ``builder-inited`` event.
+
+		This callback will read the configuration variable ``vhdl_designs`` and parse the found VHDL source files.
+
+		.. seealso::
+
+		   Sphinx *builder-inited* event
+		     See http://sphinx-doc.org/extdev/appapi.html#event-builder-inited
+
+		:param sphinxApplication: The Sphinx application.
+		:return:
+		"""
+		print(f"Callback: builder-inited -> ReadDesigns")
+		print(f"[VHDL] Reading designs ...")
+
+		# Get modules to build documentation for
+		designConfigurations: Dict[str, Path] = sphinxApplication.config.vhdl_designs
+		print(designConfigurations)
+		if not designConfigurations:
+			return
+
+		_packageFiles = (
+			("lib_Utilities", Path("Utilities.pkg.vhdl")),
+			("lib_Utilities", Path("Utilities.ctx.vhdl")),
+			("lib_StopWatch", Path("StopWatch.pkg.vhdl")),
+			("lib_StopWatch", Path("StopWatch.ctx.vhdl")),
+		)
+		_encoderFiles = _packageFiles + (
+			("lib_StopWatch", Path("seg7_Encoder.vhdl")),
+			("lib_StopWatch", Path("toplevel.Encoder.vhdl")),
+		)
+		_displayFiles = _packageFiles + (
+			("lib_StopWatch", Path("Counter.vhdl")),
+			("lib_StopWatch", Path("seg7_Encoder.vhdl")),
+			("lib_StopWatch", Path("seg7_Display.vhdl")),
+			("lib_StopWatch", Path("seg7_Display.cfg.vhdl")),
+			("lib_StopWatch", Path("toplevel.Display.vhdl")),
+		)
+		_stopwatchFiles = _packageFiles + (
+			("lib_Utilities", Path("Counter.vhdl")),
+			("lib_StopWatch", Path("seg7_Encoder.vhdl")),
+			("lib_StopWatch", Path("seg7_Display.vhdl")),
+			("lib_StopWatch", Path("seg7_Display.cfg.vhdl")),
+			("lib_StopWatch", Path("StopWatch.vhdl")),
+			("lib_Utilities", Path("sync_Bits.vhdl")),
+			("lib_Utilities", Path("Debouncer.vhdl")),
+			("lib_StopWatch", Path("toplevel.StopWatch.vhdl")),
+		)
+
+		vhdlDomain: Domain = sphinxApplication.env.domains[VHDLDomain.name]
+		designs: Dict[str, Design] = vhdlDomain.data["designs"]
+
+		for designName, designRoot in designConfigurations.items():
+			print(f"[VHDL]   Loading design '{designName}' ...")
+			design = Design(designName)
+			design.LoadDefaultLibraries()
+			for libraryName, file in _stopwatchFiles:
+				sourceFile = designRoot / file
+
+				print(f"[VHDL]     Parsing '{sourceFile}'")
+				document = Document(sourceFile)
+				design.AddDocument(document, design.GetLibrary(libraryName))
+
+			print(f"[VHDL]     Analyzing design '{designName}' ...")
+			design.Analyze()
+
+			designs[designName] = design
+
+
+# 	@staticmethod
+# 	def ReadDesigns(app: Sphinx, docname: str, source: str) -> None:
+# 		print(f"Callback: source-read -> ReadDesigns")
+# 		print(docname)
+# #		print(source)
 
 	callbacks = {
-		"source-read": ReadDesigns
+		"builder-inited": ReadDesigns,
+		# "source-read": ReadDesigns
 	}  #: A dictionary of all callbacks used by this domain.
 
 	def resolve_xref(
@@ -140,50 +219,9 @@ def setup(sphinxApplication: Sphinx):
 	for configName, (configDefault, configRebuilt, configTypes) in VHDLDomain.configValues.items():
 		sphinxApplication.add_config_value(f"{VHDLDomain.name}_{configName}", configDefault, configRebuilt, configTypes)
 
-	_packageFiles = (
-		("lib_Utilities", Path("Utilities.pkg.vhdl")),
-		("lib_Utilities", Path("Utilities.ctx.vhdl")),
-		("lib_StopWatch", Path("StopWatch.pkg.vhdl")),
-		("lib_StopWatch", Path("StopWatch.ctx.vhdl")),
-	)
-	_encoderFiles = _packageFiles + (
-		("lib_StopWatch", Path("seg7_Encoder.vhdl")),
-		("lib_StopWatch", Path("toplevel.Encoder.vhdl")),
-	)
-	_displayFiles = _packageFiles + (
-		("lib_StopWatch", Path("Counter.vhdl")),
-		("lib_StopWatch", Path("seg7_Encoder.vhdl")),
-		("lib_StopWatch", Path("seg7_Display.vhdl")),
-		("lib_StopWatch", Path("seg7_Display.cfg.vhdl")),
-		("lib_StopWatch", Path("toplevel.Display.vhdl")),
-	)
-	_stopwatchFiles = _packageFiles + (
-		("lib_Utilities", Path("Counter.vhdl")),
-		("lib_StopWatch", Path("seg7_Encoder.vhdl")),
-		("lib_StopWatch", Path("seg7_Display.vhdl")),
-		("lib_StopWatch", Path("seg7_Display.cfg.vhdl")),
-		("lib_StopWatch", Path("StopWatch.vhdl")),
-		("lib_Utilities", Path("sync_Bits.vhdl")),
-		("lib_Utilities", Path("Debouncer.vhdl")),
-		("lib_StopWatch", Path("toplevel.StopWatch.vhdl")),
-	)
-
-	print("=" * 40)
-	print(Path.cwd())
-	design = Design()
-	design.LoadDefaultLibraries()
-	designRoot = (Path.cwd() / "../examples/StopWatch").resolve()
-	for libraryName, file in _stopwatchFiles:
-		document = Document(designRoot / file)
-		design.AddDocument(document, design.GetLibrary(libraryName))
-	print("-" * 40)
-	design.Analyze()
-
-	DUMMY.VAR = design
-	print("=" * 40)
-
 	return {
-		"version": __version__,
-		'parallel_read_safe': False,
-		'parallel_write_safe': False,
+		"version": __version__,                          # version of the extension
+		"env_version": int(__version__.split(".")[0]),   # version of the data structure stored in the environment
+		'parallel_read_safe': False,                     # Not yet evaluated, thus false
+		'parallel_write_safe': True,                     # Internal data structure is used read-only, thus no problems will occur by parallel writing.
 	}

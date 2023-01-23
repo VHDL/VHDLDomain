@@ -1,8 +1,46 @@
-from typing import List
+# ==================================================================================================================== #
+# __     ___   _ ____  _     ____                        _                                                             #
+# \ \   / / | | |  _ \| |   |  _ \  ___  _ __ ___   __ _(_)_ __                                                        #
+#  \ \ / /| |_| | | | | |   | | | |/ _ \| '_ ` _ \ / _` | | '_ \                                                       #
+#   \ V / |  _  | |_| | |___| |_| | (_) | | | | | | (_| | | | | |                                                      #
+#    \_/  |_| |_|____/|_____|____/ \___/|_| |_| |_|\__,_|_|_| |_|                                                      #
+#                                                                                                                      #
+# ==================================================================================================================== #
+# Authors:                                                                                                             #
+#   Patrick Lehmann                                                                                                    #
+#                                                                                                                      #
+# License:                                                                                                             #
+# ==================================================================================================================== #
+# Copyright 2017-2023 Patrick Lehmann - Boetzingen, Germany                                                            #
+# Copyright 2016-2017 Patrick Lehmann - Dresden, Germany                                                               #
+#                                                                                                                      #
+# Licensed under the Apache License, Version 2.0 (the "License");                                                      #
+# you may not use this file except in compliance with the License.                                                     #
+# You may obtain a copy of the License at                                                                              #
+#                                                                                                                      #
+#   http://www.apache.org/licenses/LICENSE-2.0                                                                         #
+#                                                                                                                      #
+# Unless required by applicable law or agreed to in writing, software                                                  #
+# distributed under the License is distributed on an "AS IS" BASIS,                                                    #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.                                             #
+# See the License for the specific language governing permissions and                                                  #
+# limitations under the License.                                                                                       #
+#                                                                                                                      #
+# SPDX-License-Identifier: Apache-2.0                                                                                  #
+# ==================================================================================================================== #
+#
+"""
+**A Sphinx domain providing VHDL language support.**
+
+This module contains all the directives of the VHDL domain.
+"""
+from typing import List, Dict
 
 from docutils import nodes
+from pyGHDL.dom.NonStandard import Design
 from pyTooling.Decorators import export
 from sphinx.directives import ObjectDescription
+from sphinx.domains import Domain
 
 
 @export
@@ -47,9 +85,13 @@ class DescribeDesign(BaseDirective):
 	optional_arguments = 0
 
 	def run(self) -> List:
+		vhdlDomain: Domain = self.env.domains["vhdl"]
+		designs: Dict[str, Design] = vhdlDomain.data["designs"]
+		design = designs["StopWatch"]
+
 		paragraph = nodes.paragraph(text="Describe design")
 
-		return [paragraph]
+		return [paragraph] + [nodes.paragraph(text=f"{doc.Path}") for doc in design.Documents]
 
 
 @export
