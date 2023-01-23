@@ -48,7 +48,7 @@ This sphinx extension adds a new language domain to Sphinx. It allows the docume
 Use Cases
 *********
 
-TBD
+* Partial or fully automated documentation of VHDL designs.
 
 
 .. _news:
@@ -58,12 +58,12 @@ News
 
 .. only:: html
 
-   Jan. 2023 - Dependency, Hierarchy, Compile Order Analysis
-   =========================================================
+   Jan. 2023 - Initial Implementation of a VHDL Domain
+   ===================================================
 
 .. only:: latex
 
-   .. rubric:: Dependency, Hierarchy, Compile Order Analysis
+   .. rubric:: Initial Implementation of a VHDL Domain
 
 * Connecting pyGHDL.dom, pyVHDLModel and Sphinx with this extension.
 
@@ -125,6 +125,7 @@ License
    Directives/index
    Roles/index
    Indices/index
+   Configuration/index
 
 .. raw:: latex
 
