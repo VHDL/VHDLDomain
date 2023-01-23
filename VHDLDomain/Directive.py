@@ -93,7 +93,7 @@ class DescribeDesign(BaseDirective):
 
 		items = []
 		for document in design.Documents:
-			term = nodes.term(text=f"{document.Path}")
+			term = nodes.term(text=f"{document.ShortPath}")
 			description = nodes.paragraph(text=f"{document.Documentation}")
 			definition = nodes.definition("", description)
 

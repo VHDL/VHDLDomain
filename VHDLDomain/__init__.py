@@ -45,10 +45,11 @@ __license__ =   "Apache License, Version 2.0"
 __version__ =   "0.1.0"
 
 from pathlib import Path
-from typing import Dict, Tuple, Any, Optional as Nullable
+from typing import Dict, Tuple, Any, Optional as Nullable, cast
 
 from docutils import nodes
-from pyGHDL.dom.NonStandard import Design, Document
+from pyGHDL.dom.NonStandard import Design as DOMDesign, Document as DOMDocument
+from pyTooling.Decorators import export
 from sphinx.addnodes import pending_xref
 from sphinx.application import Sphinx
 from sphinx.domains import Domain
@@ -60,6 +61,37 @@ from VHDLDomain.Index import ComponentIndex, PackageIndex, SubprogramIndex, Type
 from VHDLDomain.Role import DesignRole, LibraryRole, DocumentRole, ContextRole, EntityRole, ArchitectureRole, PackageRole, PackageBodyRole, ConfigurationRole
 
 
+@export
+class Design(DOMDesign):
+	_baseDirectory: Nullable[Path]
+
+	def __init__(self, name: str = None, baseDirectory: Path = None):
+		"""
+		Initializes a VHDL design.
+
+		:param name:          Name of the design.
+		:param baseDirectory: Base directory of the design.
+		"""
+		super().__init__(name)
+		self._baseDirectory = baseDirectory
+
+	@property
+	def BaseDirectory(self) -> Path:
+		return self._baseDirectory
+
+
+@export
+class Document(DOMDocument):
+	@property
+	def ShortPath(self) -> Path:
+		design = cast(Design, self.Parent)
+		if design._baseDirectory is None:
+			return self._path
+		else:
+			return self._path.relative_to(design._baseDirectory)
+
+
+@export
 class VHDLDomain(Domain):
 	name =  "vhdl"  #: The name of this domain
 	label = "VHDL"  #: The label of this domain
@@ -159,15 +191,21 @@ class VHDLDomain(Domain):
 			("lib_StopWatch", Path("StopWatch.vhdl")),
 			("lib_Utilities", Path("sync_Bits.vhdl")),
 			("lib_Utilities", Path("Debouncer.vhdl")),
-			("lib_StopWatch", Path("toplevel.StopWatch.vhdl")),
+			("lib_StopWatch", Path("toplevel.vhdl")),
 		)
 
 		vhdlDomain: Domain = sphinxApplication.env.domains[VHDLDomain.name]
 		designs: Dict[str, Design] = vhdlDomain.data["designs"]
 
 		for designName, designRoot in designConfigurations.items():
+			if not isinstance(designName, str):
+				print(f"[VHDL][ERROR] '{designName}' is not a string.")
+			if not isinstance(designRoot, Path):
+				print(f"[VHDL][ERROR] '{designRoot}' is not a Path.")
 			print(f"[VHDL]   Loading design '{designName}' ...")
-			design = Design(designName)
+			if not designRoot.exists():
+				print(f"[VHDL][ERROR] Path '{designRoot}' does not exist.")
+			design = Design(designName, designRoot)
 			design.LoadDefaultLibraries()
 			for libraryName, file in _stopwatchFiles:
 				sourceFile = designRoot / file
@@ -206,6 +244,7 @@ class VHDLDomain(Domain):
 		raise NotImplementedError()
 
 
+@export
 def setup(sphinxApplication: Sphinx):
 	"""
 	Extension setup function registering the VHDL domain in Sphinx.
