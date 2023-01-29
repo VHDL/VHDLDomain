@@ -34,10 +34,13 @@
 
 This module contains all the directives of the VHDL domain.
 """
+import dataclasses
 from typing import List, Dict
 
 from docutils import nodes
-from pyGHDL.dom.NonStandard import Design
+from docutils.nodes import Node, section
+from pyGHDL.dom.DesignUnit import Entity
+from pyGHDL.dom.InterfaceItem import GenericConstantInterfaceItem, PortSignalInterfaceItem
 from pyTooling.Decorators import export
 from sphinx.directives import ObjectDescription
 from sphinx.domains import Domain
@@ -73,6 +76,9 @@ class BaseDirective(ObjectDescription):
 	:py:exc:`TypeError` exceptions.
 	"""
 
+	# def __init__(self, *args, **kwargs):
+	# 	super().__init__(*args, **kwargs)
+
 
 @export
 class DescribeDesign(BaseDirective):
@@ -84,7 +90,9 @@ class DescribeDesign(BaseDirective):
 	required_arguments = 0
 	optional_arguments = 0
 
-	def run(self) -> List:
+	def run(self) -> List[Node]:
+		from VHDLDomain import Design
+
 		vhdlDomain: Domain = self.env.domains["vhdl"]
 		designs: Dict[str, Design] = vhdlDomain.data["designs"]
 		design = designs["StopWatch"]
@@ -95,6 +103,7 @@ class DescribeDesign(BaseDirective):
 		for document in design.Documents:
 			term = nodes.term(text=f"{document.ShortPath}")
 			description = nodes.paragraph(text=f"{document.Documentation}")
+			description = nodes.literal_block(text=f"{document.Documentation}")
 			definition = nodes.definition("", description)
 
 			items.append(nodes.definition_list_item("", term, definition))
@@ -114,7 +123,13 @@ class DescribeLibrary(BaseDirective):
 	required_arguments = 0
 	optional_arguments = 0
 
-	def run(self) -> List:
+	def run(self) -> List[Node]:
+		from VHDLDomain import Design
+
+		vhdlDomain: Domain = self.env.domains["vhdl"]
+		designs: Dict[str, Design] = vhdlDomain.data["designs"]
+		design = designs["StopWatch"]
+
 		paragraph = nodes.paragraph(text="Describe library")
 
 		return [paragraph]
@@ -130,7 +145,14 @@ class DescribeDocument(BaseDirective):
 	required_arguments = 0
 	optional_arguments = 0
 
-	def run(self) -> List:
+	def run(self) -> List[Node]:
+		from VHDLDomain import Design
+
+		vhdlDomain: Domain = self.env.domains["vhdl"]
+		designs: Dict[str, Design] = vhdlDomain.data["designs"]
+		design = designs["StopWatch"]
+
+
 		paragraph = nodes.paragraph(text="Describe document")
 
 		return [paragraph]
@@ -146,7 +168,13 @@ class DescribeContext(BaseDirective):
 	required_arguments = 0
 	optional_arguments = 0
 
-	def run(self) -> List:
+	def run(self) -> List[Node]:
+		from VHDLDomain import Design
+
+		vhdlDomain: Domain = self.env.domains["vhdl"]
+		designs: Dict[str, Design] = vhdlDomain.data["designs"]
+		design = designs["StopWatch"]
+
 		paragraph = nodes.paragraph(text="Describe context")
 
 		return [paragraph]
@@ -158,14 +186,109 @@ class DescribeEntity(BaseDirective):
 	This directive will be replaced by the description of a VHDL entity.
 	"""
 
-	has_content = False
+	has_content = True
 	required_arguments = 0
 	optional_arguments = 0
 
-	def run(self) -> List:
-		paragraph = nodes.paragraph(text="Describe entity")
+	def CreateDefinitionSection(self, entity: Entity) -> section:
+		title = nodes.title(text="Definition")
+		paragraph = nodes.paragraph(text="code block")
+		section = nodes.section("", title, paragraph, ids=[f"{entity.Identifier}-definition"])
 
-		return [paragraph]
+		return section
+
+	def CreateGenericSection(self, entity: Entity) -> section:
+		title = nodes.title(text="Generics")
+		paragraph = nodes.paragraph(text="list of all generics")
+
+		generics = []
+		for generic in entity.GenericItems:
+			if isinstance(generic, GenericConstantInterfaceItem):
+				genericTitle = nodes.title(text=", ".join(generic.Identifiers))
+				genericParagraph = nodes.paragraph(text=generic.Documentation)
+				generics.append(nodes.section("", genericTitle, genericParagraph, ids=[f"{entity.Identifier}-generic-{nID}" for nID in generic.NormalizedIdentifiers]))
+
+		section = nodes.section("", title, paragraph, *generics, ids=[f"{entity.Identifier}-generics"])
+
+		return section
+
+	def CreatePortSection(self, entity: Entity) -> section:
+		title = nodes.title(text="Ports")
+		paragraph = nodes.paragraph(text="list of all ports")
+
+		ports = []
+		for port in entity.PortItems:
+			if isinstance(port, PortSignalInterfaceItem):
+				portTitle = nodes.title(text=", ".join(port.Identifiers))
+				portParagraph = nodes.paragraph(text=port.Documentation)
+				ports.append(nodes.section("", portTitle, portParagraph, ids=[f"{entity.Identifier}-port-{nID}" for nID in port.NormalizedIdentifiers]))
+
+		section = nodes.section("", title, paragraph, *ports, ids=[f"{entity.Identifier}-ports"])
+
+		return section
+
+	def CreateArchitectureSection(self, entity: Entity) -> section:
+		title = nodes.title(text="Architectures")
+		paragraph = nodes.paragraph(text=", ".join(entity.Architectures))
+		section = nodes.section("", title, paragraph, ids=[f"{entity.Identifier}-architectures"])
+
+		return section
+
+	def CreateReferencedBySection(self, entity: Entity) -> section:
+		title = nodes.title(text="Referenced By")
+		paragraph = nodes.paragraph(text="list of usages and back links")
+		section = nodes.section("", title, paragraph, ids=[f"{entity.Identifier}-referenced-by"])
+
+		return section
+
+	def CreateInnerHierarchySection(self, entity: Entity) -> section:
+		title = nodes.title(text="Inner Hierarchy")
+		paragraph = nodes.paragraph(text="diagram of inner instances")
+		section = nodes.section("", title, paragraph, ids=[f"{entity.Identifier}-hierarchy"])
+
+		return section
+
+	def run(self) -> List[Node]:
+		from VHDLDomain import Design
+
+		if len(self.content) == 1:
+			try:
+				libraryName, entityName = self.content[0].split(".")
+			except ValueError:
+				raise ValueError(f"Parameter to 'vhdl:describeentity' has incorrect format.")
+		else:
+			raise ValueError(f"Parameter to 'vhdl:describeentity' directive has too many content lines.")
+
+		vhdlDomain: Domain = self.env.domains["vhdl"]
+		designs: Dict[str, Design] = vhdlDomain.data["designs"]
+		design = designs["StopWatch"]
+		library = design.GetLibrary(libraryName.lower())
+		entity = library.Entities[entityName.lower()]
+
+		entityDescriptionParagraph = nodes.paragraph(text=entity.Documentation)
+
+		definitionSection = self.CreateDefinitionSection(entity)
+		genericSection = self.CreateGenericSection(entity)
+		portSection = self.CreatePortSection(entity)
+		architecturesSection = self.CreateArchitectureSection(entity)
+		referencedBySection = self.CreateReferencedBySection(entity)
+		innerHierarchySection = self.CreateInnerHierarchySection(entity)
+
+		entityTitle = nodes.title(text=entity.Identifier)
+		entitySection = nodes.section(
+			"",
+			entityTitle,
+			entityDescriptionParagraph,
+			definitionSection,
+			genericSection,
+			portSection,
+			architecturesSection,
+			referencedBySection,
+			innerHierarchySection,
+			ids=[entity.NormalizedIdentifier]
+		)
+
+		return [entitySection]
 
 
 @export
@@ -178,7 +301,13 @@ class DescribeArchitecture(BaseDirective):
 	required_arguments = 0
 	optional_arguments = 0
 
-	def run(self) -> List:
+	def run(self) -> List[Node]:
+		from VHDLDomain import Design
+
+		vhdlDomain: Domain = self.env.domains["vhdl"]
+		designs: Dict[str, Design] = vhdlDomain.data["designs"]
+		design = designs["StopWatch"]
+
 		paragraph = nodes.paragraph(text="Describe architecture")
 
 		return [paragraph]
@@ -194,7 +323,13 @@ class DescribePackage(BaseDirective):
 	required_arguments = 0
 	optional_arguments = 0
 
-	def run(self) -> List:
+	def run(self) -> List[Node]:
+		from VHDLDomain import Design
+
+		vhdlDomain: Domain = self.env.domains["vhdl"]
+		designs: Dict[str, Design] = vhdlDomain.data["designs"]
+		design = designs["StopWatch"]
+
 		paragraph = nodes.paragraph(text="Describe package")
 
 		return [paragraph]
@@ -210,7 +345,13 @@ class DescribePackageBody(BaseDirective):
 	required_arguments = 0
 	optional_arguments = 0
 
-	def run(self) -> List:
+	def run(self) -> List[Node]:
+		from VHDLDomain import Design
+
+		vhdlDomain: Domain = self.env.domains["vhdl"]
+		designs: Dict[str, Design] = vhdlDomain.data["designs"]
+		design = designs["StopWatch"]
+
 		paragraph = nodes.paragraph(text="Describe package body")
 
 		return [paragraph]
@@ -226,7 +367,13 @@ class DescribeConfiguration(BaseDirective):
 	required_arguments = 0
 	optional_arguments = 0
 
-	def run(self) -> List:
+	def run(self) -> List[Node]:
+		from VHDLDomain import Design
+
+		vhdlDomain: Domain = self.env.domains["vhdl"]
+		designs: Dict[str, Design] = vhdlDomain.data["designs"]
+		design = designs["StopWatch"]
+
 		paragraph = nodes.paragraph(text="Describe configuration")
 
 		return [paragraph]

@@ -48,6 +48,80 @@ class BaseIndex(Index):
 
 
 @export
+class LibraryIndex(BaseIndex):
+	"""
+	An index for VHDL libraries.
+	"""
+
+	name =      "libindex"
+	localname = "Library Index"
+	shortname = "Libraries"
+
+	def generate(self, docnames: Iterable[str] = None) -> Tuple[List[Tuple[str, List[IndexEntry]]], bool]:
+		result: List[Tuple[str, List[IndexEntry]]] = []
+
+		designs: Dict[str, Design] = self.domain.data["designs"]
+		design = designs["StopWatch"]
+		for library in design.Libraries.values():
+			entries = []
+			for entity in library.Entities.values():
+				entryName = entity.Identifier
+				entryKind = 0 if len(entity.Architectures) == 1 else 1
+				document = f"{entity.Library.Identifier}/{entity.Identifier}"
+				link = f"{entity.Library.Identifier}-{entity.Identifier}"
+				entries.append((entryName, entryKind, document, link, document, "", entity.Documentation))
+				if entryKind == 1:
+					for architecture in entity.Architectures.values():
+						architectureName = architecture.Identifier
+						architectureKind = 2
+						doc = f"{entity.Library.Identifier}/{entity.Identifier}-{architecture.Identifier}"
+						lnk = f"{entity.Library.Identifier}-{entity.Identifier}-{architecture.Identifier}"
+						entries.append((architectureName, architectureKind, doc, lnk, doc, "", architecture.Documentation))
+
+			group = (library.Identifier, entries)
+			result.append(group)
+
+		return result, True
+
+
+@export
+class DocumentIndex(BaseIndex):
+	"""
+	An index for VHDL documents.
+	"""
+
+	name =      "fileindex"
+	localname = "Document Index"
+	shortname = "Documents"
+
+	def generate(self, docnames: Iterable[str] = None) -> Tuple[List[Tuple[str, List[IndexEntry]]], bool]:
+		result: List[Tuple[str, List[IndexEntry]]] = []
+
+		designs: Dict[str, Design] = self.domain.data["designs"]
+		design = designs["StopWatch"]
+		for library in design.Libraries.values():
+			entries = []
+			for entity in library.Entities.values():
+				entryName = entity.Identifier
+				entryKind = 0 if len(entity.Architectures) == 1 else 1
+				document = f"{entity.Library.Identifier}/{entity.Identifier}"
+				link = f"{entity.Library.Identifier}-{entity.Identifier}"
+				entries.append((entryName, entryKind, document, link, document, "", entity.Documentation))
+				if entryKind == 1:
+					for architecture in entity.Architectures.values():
+						architectureName = architecture.Identifier
+						architectureKind = 2
+						doc = f"{entity.Library.Identifier}/{entity.Identifier}-{architecture.Identifier}"
+						lnk = f"{entity.Library.Identifier}-{entity.Identifier}-{architecture.Identifier}"
+						entries.append((architectureName, architectureKind, doc, lnk, doc, "", architecture.Documentation))
+
+			group = (library.Identifier, entries)
+			result.append(group)
+
+		return result, True
+
+
+@export
 class ComponentIndex(BaseIndex):
 	"""
 	An index for VHDL components.

@@ -136,6 +136,8 @@ License
    :hidden:
 
    StopWatch/index
+   Libraries <vhdl-libindex>
+   Documents <vhdl-fileindex>
    Components <vhdl-compindex>
    Packages <vhdl-packindex>
    Subprograms <vhdl-subindex>

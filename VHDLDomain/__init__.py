@@ -52,12 +52,14 @@ from pyGHDL.dom.NonStandard import Design as DOMDesign, Document as DOMDocument
 from pyTooling.Decorators import export
 from sphinx.addnodes import pending_xref
 from sphinx.application import Sphinx
+from sphinx.builders import Builder
 from sphinx.domains import Domain
+from sphinx.environment import BuildEnvironment
 from sphinx.extension import Extension
 
 from VHDLDomain.Directive import DescribeDesign, DescribeLibrary, DescribeDocument, DescribeEntity, DescribeArchitecture
 from VHDLDomain.Directive import DescribePackage, DescribePackageBody, DescribeConfiguration, DescribeContext
-from VHDLDomain.Index import ComponentIndex, PackageIndex, SubprogramIndex, TypeIndex
+from VHDLDomain.Index import LibraryIndex, DocumentIndex, ComponentIndex, PackageIndex, SubprogramIndex, TypeIndex
 from VHDLDomain.Role import DesignRole, LibraryRole, DocumentRole, ContextRole, EntityRole, ArchitectureRole, PackageRole, PackageBodyRole, ConfigurationRole
 
 
@@ -124,6 +126,8 @@ class VHDLDomain(Domain):
 	}  #: A dictionary of all roles in this domain.
 
 	indices = {
+		LibraryIndex,
+		DocumentIndex,
 		ComponentIndex,
 		PackageIndex,
 		SubprogramIndex,
@@ -233,9 +237,9 @@ class VHDLDomain(Domain):
 
 	def resolve_xref(
 		self,
-		env: 'BuildEnvironment',
+		env: BuildEnvironment,
 		fromdocname: str,
-		builder: 'Builder',
+		builder: Builder,
 		typ: str,
 		target: str,
 		node: pending_xref,

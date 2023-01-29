@@ -1,5 +1,5 @@
--- Author:  Patrick Lehmann
--- License: MIT
+-- :author:  Patrick Lehmann
+-- :license: MIT
 --
 -- A generic counter module used in the StopWatch example.
 --
@@ -9,19 +9,19 @@ use     IEEE.numeric_std.all;
 
 use     work.Utilities_pkg.all;
 
-
+-- A generic implementation of an up-counting counter.
 entity Counter is
 	generic (
-		MODULO : positive;
-		BITS   : natural := log2(MODULO)
+		MODULO : positive;                -- Modulo value of the modulo N counter.
+		BITS   : natural := log2(MODULO)  -- Number of bits used by the counter output vector. This number is derived from MODULO are can be overwritten with a greater value to achieve a wider output vector.
 	);
 	port (
-		Clock      : in  std_logic;
-		Reset      : in  std_logic;
-		Enable     : in  std_logic;
+		Clock      : in  std_logic;       -- System clock to operate the whole entity.
+		Reset      : in  std_logic;       -- System reset to reset the entire entity.
+		Enable     : in  std_logic;       -- Enable signal to activate the counter.
 
-		Value      : out unsigned(BITS - 1 downto 0);
-		WrapAround : out std_logic
+		Value      : out unsigned(BITS - 1 downto 0);  -- Current state of the counter as unsigned number.
+		WrapAround : out std_logic                     -- Triggered for a single cycle, when counter wraps around.
 	);
 end entity;
 
