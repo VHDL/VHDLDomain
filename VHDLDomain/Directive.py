@@ -34,18 +34,29 @@
 
 This module contains all the directives of the VHDL domain.
 """
-import dataclasses
+from enum import Flag, auto
 from textwrap import dedent
-from typing import List, Dict, Iterable, Tuple
+from typing import List, Dict, Tuple
 
 from docutils import nodes
 from docutils.nodes import Node, section, table, tgroup
-from docutils.parsers.rst.directives import unchanged_required, choice
-from pyGHDL.dom.DesignUnit import Entity
-from pyGHDL.dom.InterfaceItem import GenericConstantInterfaceItem, PortSignalInterfaceItem
-from pyTooling.Decorators import export
 from sphinx.directives import ObjectDescription
 from sphinx.domains import Domain
+from pyTooling.Decorators import export
+from pyGHDL.dom.DesignUnit import Entity
+from pyGHDL.dom.InterfaceItem import GenericConstantInterfaceItem, PortSignalInterfaceItem
+
+
+@export
+class ParameterStyle(Flag):
+	Never = auto()
+	Table = auto()
+	Sections = auto()
+
+
+@export
+def strip(option: str):
+	return option.strip().lower()
 
 
 @export
@@ -183,11 +194,6 @@ class DescribeContext(BaseDirective):
 
 
 @export
-def ParameterStyle(option):
-	return choice(option, ("none", "table", "sections"))
-
-
-@export
 class DescribeEntity(BaseDirective):
 	"""
 	This directive will be replaced by the description of a VHDL entity.
@@ -198,8 +204,8 @@ class DescribeEntity(BaseDirective):
 	optional_arguments = 2
 
 	option_spec = {
-		"genericlist": ParameterStyle,
-		"portlist": ParameterStyle,
+		"genericlist": strip,
+		"portlist": strip,
 	}
 
 	def _PrepareTable(self, columns: Dict[str, int], classes: List[str]) -> Tuple[table, tgroup]:
@@ -239,7 +245,7 @@ class DescribeEntity(BaseDirective):
 
 		return section
 
-	def CreateGenericSection(self, entity: Entity, gls: str) -> section:
+	def CreateGenericSection(self, entity: Entity, style: ParameterStyle) -> section:
 		content = [
 			nodes.title(text="Generics")
 		]
@@ -247,7 +253,7 @@ class DescribeEntity(BaseDirective):
 		if True:
 			content.append(nodes.paragraph(text="list of all generics"))
 
-		if gls == "table":
+		if style is ParameterStyle.Table:
 			table, tableGroup = self._PrepareTable(
 				columns={
 					"Generic Name": 2,
@@ -273,17 +279,14 @@ class DescribeEntity(BaseDirective):
 						cellDefaultValue += nodes.paragraph(text="??")  # str(generic.DefaultExpression))
 
 			content.append(table)
-		elif gls == "sections":
+		elif style is ParameterStyle.Sections:
 			for generic in entity.GenericItems:
 				if isinstance(generic, GenericConstantInterfaceItem):
-					genericTitle = nodes.title(text=", ".join(generic.Identifiers))
-					genericParagraph = nodes.paragraph(text=generic.Documentation)
-					content.append(nodes.section(
-						"",
-						genericTitle,
-						genericParagraph,
-						ids=[f"{entity.NormalizedIdentifier}-generic-{nID}" for nID in generic.NormalizedIdentifiers]
-					))
+					genericSection = nodes.section(ids=[f"{entity.NormalizedIdentifier}-generic-{nID}" for nID in generic.NormalizedIdentifiers])
+					genericSection.append(nodes.title(text=", ".join(generic.Identifiers)))
+					genericSection.append(nodes.paragraph(text=generic.Documentation))
+
+					content.append(genericSection)
 
 		section = nodes.section(
 			ids=[f"{entity.NormalizedIdentifier}-generics"],
@@ -293,7 +296,7 @@ class DescribeEntity(BaseDirective):
 
 		return section
 
-	def CreatePortSection(self, entity: Entity, pls: str) -> section:
+	def CreatePortSection(self, entity: Entity, style: ParameterStyle) -> section:
 		content = [
 			nodes.title(text="Ports")
 		]
@@ -301,7 +304,7 @@ class DescribeEntity(BaseDirective):
 		if True:
 			content.append(nodes.paragraph(text="list of all ports"))
 
-		if pls == "table":
+		if style is ParameterStyle.Table:
 			table, tableGroup = self._PrepareTable(
 				columns={
 					"Port Name": 2,
@@ -330,17 +333,14 @@ class DescribeEntity(BaseDirective):
 						cellDefaultValue += nodes.paragraph(text=str(port.DefaultExpression))
 
 			content.append(table)
-		elif pls == "sections":
+		elif style is ParameterStyle.Sections:
 			for port in entity.PortItems:
 				if isinstance(port, PortSignalInterfaceItem):
-					portTitle = nodes.title(text=", ".join(port.Identifiers))
-					portParagraph = nodes.paragraph(text=port.Documentation)
-					content.append(nodes.section(
-						"",
-						portTitle,
-						portParagraph,
-						ids=[f"{entity.NormalizedIdentifier}-port-{nID}" for nID in port.NormalizedIdentifiers]
-					))
+					portSection = nodes.section(ids=[f"{entity.NormalizedIdentifier}-port-{nID}" for nID in port.NormalizedIdentifiers])
+					portSection.append(nodes.title(text=", ".join(port.Identifiers)))
+					portSection.append(nodes.paragraph(text=port.Documentation))
+
+					content.append(portSection)
 
 		section = nodes.section(
 			ids=[f"{entity.NormalizedIdentifier}-ports"],
@@ -389,6 +389,22 @@ class DescribeEntity(BaseDirective):
 
 		return section
 
+	def ParseParameterOption(self, optionName: str) -> ParameterStyle:
+		try:
+			option = self.options[optionName]
+		except KeyError:
+			try:
+				option = self.defaultValues[optionName]
+			except KeyError:
+				option = "table"
+
+		if option == "never":
+			return ParameterStyle.Never
+		elif option == "table":
+			return ParameterStyle.Table
+		elif option == "sections":
+			return ParameterStyle.Sections
+
 	def run(self) -> List[Node]:
 		from VHDLDomain import Design
 
@@ -400,16 +416,12 @@ class DescribeEntity(BaseDirective):
 		else:
 			raise ValueError(f"Parameter to 'vhdl:describeentity' directive has too many content lines ({len(self.arguments)}).")
 
-		if "genericlist" in self.options:
-			gls = self.options["genericlist"]
-		else:
-			gls = "table"
+		# TODO: Can this be done in an __init__ or so?
+		self.directiveName = self.name.split(":")[1]
+		self.defaultValues = self.env.config.vhdl_defaults[self.directiveName]
 
-		if "portlist" in self.options:
-			pls = self.options["portlist"]
-		else:
-			pls = "table"
-
+		optionGenerics = self.ParseParameterOption("genericlist")
+		optionPorts = self.ParseParameterOption("portlist")
 
 		vhdlDomain: Domain = self.env.domains["vhdl"]
 		designs: Dict[str, Design] = vhdlDomain.data["designs"]
@@ -417,29 +429,33 @@ class DescribeEntity(BaseDirective):
 		library = design.GetLibrary(libraryName.lower())
 		entity = library.Entities[entityName.lower()]
 
-		entityDescriptionParagraph = nodes.paragraph(text=entity.Documentation)
+		content = [
+			nodes.title(text=entity.Identifier),
+			nodes.paragraph(text=entity.Documentation)
+		]
 
-		definitionSection = self.CreateDefinitionSection(entity)
-		genericSection = self.CreateGenericSection(entity, gls)
-		portSection = self.CreatePortSection(entity, pls)
-		architecturesSection = self.CreateArchitectureSection(entity)
-		referencedBySection = self.CreateReferencedBySection(entity)
-		innerHierarchySection = self.CreateInnerHierarchySection(entity)
+		if True:
+			content.append(self.CreateDefinitionSection(entity))
 
-		entityTitle = nodes.title(text=entity.Identifier)
+		if optionGenerics is not ParameterStyle.Never:
+			content.append(self.CreateGenericSection(entity, optionGenerics))
+		if optionPorts is not ParameterStyle.Never:
+			content.append(self.CreatePortSection(entity, optionPorts))
+
+		if True:
+			content.append(self.CreateArchitectureSection(entity))
+
+		if True:
+			content.append(self.CreateReferencedBySection(entity))
+
+		if True:
+			content.append(self.CreateInnerHierarchySection(entity))
+
 		entitySection = nodes.section(
-			"",
-			entityTitle,
-			entityDescriptionParagraph,
-			definitionSection,
-			genericSection,
-			portSection,
-			architecturesSection,
-			referencedBySection,
-			innerHierarchySection,
 			ids=[entity.NormalizedIdentifier],
 			classes=["vhdl", "vhdl-entity-section"]
 		)
+		entitySection.extend(content)
 
 		return [entitySection]
 

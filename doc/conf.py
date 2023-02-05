@@ -290,6 +290,15 @@ autoapi_modules = {
 vhdl_designs = {
 	"StopWatch": (Path.cwd() / "../examples/StopWatch").resolve(),
 }
+vhdl_defaults = {
+	"describeentity": {
+		"generics":      "table",        # never, table, sections
+		"ports":         "table",        # never, table, sections
+		"parameters":    "table",        # never, table, sections
+		"architectures": "multiple",     # never, multiple, always
+		"referencedby":  "yes",          # no, yes
+	}
+}
 
 # for directory in [mod for mod in Path("../VHDLDomain").iterdir() if mod.is_dir() and mod.name != "__pycache__"]:
 # 	print(f"Adding module rule for '{project}.{directory.name}'")

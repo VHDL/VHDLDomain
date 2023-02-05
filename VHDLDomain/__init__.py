@@ -136,6 +136,7 @@ class VHDLDomain(Domain):
 
 	configValues: Dict[str, Tuple[Any, str, Any]] = {
 		"designs": ({}, "env", Dict),
+		"defaults": ({}, "env", Dict),
 	}  #: A dictionary of all configuration values used by this domain.
 
 	initial_data = {
