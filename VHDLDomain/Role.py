@@ -29,3 +29,134 @@
 # SPDX-License-Identifier: Apache-2.0                                                                                  #
 # ==================================================================================================================== #
 #
+"""
+**A Sphinx domain providing VHDL language support.**
+
+This module contains all the roles of the VHDL domain.
+"""
+from pyTooling.Decorators import export
+from sphinx.roles import XRefRole
+
+
+@export
+class BaseRole(XRefRole):
+	pass
+
+
+@export
+class DesignRole(BaseRole):
+	"""
+	This role will reference a VHDL design.
+	"""
+
+
+@export
+class LibraryRole(BaseRole):
+	"""
+	This role will reference a VHDL library.
+	"""
+
+
+@export
+class DocumentRole(BaseRole):
+	"""
+	This role will reference a VHDL document.
+	"""
+
+
+@export
+class ContextRole(BaseRole):
+	"""
+	This role will reference a context.
+	"""
+
+
+@export
+class EntityRole(BaseRole):
+	"""
+	This role will reference a entity.
+	"""
+
+
+@export
+class ArchitectureRole(BaseRole):
+	"""
+	This role will reference an architecture.
+	"""
+
+
+@export
+class ComponentRole(BaseRole):
+	"""
+	This role will reference a component.
+	"""
+
+
+@export
+class PackageRole(BaseRole):
+	"""
+	This role will reference a package.
+	"""
+
+
+@export
+class PackageBodyRole(BaseRole):
+	"""
+	This role will reference a package body.
+	"""
+
+
+@export
+class ConfigurationRole(BaseRole):
+	"""
+	This role will reference a configuration.
+	"""
+
+
+@export
+class TypeRole(BaseRole):
+	"""
+	This role will reference a type.
+	"""
+
+
+@export
+class FunctionRole(BaseRole):
+	"""
+	This role will reference a function.
+	"""
+
+
+@export
+class ProcedureRole(BaseRole):
+	"""
+	This role will reference a procedure.
+	"""
+
+
+@export
+class ConstantRole(BaseRole):
+	"""
+	This role will reference a constant.
+	"""
+
+
+@export
+class GenericRole(BaseRole):
+	"""
+	This role will reference a generic.
+	"""
+
+
+@export
+class PortRole(BaseRole):
+	"""
+	This role will reference a port.
+	"""
+
+
+@export
+class ParameterRole(BaseRole):
+	"""
+	This role will reference a parameter.
+	"""

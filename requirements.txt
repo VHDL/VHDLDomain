@@ -1,1 +1,2 @@
-pyTooling>=2.11.0
+pyTooling>=2.12.0
+pyGHDL

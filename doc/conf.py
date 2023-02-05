@@ -283,6 +283,40 @@ autoapi_modules = {
 	},
 }
 
+
+# ==============================================================================
+# AutoAPI.Sphinx
+# ==============================================================================
+vhdl_designs = {
+	"StopWatch": (Path.cwd() / "../examples/StopWatch").resolve(),
+}
+vhdl_defaults = {
+	"describedesign": {},
+	"describelibrary": {},
+	"describedocument": {},
+	"describecontext": {
+		"referencedby":  "yes",          # no, yes
+	},
+	"describeentity": {
+		"generics":      "table",        # never, table, sections
+		"ports":         "table",        # never, table, sections
+		"architectures": "multiple",     # never, multiple, always
+		"referencedby":  "yes",          # no, yes
+	},
+	"describearchitecture": {},
+	"describepackage": {
+		"generics":      "table",        # never, table, sections
+		"referencedby":  "yes",          # no, yes
+	},
+	"describepackagebody": {},
+	"describeconfiguration": {
+		"referencedby":  "yes",          # no, yes
+	},
+	"describesubprogram": {
+		"parameters":    "table",        # never, table, sections
+	},
+}
+
 # for directory in [mod for mod in Path("../VHDLDomain").iterdir() if mod.is_dir() and mod.name != "__pycache__"]:
 # 	print(f"Adding module rule for '{project}.{directory.name}'")
 # 	autoapi_modules[f"{project}.{directory.name}"] = {
