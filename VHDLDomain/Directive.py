@@ -55,6 +55,13 @@ class ParameterStyle(Flag):
 
 
 @export
+class ArchitecturesStyle(Flag):
+	Never = auto()
+	Multiple = auto()
+	Always = auto()
+
+
+@export
 def strip(option: str):
 	return option.strip().lower()
 
@@ -179,7 +186,11 @@ class DescribeContext(BaseDirective):
 
 	has_content = False
 	required_arguments = 0
-	optional_arguments = 0
+	optional_arguments = 1
+
+	option_spec = {
+		"referencedby":  strip,
+	}
 
 	def run(self) -> List[Node]:
 		from VHDLDomain import Design
@@ -200,12 +211,14 @@ class DescribeEntity(BaseDirective):
 	"""
 
 	has_content = True
-	required_arguments = 1
-	optional_arguments = 2
+	required_arguments = 0
+	optional_arguments = 4
 
 	option_spec = {
-		"genericlist": strip,
-		"portlist": strip,
+		"genericlist":   strip,
+		"portlist":      strip,
+		"architectures": strip,
+		"referencedby":  strip,
 	}
 
 	def _PrepareTable(self, columns: Dict[str, int], classes: List[str]) -> Tuple[table, tgroup]:
@@ -389,14 +402,14 @@ class DescribeEntity(BaseDirective):
 
 		return section
 
-	def ParseParameterOption(self, optionName: str) -> ParameterStyle:
+	def ParseParameterStyleOption(self, optionName: str) -> ParameterStyle:
 		try:
 			option = self.options[optionName]
 		except KeyError:
 			try:
 				option = self.defaultValues[optionName]
 			except KeyError:
-				option = "table"
+				return ParameterStyle.Table
 
 		if option == "never":
 			return ParameterStyle.Never
@@ -404,6 +417,42 @@ class DescribeEntity(BaseDirective):
 			return ParameterStyle.Table
 		elif option == "sections":
 			return ParameterStyle.Sections
+		else:
+			raise ValueError(f"value '{option}' is not in list of choices: never, table, sections.")
+
+	def ParseArchitecturesStyleOption(self, optionName: str) -> ArchitecturesStyle:
+		try:
+			option = self.options[optionName]
+		except KeyError:
+			try:
+				option = self.defaultValues[optionName]
+			except KeyError:
+				return ArchitecturesStyle.Multiple
+
+		if option == "never":
+			return ArchitecturesStyle.Never
+		elif option == "multiple":
+			return ArchitecturesStyle.Multiple
+		elif option == "always":
+			return ArchitecturesStyle.Always
+		else:
+			raise ValueError(f"value '{option}' is not in list of choices: never, multiple, always.")
+
+	def ParseBooleanOption(self, optionName: str, default: bool) -> bool:
+		try:
+			option = self.options[optionName]
+		except KeyError:
+			try:
+				option = self.defaultValues[optionName]
+			except KeyError:
+				return default
+
+		if option in ("yes", "true"):
+			return True
+		elif option in ("no", "false"):
+			return False
+		else:
+			raise ValueError(f"Value '{option}' not supported for a boolean value (yes/true, no/false).")
 
 	def run(self) -> List[Node]:
 		from VHDLDomain import Design
@@ -420,8 +469,12 @@ class DescribeEntity(BaseDirective):
 		self.directiveName = self.name.split(":")[1]
 		self.defaultValues = self.env.config.vhdl_defaults[self.directiveName]
 
-		optionGenerics = self.ParseParameterOption("genericlist")
-		optionPorts = self.ParseParameterOption("portlist")
+		optionDefinition = self.ParseBooleanOption("definition", True)
+		optionGenerics = self.ParseParameterStyleOption("genericlist")
+		optionPorts = self.ParseParameterStyleOption("portlist")
+		optionArchitectures = self.ParseArchitecturesStyleOption("architectures")
+		optionReferencedBy = self.ParseBooleanOption("referencedby", True)
+		optionHierarchy = self.ParseBooleanOption("hierarchy", True)
 
 		vhdlDomain: Domain = self.env.domains["vhdl"]
 		designs: Dict[str, Design] = vhdlDomain.data["designs"]
@@ -434,7 +487,7 @@ class DescribeEntity(BaseDirective):
 			nodes.paragraph(text=entity.Documentation)
 		]
 
-		if True:
+		if optionDefinition:
 			content.append(self.CreateDefinitionSection(entity))
 
 		if optionGenerics is not ParameterStyle.Never:
@@ -442,13 +495,14 @@ class DescribeEntity(BaseDirective):
 		if optionPorts is not ParameterStyle.Never:
 			content.append(self.CreatePortSection(entity, optionPorts))
 
-		if True:
+		if (optionArchitectures is ArchitecturesStyle.Always or
+			(optionArchitectures is ArchitecturesStyle.Multiple and len(entity.Architectures) > 1)):
 			content.append(self.CreateArchitectureSection(entity))
 
-		if True:
+		if optionReferencedBy:
 			content.append(self.CreateReferencedBySection(entity))
 
-		if True:
+		if optionHierarchy:
 			content.append(self.CreateInnerHierarchySection(entity))
 
 		entitySection = nodes.section(
@@ -490,7 +544,12 @@ class DescribePackage(BaseDirective):
 
 	has_content = False
 	required_arguments = 0
-	optional_arguments = 0
+	optional_arguments = 2
+
+	option_spec = {
+		"genericlist":   strip,
+		"referencedby":  strip,
+	}
 
 	def run(self) -> List[Node]:
 		from VHDLDomain import Design
@@ -534,7 +593,11 @@ class DescribeConfiguration(BaseDirective):
 
 	has_content = False
 	required_arguments = 0
-	optional_arguments = 0
+	optional_arguments = 1
+
+	option_spec = {
+		"referencedby":  strip,
+	}
 
 	def run(self) -> List[Node]:
 		from VHDLDomain import Design
