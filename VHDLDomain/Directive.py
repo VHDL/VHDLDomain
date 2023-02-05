@@ -35,10 +35,12 @@
 This module contains all the directives of the VHDL domain.
 """
 import dataclasses
-from typing import List, Dict
+from textwrap import dedent
+from typing import List, Dict, Iterable, Tuple
 
 from docutils import nodes
-from docutils.nodes import Node, section
+from docutils.nodes import Node, section, table, tgroup
+from docutils.parsers.rst.directives import unchanged_required, choice
 from pyGHDL.dom.DesignUnit import Entity
 from pyGHDL.dom.InterfaceItem import GenericConstantInterfaceItem, PortSignalInterfaceItem
 from pyTooling.Decorators import export
@@ -181,83 +183,233 @@ class DescribeContext(BaseDirective):
 
 
 @export
+def ParameterStyle(option):
+	return choice(option, ("none", "table", "sections"))
+
+
+@export
 class DescribeEntity(BaseDirective):
 	"""
 	This directive will be replaced by the description of a VHDL entity.
 	"""
 
 	has_content = True
-	required_arguments = 0
-	optional_arguments = 0
+	required_arguments = 1
+	optional_arguments = 2
+
+	option_spec = {
+		"genericlist": ParameterStyle,
+		"portlist": ParameterStyle,
+	}
+
+	def _PrepareTable(self, columns: Dict[str, int], classes: List[str]) -> Tuple[table, tgroup]:
+		tableGroup = nodes.tgroup(cols=(len(columns)))
+		table = nodes.table("", tableGroup, classes=classes)
+
+		tableRow = nodes.row()
+		for columnTitle, width in columns.items():
+			tableGroup += nodes.colspec(colwidth=width)
+			tableRow += nodes.entry("", nodes.paragraph(text=columnTitle))
+
+		tableGroup += nodes.thead("", tableRow)
+
+		return table, tableGroup
 
 	def CreateDefinitionSection(self, entity: Entity) -> section:
 		title = nodes.title(text="Definition")
-		paragraph = nodes.paragraph(text="code block")
-		section = nodes.section("", title, paragraph, ids=[f"{entity.Identifier}-definition"])
+		paragraph = nodes.literal_block(text=dedent(f"""\
+		entity {entity.Identifier} is
+		  generics (
+		    MODULO : positive;
+		    BITS   : positive := log2(MODULO)
+		  );
+		  ports (
+		    Clock : std_logic;
+		    Reset : std_logic
+		  );
+		end entity;
+		"""))
+		section = nodes.section(
+			"",
+			title,
+			paragraph,
+			ids=[f"{entity.NormalizedIdentifier}-definition"],
+			classes=["vhdl", "vhdl-entity-definition-section"]
+		)
 
 		return section
 
-	def CreateGenericSection(self, entity: Entity) -> section:
-		title = nodes.title(text="Generics")
-		paragraph = nodes.paragraph(text="list of all generics")
+	def CreateGenericSection(self, entity: Entity, gls: str) -> section:
+		content = [
+			nodes.title(text="Generics")
+		]
 
-		generics = []
-		for generic in entity.GenericItems:
-			if isinstance(generic, GenericConstantInterfaceItem):
-				genericTitle = nodes.title(text=", ".join(generic.Identifiers))
-				genericParagraph = nodes.paragraph(text=generic.Documentation)
-				generics.append(nodes.section("", genericTitle, genericParagraph, ids=[f"{entity.Identifier}-generic-{nID}" for nID in generic.NormalizedIdentifiers]))
+		if True:
+			content.append(nodes.paragraph(text="list of all generics"))
 
-		section = nodes.section("", title, paragraph, *generics, ids=[f"{entity.Identifier}-generics"])
+		if gls == "table":
+			table, tableGroup = self._PrepareTable(
+				columns={
+					"Generic Name": 2,
+					"Type": 1,
+					"Default Value": 4,
+				},
+				classes=["vhdl", "vhdl-generic-table"]
+			)
+
+			tableBody = nodes.tbody()
+			tableGroup += tableBody
+
+			for generic in entity.GenericItems:
+				cellGenericName = nodes.entry()
+				cellGenericType = nodes.entry()
+				cellDefaultValue = nodes.entry()
+				tableBody += nodes.row("", cellGenericName, cellGenericType, cellDefaultValue)
+
+				if isinstance(generic, GenericConstantInterfaceItem):
+					cellGenericName += nodes.paragraph(text=", ".join(generic.Identifiers))
+					cellGenericType += nodes.paragraph(text=generic.Documentation)
+					if generic.DefaultExpression is not None:
+						cellDefaultValue += nodes.paragraph(text="??")  # str(generic.DefaultExpression))
+
+			content.append(table)
+		elif gls == "sections":
+			for generic in entity.GenericItems:
+				if isinstance(generic, GenericConstantInterfaceItem):
+					genericTitle = nodes.title(text=", ".join(generic.Identifiers))
+					genericParagraph = nodes.paragraph(text=generic.Documentation)
+					content.append(nodes.section(
+						"",
+						genericTitle,
+						genericParagraph,
+						ids=[f"{entity.NormalizedIdentifier}-generic-{nID}" for nID in generic.NormalizedIdentifiers]
+					))
+
+		section = nodes.section(
+			ids=[f"{entity.NormalizedIdentifier}-generics"],
+			classes=["vhdl", "vhdl-entity-generic-section"]
+		)
+		section.extend(content)
 
 		return section
 
-	def CreatePortSection(self, entity: Entity) -> section:
-		title = nodes.title(text="Ports")
-		paragraph = nodes.paragraph(text="list of all ports")
+	def CreatePortSection(self, entity: Entity, pls: str) -> section:
+		content = [
+			nodes.title(text="Ports")
+		]
 
-		ports = []
-		for port in entity.PortItems:
-			if isinstance(port, PortSignalInterfaceItem):
-				portTitle = nodes.title(text=", ".join(port.Identifiers))
-				portParagraph = nodes.paragraph(text=port.Documentation)
-				ports.append(nodes.section("", portTitle, portParagraph, ids=[f"{entity.Identifier}-port-{nID}" for nID in port.NormalizedIdentifiers]))
+		if True:
+			content.append(nodes.paragraph(text="list of all ports"))
 
-		section = nodes.section("", title, paragraph, *ports, ids=[f"{entity.Identifier}-ports"])
+		if pls == "table":
+			table, tableGroup = self._PrepareTable(
+				columns={
+					"Port Name": 2,
+					"Direction": 1,
+					"Type": 1,
+					"Default Value": 3
+				},
+				classes=["vhdl", "vhdl-port-table"]
+			)
+
+			tableBody = nodes.tbody()
+			tableGroup += tableBody
+
+			for port in entity.PortItems:
+				cellPortName = nodes.entry()
+				cellPortDirection = nodes.entry()
+				cellPortType = nodes.entry()
+				cellDefaultValue = nodes.entry()
+				tableBody += nodes.row("", cellPortName, cellPortDirection, cellPortType, cellDefaultValue)
+
+				if isinstance(port, PortSignalInterfaceItem):
+					cellPortName += nodes.paragraph(text=", ".join(port.Identifiers))
+					cellPortDirection += nodes.paragraph(text=str(port.Mode))
+					cellPortType += nodes.paragraph(text=port.Documentation)
+					if port.DefaultExpression is not None:
+						cellDefaultValue += nodes.paragraph(text=str(port.DefaultExpression))
+
+			content.append(table)
+		elif pls == "sections":
+			for port in entity.PortItems:
+				if isinstance(port, PortSignalInterfaceItem):
+					portTitle = nodes.title(text=", ".join(port.Identifiers))
+					portParagraph = nodes.paragraph(text=port.Documentation)
+					content.append(nodes.section(
+						"",
+						portTitle,
+						portParagraph,
+						ids=[f"{entity.NormalizedIdentifier}-port-{nID}" for nID in port.NormalizedIdentifiers]
+					))
+
+		section = nodes.section(
+			ids=[f"{entity.NormalizedIdentifier}-ports"],
+			classes=["vhdl", "vhdl-entity-port-section"]
+		)
+		section.extend(content)
 
 		return section
 
 	def CreateArchitectureSection(self, entity: Entity) -> section:
 		title = nodes.title(text="Architectures")
 		paragraph = nodes.paragraph(text=", ".join(entity.Architectures))
-		section = nodes.section("", title, paragraph, ids=[f"{entity.Identifier}-architectures"])
+		section = nodes.section(
+			"",
+			title,
+			paragraph,
+			ids=[f"{entity.NormalizedIdentifier}-architectures"],
+			classes=["vhdl", "vhdl-entity-architectures-section"]
+		)
 
 		return section
 
 	def CreateReferencedBySection(self, entity: Entity) -> section:
 		title = nodes.title(text="Referenced By")
 		paragraph = nodes.paragraph(text="list of usages and back links")
-		section = nodes.section("", title, paragraph, ids=[f"{entity.Identifier}-referenced-by"])
+		section = nodes.section(
+			"",
+			title,
+			paragraph,
+			ids=[f"{entity.NormalizedIdentifier}-referenced-by"],
+			classes=["vhdl", "vhdl-entity-referencedby-section"]
+		)
 
 		return section
 
 	def CreateInnerHierarchySection(self, entity: Entity) -> section:
 		title = nodes.title(text="Inner Hierarchy")
 		paragraph = nodes.paragraph(text="diagram of inner instances")
-		section = nodes.section("", title, paragraph, ids=[f"{entity.Identifier}-hierarchy"])
+		section = nodes.section(
+			"",
+			title,
+			paragraph,
+			ids=[f"{entity.NormalizedIdentifier}-hierarchy"],
+			classes=["vhdl", "vhdl-entity-innerhierarchy-section"]
+		)
 
 		return section
 
 	def run(self) -> List[Node]:
 		from VHDLDomain import Design
 
-		if len(self.content) == 1:
+		if len(self.arguments) == 1:
 			try:
-				libraryName, entityName = self.content[0].split(".")
+				libraryName, entityName = self.arguments[0].split(".")
 			except ValueError:
 				raise ValueError(f"Parameter to 'vhdl:describeentity' has incorrect format.")
 		else:
-			raise ValueError(f"Parameter to 'vhdl:describeentity' directive has too many content lines.")
+			raise ValueError(f"Parameter to 'vhdl:describeentity' directive has too many content lines ({len(self.arguments)}).")
+
+		if "genericlist" in self.options:
+			gls = self.options["genericlist"]
+		else:
+			gls = "table"
+
+		if "portlist" in self.options:
+			pls = self.options["portlist"]
+		else:
+			pls = "table"
+
 
 		vhdlDomain: Domain = self.env.domains["vhdl"]
 		designs: Dict[str, Design] = vhdlDomain.data["designs"]
@@ -268,8 +420,8 @@ class DescribeEntity(BaseDirective):
 		entityDescriptionParagraph = nodes.paragraph(text=entity.Documentation)
 
 		definitionSection = self.CreateDefinitionSection(entity)
-		genericSection = self.CreateGenericSection(entity)
-		portSection = self.CreatePortSection(entity)
+		genericSection = self.CreateGenericSection(entity, gls)
+		portSection = self.CreatePortSection(entity, pls)
 		architecturesSection = self.CreateArchitectureSection(entity)
 		referencedBySection = self.CreateReferencedBySection(entity)
 		innerHierarchySection = self.CreateInnerHierarchySection(entity)
@@ -285,7 +437,8 @@ class DescribeEntity(BaseDirective):
 			architecturesSection,
 			referencedBySection,
 			innerHierarchySection,
-			ids=[entity.NormalizedIdentifier]
+			ids=[entity.NormalizedIdentifier],
+			classes=["vhdl", "vhdl-entity-section"]
 		)
 
 		return [entitySection]
