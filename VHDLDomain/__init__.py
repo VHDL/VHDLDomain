@@ -105,12 +105,12 @@ class VHDLDomain(Domain):
 		"describedesign":        DescribeDesign,
 		# "describelibrary":       DescribeLibrary,
 		# "describedocument":      DescribeDocument,
-		# "describecontext":       DescribeContext,
+		"describecontext":       DescribeContext,
 		"describeentity":        DescribeEntity,
 		# "describearchitecture":  DescribeArchitecture,
-		# "describepackage":       DescribePackage,
+		"describepackage":       DescribePackage,
 		# "describepackagebody":   DescribePackageBody,
-		# "describeconfiguration": DescribeConfiguration,
+		"describeconfiguration": DescribeConfiguration,
 	}  #: A dictionary of all directives in this domain.
 
 	roles = {
