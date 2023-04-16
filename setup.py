@@ -50,5 +50,8 @@ DescribePythonPackageHostedOnGitHub(
 		"Topic :: Documentation :: Sphinx",
 		"Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
 		"Topic :: Software Development :: Documentation",
-	]
+	],
+	dataFiles={
+		packageName: ["py.typed"]
+	}
 )
