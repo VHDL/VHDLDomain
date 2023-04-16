@@ -33,6 +33,7 @@
 from unittest import TestCase
 
 from pyVHDLModel import Library
+from pyVHDLModel.Name import SimpleName
 
 from pyVHDLModel.Symbol import LibraryReferenceSymbol
 
@@ -46,7 +47,7 @@ if __name__ == "__main__":  # pragma: no cover
 
 class Symbols(TestCase):
 	def test_LibraryReferenceSymbol(self):
-		symbol = LibraryReferenceSymbol("Lib")
+		symbol = LibraryReferenceSymbol(SimpleName("Lib"))
 
 		self.assertEqual("Lib", symbol.Identifier)
 		self.assertEqual("lib", symbol.NormalizedIdentifier)
