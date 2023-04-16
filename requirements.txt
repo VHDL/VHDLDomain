@@ -1,2 +1,3 @@
 pyTooling>=4.0.1, <5.0
-pyGHDL
+#pyGHDL
+https://github.com/ghdl/ghdl/archive/master.zip#pyGHDL
