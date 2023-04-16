@@ -663,6 +663,14 @@ class DescribePackage(BaseDirective, WithGenericsMixin):
 		# if optionReferencedBy:
 		# 	content.append(self.CreateReferencedBySection(package))
 
+		content.append(nodes.paragraph(text="Constants"))
+		for constant in package.Constants.values():
+			content.append(nodes.paragraph(text=constant.Identifiers))
+
+		content.append(nodes.paragraph(text="Subprograms"))
+		for subprogram in package.Subprograms.values():
+			content.append(nodes.paragraph(text=subprogram.Identifiers))
+
 		packageSection = nodes.section(
 			ids=[package.NormalizedIdentifier],
 			classes=["vhdl", "vhdl-package-section"]
