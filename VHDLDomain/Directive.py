@@ -88,12 +88,12 @@ class BaseDirective(ObjectDescription):
 	"""
 	Mapping of option names to validator functions.
 
-	A dictionary, mapping known option names to conversion functions such as :py:class:`int` or :py:class:`float`
+	A dictionary, mapping known option names to conversion functions such as :class:`int` or :class:`float`
 	(default: {}, no options). Several conversion functions are defined in the ``directives/__init__.py`` module.
 
-	Option conversion functions take a single parameter, the option argument (a string or :py:class:`None`), validate it
-	and/or convert it to the appropriate form. Conversion functions may raise :py:exc:`ValueError` and
-	:py:exc:`TypeError` exceptions.
+	Option conversion functions take a single parameter, the option argument (a string or :class:`None`), validate it
+	and/or convert it to the appropriate form. Conversion functions may raise :exc:`ValueError` and
+	:exc:`TypeError` exceptions.
 	"""
 
 	def ParseBooleanOption(self, optionName: str, default: bool) -> bool:
@@ -127,7 +127,7 @@ class BaseDirective(ObjectDescription):
 
 
 @export
-class WithParametersMixin:
+class WithParametersMixin(metaclass=ExtendedType, mixin=True):
 	def ParseParameterStyleOption(self, optionName: str) -> ParameterStyle:
 		try:
 			option = self.options[optionName]
