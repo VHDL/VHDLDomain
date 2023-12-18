@@ -42,7 +42,7 @@ __author__ =    "Patrick Lehmann"
 __email__ =     "Paebbels@gmail.com"
 __copyright__ = "2016-2023, Patrick Lehmann"
 __license__ =   "Apache License, Version 2.0"
-__version__ =   "0.1.0"
+__version__ =   "0.2.0"
 
 from pathlib import Path
 from typing import Dict, Tuple, Any, Optional as Nullable, cast
@@ -105,12 +105,12 @@ class VHDLDomain(Domain):
 		"describedesign":        DescribeDesign,
 		# "describelibrary":       DescribeLibrary,
 		# "describedocument":      DescribeDocument,
-		# "describecontext":       DescribeContext,
+		"describecontext":       DescribeContext,
 		"describeentity":        DescribeEntity,
 		# "describearchitecture":  DescribeArchitecture,
-		# "describepackage":       DescribePackage,
+		"describepackage":       DescribePackage,
 		# "describepackagebody":   DescribePackageBody,
-		# "describeconfiguration": DescribeConfiguration,
+		"describeconfiguration": DescribeConfiguration,
 	}  #: A dictionary of all directives in this domain.
 
 	roles = {

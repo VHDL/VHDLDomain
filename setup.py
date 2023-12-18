@@ -46,9 +46,13 @@ DescribePythonPackageHostedOnGitHub(
 	sourceFileWithVersion=packageInformationFile,
 	developmentStatus="alpha",
 	classifiers=list(DEFAULT_CLASSIFIERS) + [
+		"Framework :: Sphinx :: Domain",
 		"Framework :: Sphinx :: Extension",
 		"Topic :: Documentation :: Sphinx",
 		"Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
 		"Topic :: Software Development :: Documentation",
-	]
+	],
+	dataFiles={
+		packageName: ["py.typed"]
+	}
 )

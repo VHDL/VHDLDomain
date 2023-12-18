@@ -227,7 +227,7 @@ autodoc_typehints = "both"
 extlinks = {
 	"ghissue": ('https://GitHub.com/vhdl/VHDLDomain/issues/%s', 'issue #'),
 	"ghpull":  ('https://GitHub.com/vhdl/VHDLDomain/pull/%s', 'pull request #'),
-	"ghsrc":   ('https://GitHub.com/vhdl/VHDLDomain/blob/main/%s?ts=2', ""),
+	"ghsrc":   ('https://GitHub.com/vhdl/VHDLDomain/blob/main/%s?ts=2', None),
 }
 
 
