@@ -38,7 +38,7 @@ packageName =            "VHDLDomain"
 packageDirectory =       packageName
 packageInformationFile = Path(f"{packageDirectory}/__init__.py")
 
-DescribePythonPackageHostedOnGitHub(
+setup(**DescribePythonPackageHostedOnGitHub(
 	packageName=packageName,
 	description="A Sphinx domain providing VHDL language support.",
 	gitHubNamespace=gitHubNamespace,
@@ -46,9 +46,13 @@ DescribePythonPackageHostedOnGitHub(
 	sourceFileWithVersion=packageInformationFile,
 	developmentStatus="alpha",
 	classifiers=list(DEFAULT_CLASSIFIERS) + [
+		"Framework :: Sphinx :: Domain",
 		"Framework :: Sphinx :: Extension",
 		"Topic :: Documentation :: Sphinx",
 		"Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
 		"Topic :: Software Development :: Documentation",
-	]
-)
+	],
+	dataFiles={
+		packageName: ["py.typed"]
+	}
+))

@@ -1,2 +1,3 @@
-pyTooling>=2.12.0
-pyGHDL
+pyTooling ~= 8.4
+#pyGHDL
+https://github.com/ghdl/ghdl/archive/master.zip#pyGHDL
