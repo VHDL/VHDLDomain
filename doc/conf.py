@@ -59,10 +59,10 @@ pygments_style = "manni"
 # ==============================================================================
 # Restructured Text settings
 # ==============================================================================
-prologPath = "prolog.inc"
+prologPath = Path("prolog.inc")
 try:
-	with open(prologPath, "r") as prologFile:
-		rst_prolog = prologFile.read()
+	with prologPath.open("r", encoding="utf-8") as fileHandle:
+		rst_prolog = fileHandle.read()
 except Exception as ex:
 	print(f"[ERROR:] While reading '{prologPath}'.")
 	print(ex)
@@ -225,8 +225,8 @@ autodoc_typehints = "both"
 # Sphinx.Ext.ExtLinks
 # ==============================================================================
 extlinks = {
-	"ghissue": ('https://GitHub.com/vhdl/VHDLDomain/issues/%s', 'issue #'),
-	"ghpull":  ('https://GitHub.com/vhdl/VHDLDomain/pull/%s', 'pull request #'),
+	"ghissue": ('https://GitHub.com/vhdl/VHDLDomain/issues/%s', 'issue #%s'),
+	"ghpull":  ('https://GitHub.com/vhdl/VHDLDomain/pull/%s', 'pull request #%s'),
 	"ghsrc":   ('https://GitHub.com/vhdl/VHDLDomain/blob/main/%s?ts=2', None),
 }
 

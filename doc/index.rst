@@ -68,7 +68,7 @@ News
 * Connecting pyGHDL.dom, pyVHDLModel and Sphinx with this extension.
 
 
-.. _contributors:
+.. _CONTRIBUTORS:
 
 Contributors
 ************
@@ -76,6 +76,8 @@ Contributors
 * `Patrick Lehmann <https://GitHub.com/Paebbels>`__ (Maintainer)
 * `and more... <https://GitHub.com/VHDL/VHDLDomain/graphs/contributors>`__
 
+
+.. _LICENSE:
 
 License
 *******
