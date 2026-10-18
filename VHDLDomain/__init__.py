@@ -162,8 +162,8 @@ class VHDLDomain(Domain):
 		:param sphinxApplication: The Sphinx application.
 		:return:
 		"""
-		print(f"Callback: builder-inited -> ReadDesigns")
-		print(f"[VHDL] Reading designs ...")
+		print("Callback: builder-inited -> ReadDesigns")
+		print("[VHDL] Reading designs ...")
 
 		# Get modules to build documentation for
 		designConfigurations: Dict[str, Path] = sphinxApplication.config.vhdl_designs

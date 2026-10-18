@@ -386,7 +386,7 @@ class DescribeContext(BaseDirective):
 			try:
 				libraryName, contextName = self.arguments[0].split(".")
 			except ValueError:
-				raise ValueError(f"Parameter to 'vhdl:describecontext' has incorrect format.")
+				raise ValueError("Parameter to 'vhdl:describecontext' has incorrect format.")
 		else:
 			raise ValueError(f"Parameter to 'vhdl:describecontext' directive has too many content lines ({len(self.arguments)}).")
 
@@ -530,7 +530,7 @@ class DescribeEntity(BaseDirective, WithGenericsMixin, WithPortsMixin):
 			try:
 				libraryName, entityName = self.arguments[0].split(".")
 			except ValueError:
-				raise ValueError(f"Parameter to 'vhdl:describeentity' has incorrect format.")
+				raise ValueError("Parameter to 'vhdl:describeentity' has incorrect format.")
 		else:
 			raise ValueError(f"Parameter to 'vhdl:describeentity' directive has too many content lines ({len(self.arguments)}).")
 
@@ -631,7 +631,7 @@ class DescribePackage(BaseDirective, WithGenericsMixin):
 			try:
 				libraryName, packageName = self.arguments[0].split(".")
 			except ValueError:
-				raise ValueError(f"Parameter to 'vhdl:describepackage' has incorrect format.")
+				raise ValueError("Parameter to 'vhdl:describepackage' has incorrect format.")
 		else:
 			raise ValueError(f"Parameter to 'vhdl:describepackage' directive has too many content lines ({len(self.arguments)}).")
 
@@ -725,7 +725,7 @@ class DescribeConfiguration(BaseDirective):
 			try:
 				libraryName, configurationName = self.arguments[0].split(".")
 			except ValueError:
-				raise ValueError(f"Parameter to 'vhdl:describepackage' has incorrect format.")
+				raise ValueError("Parameter to 'vhdl:describepackage' has incorrect format.")
 		else:
 			raise ValueError(f"Parameter to 'vhdl:describepackage' directive has too many content lines ({len(self.arguments)}).")
 
