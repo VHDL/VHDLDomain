@@ -11,7 +11,7 @@
 #                                                                                                                      #
 # License:                                                                                                             #
 # ==================================================================================================================== #
-# Copyright 2017-2023 Patrick Lehmann - Boetzingen, Germany                                                            #
+# Copyright 2017-2026 Patrick Lehmann - Boetzingen, Germany                                                            #
 # Copyright 2016-2017 Patrick Lehmann - Dresden, Germany                                                               #
 #                                                                                                                      #
 # Licensed under the Apache License, Version 2.0 (the "License");                                                      #
@@ -105,12 +105,12 @@ class VHDLDomain(Domain):
 		"describedesign":        DescribeDesign,
 		# "describelibrary":       DescribeLibrary,
 		# "describedocument":      DescribeDocument,
-		# "describecontext":       DescribeContext,
+		"describecontext":       DescribeContext,
 		"describeentity":        DescribeEntity,
 		# "describearchitecture":  DescribeArchitecture,
-		# "describepackage":       DescribePackage,
+		"describepackage":       DescribePackage,
 		# "describepackagebody":   DescribePackageBody,
-		# "describeconfiguration": DescribeConfiguration,
+		"describeconfiguration": DescribeConfiguration,
 	}  #: A dictionary of all directives in this domain.
 
 	roles = {
