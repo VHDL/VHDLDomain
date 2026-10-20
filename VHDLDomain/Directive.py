@@ -43,7 +43,6 @@ from docutils.nodes import Node, section, table, tgroup
 from sphinx.directives import ObjectDescription
 from sphinx.domains import Domain
 from pyTooling.Decorators import export
-from pyTooling.MetaClasses import ExtendedType
 from pyGHDL.dom.DesignUnit import Entity
 from pyGHDL.dom.InterfaceItem import GenericConstantInterfaceItem, PortSignalInterfaceItem
 
@@ -128,7 +127,14 @@ class BaseDirective(ObjectDescription):
 
 
 @export
-class WithParametersMixin(metaclass=ExtendedType, mixin=True):
+class WithParametersMixin:
+	"""
+	A mixin-class for directives rendering a parameter list, e.g. generics or ports.
+
+	A classic mixin (no :class:`~pyTooling.MetaClasses.ExtendedType`), as the directives' primary line
+	:class:`~sphinx.directives.ObjectDescription` isn't created by :class:`~pyTooling.MetaClasses.ExtendedType`.
+	"""
+
 	def ParseParameterStyleOption(self, optionName: str) -> ParameterStyle:
 		try:
 			option = self.options[optionName]
