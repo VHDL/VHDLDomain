@@ -230,7 +230,7 @@ extlinks = {
 	"ghissue":     (f"https://GitHub.com/{githubNamespace}/{project}/issues/%s", "issue #%s"),
 	"ghpull":      (f"https://GitHub.com/{githubNamespace}/{project}/pull/%s", "pull request #%s"),
 	"ghsrc":       (f"https://GitHub.com/{githubNamespace}/{project}/blob/main/%s", None),
-	"pypi":       ('https://PyPI.org/project/%s', '%s'),
+	"pypi":        ("https://PyPI.org/project/%s", "%s"),
 	"wiki":        ("https://en.wikipedia.org/wiki/%s", None),
 }
 
