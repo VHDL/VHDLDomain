@@ -6,6 +6,17 @@ __pycache__/
 .coverage
 .cov
 coverage.xml
+/report/coverage
+
+# mypy
+/report/typing
+
+# pytest
+/report/unit
+/tests/output
+
+# bandit
+/report/bandit
 
 # setuptools
 /build/**/*.*
@@ -15,11 +26,12 @@ coverage.xml
 # Dependencies
 !requirements.txt
 
-# Sphinx documentation
-/doc/_build/
-/doc/_theme/
-/doc/VHDLDomain/**/*.*
-!/doc/VHDLDomain/index.rst
+# Sphinx
+doc/_build/
+doc/VHDLDomain/**/*.*
 
-# PyCharm project
+# PyCharm project files
 /.idea/workspace.xml
+
+# Git files
+!.git*
