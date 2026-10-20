@@ -43,6 +43,7 @@ from docutils.nodes import Node, section, table, tgroup
 from sphinx.directives import ObjectDescription
 from sphinx.domains import Domain
 from pyTooling.Decorators import export
+from pyTooling.MetaClasses import ExtendedType
 from pyGHDL.dom.DesignUnit import Entity
 from pyGHDL.dom.InterfaceItem import GenericConstantInterfaceItem, PortSignalInterfaceItem
 
