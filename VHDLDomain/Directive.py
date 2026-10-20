@@ -34,16 +34,18 @@
 
 This module contains all the directives of the VHDL domain.
 """
-from enum import Flag, auto
-from textwrap import dedent
-from typing import List, Dict, Tuple
+from enum                     import Flag, auto
+from textwrap                 import dedent
+from typing                   import List, Dict, Tuple
 
-from docutils import nodes
-from docutils.nodes import Node, section, table, tgroup
-from sphinx.directives import ObjectDescription
-from sphinx.domains import Domain
-from pyTooling.Decorators import export
-from pyGHDL.dom.DesignUnit import Entity
+from docutils                 import nodes
+from docutils.nodes           import Node, section, table, tgroup
+from sphinx.directives        import ObjectDescription
+from sphinx.domains           import Domain
+
+from pyTooling.Decorators     import export
+
+from pyGHDL.dom.DesignUnit    import Entity
 from pyGHDL.dom.InterfaceItem import GenericConstantInterfaceItem, PortSignalInterfaceItem
 
 
