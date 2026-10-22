@@ -34,19 +34,19 @@
 
 This module contains all the directives of the VHDL domain.
 """
-from enum                     import Flag, auto
-from textwrap                 import dedent
-from typing                   import List, Dict, Tuple
+from enum                   import Flag, auto
+from textwrap               import dedent
+from typing                 import List, Dict, Tuple
 
-from docutils                 import nodes
-from docutils.nodes           import Node, section, table, tgroup
-from sphinx.directives        import ObjectDescription
-from sphinx.domains           import Domain
+from docutils               import nodes
+from docutils.nodes         import Node, section, table, tgroup
+from sphinx.directives      import ObjectDescription
+from sphinx.domains         import Domain
 
-from pyTooling.Decorators     import export
+from pyTooling.Decorators   import export
 
-from pyGHDL.dom.DesignUnit    import Entity
-from pyGHDL.dom.InterfaceItem import GenericConstantInterfaceItem, PortSignalInterfaceItem
+from pyVHDLModel.DesignUnit import Entity
+from pyVHDLModel.Interface  import GenericConstantInterfaceItem, PortSignalInterfaceItem, PortSimpleSignalInterfaceItem
 
 
 @export
@@ -248,7 +248,7 @@ class WithPortsMixin(WithParametersMixin):
 			cellDescription = nodes.entry()
 			tableBody += nodes.row("", cellPortName, cellPortDirection, cellPortType, cellDefaultValue, cellDescription)
 
-			if isinstance(port, PortSignalInterfaceItem):
+			if isinstance(port, PortSimpleSignalInterfaceItem):
 				cellPortName += nodes.paragraph(text=", ".join(port.Identifiers))
 				cellPortDirection += nodes.paragraph(text=str(port.Mode))
 				cellPortType += nodes.paragraph(text=port.Documentation)
@@ -315,7 +315,12 @@ class DescribeDesign(BaseDirective):
 
 		items = []
 		for document in design.Documents:
-			term = nodes.term(text=f"{document.ShortPath}")
+			if design.BaseDirectory is None:
+				path = document.Path
+			else:
+				path = document.Path.relative_to(design.BaseDirectory)
+
+			term = nodes.term(text=f"{path}")
 			description = nodes.paragraph(text=f"{document.Documentation}")
 			description = nodes.literal_block(text=f"{document.Documentation}")
 			definition = nodes.definition("", description)

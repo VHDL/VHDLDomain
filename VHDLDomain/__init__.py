@@ -44,27 +44,29 @@ __copyright__ = "2016-2023, Patrick Lehmann"
 __license__ =   "Apache License, Version 2.0"
 __version__ =   "0.2.0rc1"
 
-from pathlib import Path
-from typing import Dict, Tuple, Any, Optional as Nullable, cast
+from pathlib              import Path
+from typing               import Dict, Tuple, Any, Optional as Nullable
 
-from docutils import nodes
-from pyGHDL.dom.NonStandard import Design as DOMDesign, Document as DOMDocument
+from docutils             import nodes
 from pyTooling.Decorators import export
-from sphinx.addnodes import pending_xref
-from sphinx.application import Sphinx
-from sphinx.builders import Builder
-from sphinx.domains import Domain
-from sphinx.environment import BuildEnvironment
-from sphinx.extension import Extension
+from pyTooling.Exceptions import MissingDependencyError
+from pyVHDLModel          import Design as VHDLModelDesign
+from sphinx.addnodes      import pending_xref
+from sphinx.application   import Sphinx
+from sphinx.builders      import Builder
+from sphinx.domains       import Domain
+from sphinx.environment   import BuildEnvironment
+from sphinx.extension     import Extension
 
 from VHDLDomain.Directive import DescribeDesign, DescribeLibrary, DescribeDocument, DescribeEntity, DescribeArchitecture
 from VHDLDomain.Directive import DescribePackage, DescribePackageBody, DescribeConfiguration, DescribeContext
-from VHDLDomain.Index import LibraryIndex, DocumentIndex, ComponentIndex, PackageIndex, SubprogramIndex, TypeIndex
-from VHDLDomain.Role import DesignRole, LibraryRole, DocumentRole, ContextRole, EntityRole, ArchitectureRole, PackageRole, PackageBodyRole, ConfigurationRole
+from VHDLDomain.Index     import LibraryIndex, DocumentIndex, ComponentIndex, PackageIndex, SubprogramIndex, TypeIndex
+from VHDLDomain.Role      import DesignRole, LibraryRole, DocumentRole, ContextRole, EntityRole, ArchitectureRole
+from VHDLDomain.Role      import PackageRole, PackageBodyRole, ConfigurationRole
 
 
 @export
-class Design(DOMDesign):
+class Design(VHDLModelDesign):
 	_baseDirectory: Nullable[Path]
 
 	def __init__(self, name: str = None, baseDirectory: Path = None):
@@ -80,17 +82,6 @@ class Design(DOMDesign):
 	@property
 	def BaseDirectory(self) -> Path:
 		return self._baseDirectory
-
-
-@export
-class Document(DOMDocument):
-	@property
-	def ShortPath(self) -> Path:
-		design = cast(Design, self.Parent)
-		if design._baseDirectory is None:
-			return self._path
-		else:
-			return self._path.relative_to(design._baseDirectory)
 
 
 @export
@@ -159,7 +150,8 @@ class VHDLDomain(Domain):
 		   Sphinx *builder-inited* event
 		     See http://sphinx-doc.org/extdev/appapi.html#event-builder-inited
 
-		:param sphinxApplication: The Sphinx application.
+		:param sphinxApplication:       The Sphinx application.
+		:raises MissingDependencyError: If designs are configured, but pyGHDL isn't installed.
 		:return:
 		"""
 		print(f"Callback: builder-inited -> ReadDesigns")
@@ -170,6 +162,11 @@ class VHDLDomain(Domain):
 		print(designConfigurations)
 		if not designConfigurations:
 			return
+
+		try:
+			from pyGHDL.dom.NonStandard import Document
+		except ImportError as ex:
+			raise MissingDependencyError(dependency="pyGHDL") from ex
 
 		_packageFiles = (
 			("lib_Utilities", Path("Utilities.pkg.vhdl")),
