@@ -46,7 +46,8 @@ design, a library or a design unit from the model, and a role refers to what a d
 
 .. rubric:: What it registers
 
-* Directives: ``vhdl:design``, ``vhdl:library``
+* Directives: ``vhdl:design``, ``vhdl:library``, ``vhdl:context``, ``vhdl:entity``, ``vhdl:package``,
+  ``vhdl:configuration``
 * Roles: ``:vhdl:design:``, ``:vhdl:lib:``, ``:vhdl:ctx:``, ``:vhdl:ent:``, ``:vhdl:arch:``, ``:vhdl:pack:``,
   ``:vhdl:config:``, ``:vhdl:type:``, ``:vhdl:const:``, ``:vhdl:func:``, ``:vhdl:proc:``, ``:vhdl:generic:``,
   ``:vhdl:port:``
@@ -95,6 +96,7 @@ from pyTooling.Exceptions  import MissingDependencyError
 
 from pyVHDLModel           import Design
 
+from VHDLDomain.DesignUnit import ConfigurationDirective, ContextDirective, EntityDirective, PackageDirective
 from VHDLDomain.Directive  import DesignDirective, LibraryDirective
 from VHDLDomain.Frontend   import DesignConfiguration, VHDLDomainException
 
@@ -209,8 +211,12 @@ class VHDLDomain(Domain):
 	}  #: The object types, each with the roles referring to it.
 
 	directives: ClassVar[dict[str, type]] = {
-		"design":  DesignDirective,
-		"library": LibraryDirective,
+		"design":        DesignDirective,
+		"library":       LibraryDirective,
+		"context":       ContextDirective,
+		"entity":        EntityDirective,
+		"package":       PackageDirective,
+		"configuration": ConfigurationDirective,
 	}  #: The directives, by name.
 
 	roles: ClassVar[dict[str, XRefRole]] = {  # type: ignore[assignment]

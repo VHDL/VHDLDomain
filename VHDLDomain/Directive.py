@@ -50,6 +50,7 @@ from sphinx.util.nodes    import make_id
 from pyTooling.Decorators import export
 
 from pyVHDLModel          import Design, Library
+from pyVHDLModel.Formatting.VHDL import VHDLWriter
 
 if TYPE_CHECKING:  # pragma: no cover
 	from VHDLDomain       import VHDLDomain
@@ -101,6 +102,19 @@ class VHDLDirective(SphinxDirective):
 
 		return name, design
 
+	def _NodeID(self, objectType: str, qualifiedName: str) -> str:
+		"""
+		Return the anchor of a described object, unique in the document.
+
+		The anchor is built from the object type and the lower-case qualified name, e.g.
+		``vhdl-entity-stopwatch.lib_stopwatch.counter``.
+
+		:param objectType:    The object type, as ``entity``.
+		:param qualifiedName: The object's qualified name, as ``StopWatch.lib_StopWatch.Counter``.
+		:returns:             The anchor, from the lower-case qualified name.
+		"""
+		return make_id(self.env, self.state.document, f"vhdl-{objectType}", qualifiedName.lower())
+
 	def _Target(self, objectType: str, qualifiedName: str, indexText: str) -> list[Node]:
 		"""
 		Create the target and the index entry of a described object, and register it in the domain.
@@ -110,13 +124,57 @@ class VHDLDirective(SphinxDirective):
 		:param indexText:     The text of the object's entry in the general index.
 		:returns:             The index node and the target node.
 		"""
-		nodeID = make_id(self.env, self.state.document, f"vhdl-{objectType}", qualifiedName.lower())
+		nodeID = self._NodeID(objectType, qualifiedName)
 		target = nodes.target("", "", ids=[nodeID])
 		self.set_source_info(target)
 		self.state.document.note_explicit_target(target)
 		self._Domain().NoteObject(objectType, qualifiedName, nodeID, target)
 
 		return [addnodes.index(entries=[("single", indexText, nodeID, "", None)]), target]
+
+	def _Documentation(self, documentation: Nullable[str]) -> list[Node]:
+		"""
+		Parse an object's documentation comment as reStructuredText.
+
+		A line's leading comment marker ``--`` and the space following it are removed, so a comment block reads as text.
+
+		:param documentation: The documentation comment, as the frontend extracted it, or ``None``.
+		:returns:             The parsed nodes, none for no or an empty comment.
+		"""
+		if documentation is None:
+			return []
+
+		lines = []
+		for line in documentation.splitlines():
+			line = line.strip()
+			if line.startswith("--"):
+				line = line[3:] if line.startswith("-- ") else line[2:]
+
+			lines.append(line)
+
+		if (text := "\n".join(lines).strip()) == "":
+			return []
+
+		return self.parse_text_to_nodes(text)
+
+	def _Format(self, element: object) -> str:
+		"""
+		Write a model element - a symbol, an expression - as VHDL source text.
+
+		An element the writer of pyVHDLModel can't write yet is written by its name, if it has one, and warned about.
+
+		:param element: The model element.
+		:returns:       The VHDL source text.
+		"""
+		try:
+			return VHDLWriter().Format(element)  # type: ignore[arg-type]
+		except NotImplementedError:
+			text = VHDLWriter().Format(name) if (name := getattr(element, "Name", None)) is not None else "..."
+			_logger.warning(
+				f"{self.directiveName}: pyVHDLModel can't write a '{type(element).__name__}' yet, written as '{text}'.",
+				location=self.get_location(), type=self._WARNING_TYPE, subtype="writer"
+			)
+			return text
 
 
 @export
