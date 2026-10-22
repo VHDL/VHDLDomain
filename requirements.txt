@@ -1,4 +1,4 @@
 pyTooling >= 10.0.0rc4, < 11.0
-pyTooling.Sphinx ~= 0.1.0rc7
+pyTooling.Sphinx ~= 0.1.0rc6
 pyVHDLModel ~= 0.40.0rc2
 sphinx >= 9.1
