@@ -38,7 +38,7 @@ from io                  import StringIO
 from pathlib             import Path
 from tempfile            import TemporaryDirectory
 from textwrap            import dedent
-from typing              import Any
+from typing              import Any, ClassVar
 from unittest.mock        import patch
 from warnings            import catch_warnings, filterwarnings
 
@@ -117,6 +117,8 @@ CONF = dedent("""\
 class Project(Testcase):
 	"""Builds a Sphinx project in a temporary directory, removed after each test."""
 
+	_CONF: ClassVar[str] = CONF  #: The project's :file:`conf.py`.
+
 	_directory: TemporaryDirectory
 	_path:      Path
 	_warnings:  StringIO
@@ -139,7 +141,7 @@ class Project(Testcase):
 		:returns:         The Sphinx application after the build.
 		"""
 		source = self._path / "src"
-		(source / "conf.py").write_text(CONF, encoding="utf-8")
+		(source / "conf.py").write_text(self._CONF, encoding="utf-8")
 		others = "".join(f"   {name}\n" for name in documents if name != "index")
 		index = documents.get("index", "Index\n#####\n")
 		(source / "index.rst").write_text(f"{index}\n\n.. toctree::\n\n{others}", encoding="utf-8")
@@ -373,6 +375,7 @@ class FindObjects(Project):
 			("entity",   "Other.lib_A.Counter"),
 			("function", "Demo.lib_A.Utilities.to_index(natural)"),
 			("function", "Demo.lib_A.Utilities.to_index(natural,positive)"),
+			("function", "Demo.lib_A.Utilities.resize(ieee.numeric_std.unsigned,natural)"),
 		):
 			self._domain.Objects[(objectType, normalizeName(qualifiedName))] = ("page", "anchor", qualifiedName)
 
@@ -416,6 +419,15 @@ class FindObjects(Project):
 			self._find("function", "Utilities.to_index(Natural, Positive)")
 		)
 		self.assertEqual([], self._find("function", "to_index(integer)"))
+		self.assertEqual([], self._find("function", "to_index(natural, positive, positive)"))
+
+	def test_Signature_TypeMarkSuffix(self) -> None:
+		"""A signature's type mark may be a part of the declared type mark, ending with the type's name."""
+		resize = "demo.lib_a.utilities.resize(ieee.numeric_std.unsigned,natural)"
+		self.assertEqual([resize], self._find("function", "resize(unsigned, natural)"))
+		self.assertEqual([resize], self._find("function", "resize(numeric_std.unsigned, natural)"))
+		self.assertEqual([], self._find("function", "resize(signed, natural)"))
+		self.assertEqual([], self._find("function", "resize(d.unsigned, natural)"))
 
 	def test_OtherType(self) -> None:
 		self.assertEqual([], self._find("package", "Counter"))
