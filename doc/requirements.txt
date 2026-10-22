@@ -1,7 +1,7 @@
 -r ../requirements.txt
 
 # The extension the documentation uses: pyTooling.Sphinx with its domain 'report'
-pyTooling.Sphinx[reports] ~= 0.1.0rc4
+pyTooling.Sphinx[reports] ~= 0.1.0rc7
 
 # ReadTheDocs Theme
 sphinx_rtd_theme ~= 3.1

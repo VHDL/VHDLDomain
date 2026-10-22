@@ -21,7 +21,8 @@ vhdl:design
    Describe a design: its target and index entry, and the content as the design's description.
 
    The argument is the design's name, a key of ``vhdl_designs``. Every directive and reference following it in the
-   document is in this design. Placed above a page's title, its target is the title, as a label is.
+   document is in this design. Placed above a page's title, its target is the title, as a label is. A design with
+   generated pages lists its library pages in a hidden table of contents (see :ref:`CONFIG/pages`).
 
    .. rst:directive:option:: no-index
 
