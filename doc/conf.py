@@ -61,7 +61,8 @@ exclude_patterns = [
 	"_build",
 	"_theme",
 	"Thumbs.db",
-	".DS_Store"
+	".DS_Store",
+	"StopWatch"
 ]
 
 # The name of the Pygments (syntax highlighting) style to use.
@@ -328,7 +329,7 @@ pyTooling_ExternalLink_Icons = "all"
 # VHDLDomain
 # ==============================================================================
 vhdl_designs = {
-	"StopWatch": (ROOT / "../examples/StopWatch").resolve(),
+#	"StopWatch": (ROOT / "../examples/StopWatch").resolve(),
 }
 vhdl_defaults = {
 	"describedesign": {},

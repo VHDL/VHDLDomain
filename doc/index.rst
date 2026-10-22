@@ -104,7 +104,6 @@ License
    :caption: Examples
    :hidden:
 
-   StopWatch/index
    Libraries <vhdl-libindex>
    Documents <vhdl-fileindex>
    Components <vhdl-compindex>

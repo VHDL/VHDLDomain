@@ -36,9 +36,8 @@ This module contains all the indices of the VHDL domain.
 """
 from typing import Iterable, Optional as Nullable, List, Tuple, Dict
 
-from pyGHDL.dom.NonStandard import Design
 from pyTooling.Decorators import export
-from pyVHDLModel import DesignUnitKind
+from pyVHDLModel import Design, DesignUnitKind
 from sphinx.domains import Index, IndexEntry
 
 
@@ -61,25 +60,25 @@ class LibraryIndex(BaseIndex):
 		result: List[Tuple[str, List[IndexEntry]]] = []
 
 		designs: Dict[str, Design] = self.domain.data["designs"]
-		design = designs["StopWatch"]
-		for library in design.Libraries.values():
-			entries = []
-			for entity in library.Entities.values():
-				entryName = entity.Identifier
-				entryKind = 0 if len(entity.Architectures) == 1 else 1
-				document = f"{entity.Library.Identifier}/{entity.Identifier}"
-				link = f"{entity.Library.Identifier}-{entity.Identifier}"
-				entries.append((entryName, entryKind, document, link, document, "", entity.Documentation))
-				if entryKind == 1:
-					for architecture in entity.Architectures.values():
-						architectureName = architecture.Identifier
-						architectureKind = 2
-						doc = f"{entity.Library.Identifier}/{entity.Identifier}-{architecture.Identifier}"
-						lnk = f"{entity.Library.Identifier}-{entity.Identifier}-{architecture.Identifier}"
-						entries.append((architectureName, architectureKind, doc, lnk, doc, "", architecture.Documentation))
+		for design in designs.values():
+			for library in design.Libraries.values():
+				entries = []
+				for entity in library.Entities.values():
+					entryName = entity.Identifier
+					entryKind = 0 if len(entity.Architectures) == 1 else 1
+					document = f"{entity.Library.Identifier}/{entity.Identifier}"
+					link = f"{entity.Library.Identifier}-{entity.Identifier}"
+					entries.append((entryName, entryKind, document, link, document, "", entity.Documentation))
+					if entryKind == 1:
+						for architecture in entity.Architectures.values():
+							architectureName = architecture.Identifier
+							architectureKind = 2
+							doc = f"{entity.Library.Identifier}/{entity.Identifier}-{architecture.Identifier}"
+							lnk = f"{entity.Library.Identifier}-{entity.Identifier}-{architecture.Identifier}"
+							entries.append((architectureName, architectureKind, doc, lnk, doc, "", architecture.Documentation))
 
-			group = (library.Identifier, entries)
-			result.append(group)
+				group = (library.Identifier, entries)
+				result.append(group)
 
 		return result, True
 
@@ -98,25 +97,25 @@ class DocumentIndex(BaseIndex):
 		result: List[Tuple[str, List[IndexEntry]]] = []
 
 		designs: Dict[str, Design] = self.domain.data["designs"]
-		design = designs["StopWatch"]
-		for library in design.Libraries.values():
-			entries = []
-			for entity in library.Entities.values():
-				entryName = entity.Identifier
-				entryKind = 0 if len(entity.Architectures) == 1 else 1
-				document = f"{entity.Library.Identifier}/{entity.Identifier}"
-				link = f"{entity.Library.Identifier}-{entity.Identifier}"
-				entries.append((entryName, entryKind, document, link, document, "", entity.Documentation))
-				if entryKind == 1:
-					for architecture in entity.Architectures.values():
-						architectureName = architecture.Identifier
-						architectureKind = 2
-						doc = f"{entity.Library.Identifier}/{entity.Identifier}-{architecture.Identifier}"
-						lnk = f"{entity.Library.Identifier}-{entity.Identifier}-{architecture.Identifier}"
-						entries.append((architectureName, architectureKind, doc, lnk, doc, "", architecture.Documentation))
+		for design in designs.values():
+			for library in design.Libraries.values():
+				entries = []
+				for entity in library.Entities.values():
+					entryName = entity.Identifier
+					entryKind = 0 if len(entity.Architectures) == 1 else 1
+					document = f"{entity.Library.Identifier}/{entity.Identifier}"
+					link = f"{entity.Library.Identifier}-{entity.Identifier}"
+					entries.append((entryName, entryKind, document, link, document, "", entity.Documentation))
+					if entryKind == 1:
+						for architecture in entity.Architectures.values():
+							architectureName = architecture.Identifier
+							architectureKind = 2
+							doc = f"{entity.Library.Identifier}/{entity.Identifier}-{architecture.Identifier}"
+							lnk = f"{entity.Library.Identifier}-{entity.Identifier}-{architecture.Identifier}"
+							entries.append((architectureName, architectureKind, doc, lnk, doc, "", architecture.Documentation))
 
-			group = (library.Identifier, entries)
-			result.append(group)
+				group = (library.Identifier, entries)
+				result.append(group)
 
 		return result, True
 
@@ -135,25 +134,25 @@ class ComponentIndex(BaseIndex):
 		result: List[Tuple[str, List[IndexEntry]]] = []
 
 		designs: Dict[str, Design] = self.domain.data["designs"]
-		design = designs["StopWatch"]
-		for library in design.Libraries.values():
-			entries = []
-			for entity in library.Entities.values():
-				entryName = entity.Identifier
-				entryKind = 0 if len(entity.Architectures) == 1 else 1
-				document = f"{entity.Library.Identifier}/{entity.Identifier}"
-				link = f"{entity.Library.Identifier}-{entity.Identifier}"
-				entries.append((entryName, entryKind, document, link, document, "", entity.Documentation))
-				if entryKind == 1:
-					for architecture in entity.Architectures.values():
-						architectureName = architecture.Identifier
-						architectureKind = 2
-						doc = f"{entity.Library.Identifier}/{entity.Identifier}-{architecture.Identifier}"
-						lnk = f"{entity.Library.Identifier}-{entity.Identifier}-{architecture.Identifier}"
-						entries.append((architectureName, architectureKind, doc, lnk, doc, "", architecture.Documentation))
+		for design in designs.values():
+			for library in design.Libraries.values():
+				entries = []
+				for entity in library.Entities.values():
+					entryName = entity.Identifier
+					entryKind = 0 if len(entity.Architectures) == 1 else 1
+					document = f"{entity.Library.Identifier}/{entity.Identifier}"
+					link = f"{entity.Library.Identifier}-{entity.Identifier}"
+					entries.append((entryName, entryKind, document, link, document, "", entity.Documentation))
+					if entryKind == 1:
+						for architecture in entity.Architectures.values():
+							architectureName = architecture.Identifier
+							architectureKind = 2
+							doc = f"{entity.Library.Identifier}/{entity.Identifier}-{architecture.Identifier}"
+							lnk = f"{entity.Library.Identifier}-{entity.Identifier}-{architecture.Identifier}"
+							entries.append((architectureName, architectureKind, doc, lnk, doc, "", architecture.Documentation))
 
-			group = (library.Identifier, entries)
-			result.append(group)
+				group = (library.Identifier, entries)
+				result.append(group)
 
 		return result, True
 
@@ -172,18 +171,18 @@ class PackageIndex(BaseIndex):
 		result: List[Tuple[str, List[IndexEntry]]] = []
 
 		designs: Dict[str, Design] = self.domain.data["designs"]
-		design = designs["StopWatch"]
-		for library in design.Libraries.values():
-			entries = []
-			for package in library.Packages.values():
-				entryName = package.Identifier
-				entryKind = 0
-				document = f"{package.Library.Identifier}/{package.Identifier}"
-				link = f"{package.Library.Identifier}-{package.Identifier}"
-				entries.append((entryName, entryKind, document, link, document, "", package.Documentation))
+		for design in designs.values():
+			for library in design.Libraries.values():
+				entries = []
+				for package in library.Packages.values():
+					entryName = package.Identifier
+					entryKind = 0
+					document = f"{package.Library.Identifier}/{package.Identifier}"
+					link = f"{package.Library.Identifier}-{package.Identifier}"
+					entries.append((entryName, entryKind, document, link, document, "", package.Documentation))
 
-			group = (library.Identifier, entries)
-			result.append(group)
+				group = (library.Identifier, entries)
+				result.append(group)
 
 		return result, True
 
