@@ -52,6 +52,8 @@ from pyTooling.Decorators        import export
 from pyVHDLModel                 import Design, Library
 from pyVHDLModel.Formatting.VHDL import VHDLWriter
 
+from VHDLDomain.Pages     import DesignPages
+
 if TYPE_CHECKING:  # pragma: no cover
 	from VHDLDomain                import VHDLDomain
 
@@ -190,6 +192,9 @@ class DesignDirective(VHDLDirective):
 	document is in this design. The directive writes no visible output except its content; placed above a page's title,
 	its target is the title, as a label is. With ``:no-index:``, it only makes the design the current one - for the
 	other pages of a design.
+
+	A design with generated pages (key ``pages`` in ``vhdl_designs``) lists its library pages in a hidden table of
+	contents, so they are below the directive's document in the navigation.
 	"""
 
 	directiveName: ClassVar[str] = "vhdl:design"  #: Name the directive is invoked by.
@@ -216,6 +221,8 @@ class DesignDirective(VHDLDirective):
 
 		result = [] if "no-index" in self.options else self._Target("design", name, f"{name} (VHDL design)")
 		result.extend(self.parse_content_to_nodes())
+		if "no-index" not in self.options and DesignPages.HasPages(name.lower()):
+			result.append(DesignPages.GetPages(name.lower()).TableOfContents(self.env.docname))
 
 		return result
 

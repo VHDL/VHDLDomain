@@ -47,13 +47,14 @@ its libraries with their source files:
    }
 
 The directory is relative to the Sphinx source directory; a file is relative to the directory and may be a glob
-pattern. The frontend - pyGHDL.dom, the only one keeping the comments a documentation is extracted from - parses the
-files into a :class:`pyVHDLModel.Design` and analyzes it.
+pattern. With the key ``pages`` - a document name, e.g. ``"StopWatch"`` -, the design gets a generated page per library
+and design unit below that document name (see :mod:`VHDLDomain.Pages`). The frontend - pyGHDL.dom, the only one keeping
+the comments a documentation is extracted from - parses the files into a :class:`pyVHDLModel.Design` and analyzes it.
 """
 from __future__            import annotations
 
 from pathlib               import Path
-from typing                import Any, Mapping
+from typing                import Any, Mapping, Optional as Nullable
 
 from sphinx.errors         import ExtensionError
 
@@ -88,20 +89,29 @@ class DesignConfiguration(metaclass=ExtendedType, slots=True):
 	_name:      str                    #: Name of the design, the key in ``vhdl_designs``.
 	_directory: Path                   #: Directory of the source files.
 	_libraries: dict[str, list[Path]]  #: Source files, by library name, in declaration order.
+	_pages:     Nullable[str]          #: Document name the design's pages are generated below, or ``None`` for none.
 
-	def __init__(self, name: str, directory: Path, libraries: Mapping[str, list[Path]]) -> None:
+	def __init__(
+		self,
+		name:      str,
+		directory: Path,
+		libraries: Mapping[str, list[Path]],
+		pages:     Nullable[str] = None
+	) -> None:
 		"""
 		Initializes a design's configuration.
 
 		:param name:        Name of the design.
 		:param directory:   Directory of the source files.
 		:param libraries:   Source files, by library name.
+		:param pages:       Optional, document name the design's pages are generated below. Default: ``None``, no pages.
 		:raises ValueError: If parameter 'name' is ``None`` or empty.
 		:raises TypeError:  If parameter 'name' is not of type :class:`str`.
 		:raises ValueError: If parameter 'directory' is ``None``.
 		:raises TypeError:  If parameter 'directory' is not of type :class:`~pathlib.Path`.
 		:raises ValueError: If parameter 'libraries' is ``None``.
 		:raises TypeError:  If parameter 'libraries' is not a mapping.
+		:raises TypeError:  If parameter 'pages' is not of type :class:`str`.
 		"""
 		if name is None:
 			raise ValueError("Parameter 'name' is None.")
@@ -126,9 +136,15 @@ class DesignConfiguration(metaclass=ExtendedType, slots=True):
 			ex.add_note(f"Got type '{getFullyQualifiedName(libraries)}'.")
 			raise ex
 
+		if pages is not None and not isinstance(pages, str):
+			ex = TypeError("Parameter 'pages' is not of type 'str'.")
+			ex.add_note(f"Got type '{getFullyQualifiedName(pages)}'.")
+			raise ex
+
 		self._name =      name
 		self._directory = directory
 		self._libraries = {libraryName: list(files) for libraryName, files in libraries.items()}
+		self._pages =     pages
 
 	@classmethod
 	def Parse(cls, name: Any, value: Any, sourceDirectory: Path) -> DesignConfiguration:
@@ -136,17 +152,21 @@ class DesignConfiguration(metaclass=ExtendedType, slots=True):
 		Read a design's entry of ``vhdl_designs``.
 
 		:param name:                      The entry's key, the design's name.
-		:param value:                     The entry's value, a mapping with the keys ``directory`` and ``libraries``.
+		:param value:                     The entry's value, a mapping with the keys ``directory``, ``libraries`` and
+		                                  ``pages``.
 		:param sourceDirectory:           The Sphinx source directory, which ``directory`` is relative to.
 		:returns:                         The design's configuration.
 		:raises DesignConfigurationError: If the key isn't a string.
 		:raises DesignConfigurationError: If the key is empty.
 		:raises DesignConfigurationError: If the value isn't a mapping.
-		:raises DesignConfigurationError: If the value has a key other than ``directory`` and ``libraries``.
+		:raises DesignConfigurationError: If the value has a key other than ``directory``, ``libraries`` and ``pages``.
 		:raises DesignConfigurationError: If ``directory`` isn't a string or a path.
 		:raises DesignConfigurationError: If ``libraries`` isn't a mapping.
 		:raises DesignConfigurationError: If a library name isn't a string, or is empty.
 		:raises DesignConfigurationError: If a library's value isn't a list of file names or paths.
+		:raises DesignConfigurationError: If ``pages`` isn't a string.
+		:raises DesignConfigurationError: If ``pages`` isn't a relative document name. |br|
+		                                  Use a name like 'designs/StopWatch', separated by '/', without '.' or '..'.
 		"""
 		if not isinstance(name, str):
 			ex = DesignConfigurationError("vhdl_designs: Design name is not a string.")
@@ -160,10 +180,10 @@ class DesignConfiguration(metaclass=ExtendedType, slots=True):
 			ex.add_note(f"Got type '{getFullyQualifiedName(value)}'.")
 			raise ex
 
-		if len(unknownKeys := set(value) - {"directory", "libraries"}) > 0:
+		if len(unknownKeys := set(value) - {"directory", "libraries", "pages"}) > 0:
 			keys = ", ".join(sorted(map(repr, unknownKeys)))
 			ex = DesignConfigurationError(f"vhdl_designs['{name}']: Unknown key(s) {keys}.")
-			ex.add_note("Allowed keys: 'directory', 'libraries'")
+			ex.add_note("Allowed keys: 'directory', 'libraries', 'pages'")
 			raise ex
 
 		directory = value.get("directory", ".")
@@ -201,7 +221,21 @@ class DesignConfiguration(metaclass=ExtendedType, slots=True):
 
 			files[libraryName] = [Path(file) for file in libraryFiles]
 
-		return cls(name, (sourceDirectory / directory).resolve(), files)
+		if (pages := value.get("pages", None)) is not None:
+			if not isinstance(pages, str):
+				ex = DesignConfigurationError(f"vhdl_designs['{name}'].pages: Value is not a string.")
+				ex.add_note(f"Got type '{getFullyQualifiedName(pages)}'.")
+				raise ex
+
+			parts = pages.strip("/").split("/")
+			if "\\" in pages or any(part in ("", ".", "..") for part in parts):
+				ex = DesignConfigurationError(f"vhdl_designs['{name}'].pages: '{pages}' is not a relative document name.")
+				ex.add_note("Use a name like 'designs/StopWatch', separated by '/', without '.' or '..'.")
+				raise ex
+
+			pages = "/".join(parts)
+
+		return cls(name, (sourceDirectory / directory).resolve(), files, pages)
 
 	@readonly
 	def Name(self) -> str:
@@ -220,6 +254,15 @@ class DesignConfiguration(metaclass=ExtendedType, slots=True):
 		:returns: The directory.
 		"""
 		return self._directory
+
+	@readonly
+	def Pages(self) -> Nullable[str]:
+		"""
+		Read-only property to access the document name the design's pages are generated below (:attr:`_pages`).
+
+		:returns: The document name, or ``None`` if the design has no pages.
+		"""
+		return self._pages
 
 	@readonly
 	def Libraries(self) -> dict[str, list[Path]]:
