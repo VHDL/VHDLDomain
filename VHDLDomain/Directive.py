@@ -35,25 +35,25 @@ The directives of the domain ``vhdl``: each describes an object of a design read
 ``vhdl:design`` and ``vhdl:library`` set the design and library the following directives and references of the
 document are in, until the next one.
 """
-from __future__           import annotations
+from __future__                  import annotations
 
-from typing               import TYPE_CHECKING, ClassVar, Optional as Nullable
+from typing                      import TYPE_CHECKING, ClassVar, Optional as Nullable
 
-from docutils             import nodes
-from docutils.nodes       import Node
-from docutils.parsers.rst import directives
-from sphinx               import addnodes
-from sphinx.util.docutils import SphinxDirective
-from sphinx.util.logging  import getLogger
-from sphinx.util.nodes    import make_id
+from docutils                    import nodes
+from docutils.nodes              import Node
+from docutils.parsers.rst        import directives
+from sphinx                      import addnodes
+from sphinx.util.docutils        import SphinxDirective
+from sphinx.util.logging         import getLogger
+from sphinx.util.nodes           import make_id
 
-from pyTooling.Decorators import export
+from pyTooling.Decorators        import export
 
-from pyVHDLModel          import Design, Library
+from pyVHDLModel                 import Design, Library
 from pyVHDLModel.Formatting.VHDL import VHDLWriter
 
 if TYPE_CHECKING:  # pragma: no cover
-	from VHDLDomain       import VHDLDomain
+	from VHDLDomain                import VHDLDomain
 
 
 _logger = getLogger(__name__)
