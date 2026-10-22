@@ -215,7 +215,7 @@ class DesignUnitDirective(VHDLDirective):
 			signature["ids"].append(nodeID)
 			self.set_source_info(signature)
 			self.state.document.note_explicit_target(signature)
-			self.Domain.NoteObject(objectType, qualifiedName, nodeID, signature)
+			self._Domain().NoteObject(objectType, qualifiedName, nodeID, signature)
 			index["entries"].append(("single", indexText, nodeID, "", None))
 
 		return description, content, index
@@ -236,7 +236,7 @@ class DesignUnitDirective(VHDLDirective):
 		for qualifiedName in qualifiedNames:
 			nodeID = self._NodeID(objectType, qualifiedName)
 			row["ids"].append(nodeID)
-			self.Domain.NoteObject(objectType, qualifiedName, nodeID, row)
+			self._Domain().NoteObject(objectType, qualifiedName, nodeID, row)
 
 	@staticmethod
 	def _Table(
