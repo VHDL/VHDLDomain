@@ -51,6 +51,7 @@ design, a library or a design unit from the model, and a role refers to what a d
 * Roles: ``:vhdl:design:``, ``:vhdl:lib:``, ``:vhdl:ctx:``, ``:vhdl:ent:``, ``:vhdl:arch:``, ``:vhdl:pack:``,
   ``:vhdl:config:``, ``:vhdl:type:``, ``:vhdl:const:``, ``:vhdl:func:``, ``:vhdl:proc:``, ``:vhdl:generic:``,
   ``:vhdl:port:``
+* Indices: ``vhdl-entities``, ``vhdl-packages``, ``vhdl-subprograms``, ``vhdl-types``
 * Configuration value ``vhdl_designs``
 
 .. rubric:: Names
@@ -84,7 +85,7 @@ from docutils.nodes        import Element, Node
 from sphinx                import addnodes
 from sphinx.application    import Sphinx
 from sphinx.builders       import Builder
-from sphinx.domains        import Domain, ObjType
+from sphinx.domains        import Domain, Index, ObjType
 from sphinx.environment    import BuildEnvironment
 from sphinx.roles          import XRefRole
 from sphinx.util.logging   import getLogger
@@ -99,6 +100,7 @@ from pyVHDLModel           import Design
 from VHDLDomain.DesignUnit import ConfigurationDirective, ContextDirective, EntityDirective, PackageDirective
 from VHDLDomain.Directive  import DesignDirective, LibraryDirective
 from VHDLDomain.Frontend   import DesignConfiguration, VHDLDomainException
+from VHDLDomain.Index      import EntityIndex, PackageIndex, SubprogramIndex, TypeIndex
 
 
 __all__ = ["OBJECT_TYPES", "ROLES"]
@@ -222,6 +224,13 @@ class VHDLDomain(Domain):
 	roles: ClassVar[dict[str, XRefRole]] = {  # type: ignore[assignment]
 		roleName: VHDLXRefRole(innernodeclass=nodes.literal, warn_dangling=True) for roleName in ROLES
 	}  #: The roles, by name.
+
+	indices: ClassVar[list[type[Index]]] = [
+		EntityIndex,
+		PackageIndex,
+		SubprogramIndex,
+		TypeIndex,
+	]  #: The indices, each a page ``vhdl-<name>``, e.g. ``vhdl-entities``.
 
 	dangling_warnings: ClassVar[dict[str, str]] = {
 		roleName: f"VHDL {' or '.join(OBJECT_TYPES[objectType] for objectType in types)} '%(target)s' not found"
