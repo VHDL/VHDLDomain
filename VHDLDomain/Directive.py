@@ -47,7 +47,7 @@ from sphinx.util.docutils import SphinxDirective
 from sphinx.util.logging  import getLogger
 from sphinx.util.nodes    import make_id
 
-from pyTooling.Decorators import export, readonly
+from pyTooling.Decorators import export
 
 from pyVHDLModel          import Design, Library
 
@@ -69,10 +69,9 @@ class VHDLDirective(SphinxDirective):
 
 	directiveName: ClassVar[str]  #: Name the directive is invoked by, used in every warning.
 
-	@readonly
-	def Domain(self) -> VHDLDomain:
+	def _Domain(self) -> VHDLDomain:
 		"""
-		Read-only property to return the domain ``vhdl``.
+		Return the domain ``vhdl``.
 
 		:returns: The domain.
 		"""
@@ -94,7 +93,7 @@ class VHDLDirective(SphinxDirective):
 			)
 			return None, None
 
-		if (design := self.Domain.GetDesign(name)) is None:
+		if (design := self._Domain().GetDesign(name)) is None:
 			_logger.warning(
 				f"{self.directiveName}: Design '{name}' was not read.",
 				location=self.get_location(), type=self._WARNING_TYPE, subtype="design"
@@ -115,7 +114,7 @@ class VHDLDirective(SphinxDirective):
 		target = nodes.target("", "", ids=[nodeID])
 		self.set_source_info(target)
 		self.state.document.note_explicit_target(target)
-		self.Domain.NoteObject(objectType, qualifiedName, nodeID, target)
+		self._Domain().NoteObject(objectType, qualifiedName, nodeID, target)
 
 		return [addnodes.index(entries=[("single", indexText, nodeID, "", None)]), target]
 
@@ -151,7 +150,7 @@ class DesignDirective(VHDLDirective):
 		self.env.ref_context["vhdl:design"] = name
 		self.env.ref_context.pop("vhdl:library", None)
 
-		if self.Domain.GetDesign(name) is None:
+		if self._Domain().GetDesign(name) is None:
 			_logger.warning(
 				f"{self.directiveName}: Design '{name}' was not read.",
 				location=self.get_location(), type=self._WARNING_TYPE, subtype="design"
