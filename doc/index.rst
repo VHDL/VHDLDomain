@@ -91,25 +91,9 @@ License
    :caption: Main Documentation
    :hidden:
 
+   Configuration/index
    Directives/index
    Roles/index
-   Indices/index
-   Configuration/index
-
-.. raw:: latex
-
-   \part{Examples}
-
-.. toctree::
-   :caption: Examples
-   :hidden:
-
-   Libraries <vhdl-libindex>
-   Documents <vhdl-fileindex>
-   Components <vhdl-compindex>
-   Packages <vhdl-packindex>
-   Subprograms <vhdl-subindex>
-   Types <vhdl-typeindex>
 
 .. raw:: latex
 

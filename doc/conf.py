@@ -336,33 +336,16 @@ pyTooling_ExternalLink_Icons = "all"
 # VHDLDomain
 # ==============================================================================
 vhdl_designs = {
-#	"StopWatch": (ROOT / "../examples/StopWatch").resolve(),
-}
-vhdl_defaults = {
-	"describedesign": {},
-	"describelibrary": {},
-	"describedocument": {},
-	"describecontext": {
-		"referencedby":  "yes",          # no, yes
-	},
-	"describeentity": {
-		"generics":      "table",        # never, table, sections
-		"ports":         "table",        # never, table, sections
-		"architectures": "multiple",     # never, multiple, always
-		"referencedby":  "yes",          # no, yes
-	},
-	"describearchitecture": {},
-	"describepackage": {
-		"generics":      "table",        # never, table, sections
-		"referencedby":  "yes",          # no, yes
-	},
-	"describepackagebody": {},
-	"describeconfiguration": {
-		"referencedby":  "yes",          # no, yes
-	},
-	"describesubprogram": {
-		"parameters":    "table",        # never, table, sections
-	},
+#	"StopWatch": {
+#		"directory": "../examples/StopWatch",
+#		"libraries": {
+#			"lib_Utilities": ["Utilities.pkg.vhdl", "Utilities.ctx.vhdl", "Counter.vhdl", "sync_Bits.vhdl", "Debouncer.vhdl"],
+#			"lib_StopWatch": [
+#				"StopWatch.pkg.vhdl", "StopWatch.ctx.vhdl", "seg7_Encoder.vhdl", "seg7_Display.vhdl", "seg7_Display.cfg.vhdl",
+#				"StopWatch.vhdl", "toplevel.vhdl"
+#			],
+#		},
+#	},
 }
 
 
