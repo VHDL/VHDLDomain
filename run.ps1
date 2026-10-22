@@ -38,7 +38,7 @@ Param(
 
 $ProjectName =    "VHDLDomain"
 $PackageName =    $ProjectName
-$PackageVersion = "0.1.0"
+$PackageVersion = "0.2.0rc1"
 $PythonVersion =  "3.15"
 $LaTeXDocument =  "${ProjectName}.tex"
 
