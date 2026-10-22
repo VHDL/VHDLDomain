@@ -488,7 +488,7 @@ class PackageDirective(DesignUnitDirective):
 			objectType = "procedure"
 			keywords =   ["procedure"]
 
-		signature = ", ".join(subprogram.Signature.ParameterTypeNames())
+		signature = ", ".join(subprogram.Signature.ParameterTypeNames)
 		self._Declaration(
 			content, objectType, qualifiedName, f"{subprogram.Identifier}({signature})", suffix, subprogram.Documentation,
 			package, keywords
