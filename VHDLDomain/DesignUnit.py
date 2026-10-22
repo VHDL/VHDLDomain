@@ -52,56 +52,18 @@ from pyTooling.Decorators        import export
 from pyTooling.MetaClasses       import abstractmethod
 
 from pyVHDLModel                 import Library
+from pyVHDLModel.Base            import identifiersOf
 from pyVHDLModel.DesignUnit      import Configuration, Context, DesignUnit, Entity, Package
 from pyVHDLModel.Interface       import GenericConstantInterfaceItem, GenericPackageInterfaceItem
 from pyVHDLModel.Interface       import GenericTypeInterfaceItem, PortSignalInterfaceItem
 from pyVHDLModel.Object          import Constant, DeferredConstant
-from pyVHDLModel.Subprogram      import Function, Procedure, Subprogram
+from pyVHDLModel.Subprogram      import Function, Procedure
 from pyVHDLModel.Type            import BaseType, Subtype
 
 from VHDLDomain.Directive        import VHDLDirective
 
 
-__all__ = ["identifiersOf", "signatureOf"]
-
 _logger = getLogger(__name__)
-
-
-@export
-def identifiersOf(item: object) -> tuple[str, ...]:
-	"""
-	Return the identifiers a declaration declares.
-
-	A declaration with an identifier list, e.g. a constant or a port, declares each of them; others declare their single
-	identifier.
-
-	:param item: The declaration.
-	:returns:    The identifiers, as declared.
-	"""
-	if (identifiers := getattr(item, "Identifiers", None)) is not None:
-		return tuple(identifiers)
-
-	return (item.Identifier, )  # type: ignore[attr-defined]
-
-
-@export
-def signatureOf(subprogram: Subprogram) -> str:
-	"""
-	Return a subprogram's signature, which a reference to an overload names: the type marks of its parameters.
-
-	A parameter declaring several identifiers contributes its type mark once per identifier.
-
-	:param subprogram: The subprogram.
-	:returns:          The signature, as ``(unsigned, positive)``.
-	"""
-	typeMarks: list[str] = []
-	for item in subprogram.ParameterItems:
-		symbol = getattr(item, "Subtype", None)
-		name = getattr(symbol, "Name", None)
-		typeMark = "?" if name is None else name.Identifier
-		typeMarks.extend(typeMark for _ in identifiersOf(item))
-
-	return f"({', '.join(typeMarks)})"
 
 
 @export
@@ -526,9 +488,10 @@ class PackageDirective(DesignUnitDirective):
 			objectType = "procedure"
 			keywords =   ["procedure"]
 
+		signature = ", ".join(subprogram.Signature.ParameterTypeNames())
 		self._Declaration(
-			content, objectType, qualifiedName, f"{subprogram.Identifier}{signatureOf(subprogram)}", suffix,
-			subprogram.Documentation, package, keywords
+			content, objectType, qualifiedName, f"{subprogram.Identifier}({signature})", suffix, subprogram.Documentation,
+			package, keywords
 		)
 
 

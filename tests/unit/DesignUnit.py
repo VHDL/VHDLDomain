@@ -32,21 +32,12 @@
 Unit tests for the design-unit directives of the Sphinx domain ``vhdl``: ``vhdl:entity``, ``vhdl:package``,
 ``vhdl:context`` and ``vhdl:configuration``.
 """
-from textwrap               import dedent
-from typing                 import ClassVar
+from textwrap          import dedent
+from typing            import ClassVar
 
-from pyTooling.Testing      import Testcase
+from VHDLDomain        import VHDLDomain
 
-from pyVHDLModel.Base       import Mode
-from pyVHDLModel.Interface  import ParameterConstantInterfaceItem
-from pyVHDLModel.Name       import SimpleName
-from pyVHDLModel.Subprogram import Function, Procedure
-from pyVHDLModel.Symbol     import SimpleSubtypeSymbol
-
-from VHDLDomain             import VHDLDomain
-from VHDLDomain.DesignUnit  import identifiersOf, signatureOf
-
-from tests.unit.Domain      import Project
+from tests.unit.Domain import Project
 
 
 if __name__ == "__main__":  # pragma: no cover
@@ -357,20 +348,3 @@ class Configuration(DesignUnitProject):
 		self.assertEqual([], self._warningLines())
 		self.assertIn(("configuration", "demo.lib_a.cfg"), domain.Objects)
 		self.assertIn('href="#vhdl-entity-demo.lib_a.counter"', self._html("page"))
-
-
-class Helpers(Testcase):
-	def test_identifiersOf(self) -> None:
-		item = ParameterConstantInterfaceItem(("a", "b"), Mode.In, SimpleSubtypeSymbol(SimpleName("bit")))
-
-		self.assertEqual(("a", "b"), identifiersOf(item))
-		self.assertEqual(("reset", ), identifiersOf(Procedure("reset")))
-
-	def test_signatureOf(self) -> None:
-		function = Function("f", SimpleSubtypeSymbol(SimpleName("bit")), parameterItems=[
-			ParameterConstantInterfaceItem(("a", "b"), Mode.In, SimpleSubtypeSymbol(SimpleName("natural"))),
-			ParameterConstantInterfaceItem(("c", ), Mode.In, SimpleSubtypeSymbol(SimpleName("bit")))
-		])
-
-		self.assertEqual("(natural, natural, bit)", signatureOf(function))
-		self.assertEqual("()", signatureOf(Procedure("p")))

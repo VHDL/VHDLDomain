@@ -375,6 +375,7 @@ class FindObjects(Project):
 			("entity",   "Other.lib_A.Counter"),
 			("function", "Demo.lib_A.Utilities.to_index(natural)"),
 			("function", "Demo.lib_A.Utilities.to_index(natural,positive)"),
+			("function", "Demo.lib_A.Utilities.resize(ieee.numeric_std.unsigned,natural)"),
 		):
 			self._domain.Objects[(objectType, normalizeName(qualifiedName))] = ("page", "anchor", qualifiedName)
 
@@ -418,6 +419,15 @@ class FindObjects(Project):
 			self._find("function", "Utilities.to_index(Natural, Positive)")
 		)
 		self.assertEqual([], self._find("function", "to_index(integer)"))
+		self.assertEqual([], self._find("function", "to_index(natural, positive, positive)"))
+
+	def test_Signature_TypeMarkSuffix(self) -> None:
+		"""A signature's type mark may be a part of the declared type mark, ending with the type's name."""
+		resize = "demo.lib_a.utilities.resize(ieee.numeric_std.unsigned,natural)"
+		self.assertEqual([resize], self._find("function", "resize(unsigned, natural)"))
+		self.assertEqual([resize], self._find("function", "resize(numeric_std.unsigned, natural)"))
+		self.assertEqual([], self._find("function", "resize(signed, natural)"))
+		self.assertEqual([], self._find("function", "resize(d.unsigned, natural)"))
 
 	def test_OtherType(self) -> None:
 		self.assertEqual([], self._find("package", "Counter"))

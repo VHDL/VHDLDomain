@@ -359,8 +359,10 @@ class VHDLDomain(Domain):
 		Find the objects a reference's target names.
 
 		The target names an object by its qualified name or by a part of it ending with the object's name; it may end
-		in a subprogram's signature, which must match then. A qualified name equal to the target wins over the others.
-		Of several matches, those in the given design - and then those in the given library - win.
+		in a subprogram's signature, which must match then: the same number of type marks, each a type mark of the
+		object's signature or a part of it ending with the type's name (``unsigned`` matches ``ieee.numeric_std.unsigned``).
+		A qualified name equal to the target wins over the others. Of several matches, those in the given design - and
+		then those in the given library - win.
 
 		:param objectTypes: The object types the reference's role refers to.
 		:param target:      The reference's target.
@@ -368,6 +370,24 @@ class VHDLDomain(Domain):
 		:param library:     Optional, the library current at the reference. Default: ``None``.
 		:returns:           The keys of the matching objects: none, one, or several if the name is ambiguous.
 		"""
+		def signatureMatches(objectSignature: str, targetSignature: str) -> bool:
+			"""
+			Nested function checking whether a target's signature names an object's signature, type mark by type mark.
+
+			:param objectSignature: The object's normalized signature, without the opening parenthesis.
+			:param targetSignature: The target's normalized signature, without the opening parenthesis.
+			:returns:               ``True``, if every type mark of the target names the object's type mark at its position.
+			"""
+			objectTypes = objectSignature.rstrip(")").split(",")
+			targetTypes = targetSignature.rstrip(")").split(",")
+			if len(objectTypes) != len(targetTypes):
+				return False
+
+			return all(
+				objectType == targetType or objectType.endswith(f".{targetType}")
+				for objectType, targetType in zip(objectTypes, targetTypes)
+			)
+
 		if self._lookup is None:
 			self._lookup = {}
 			for objectType, name in self.data["objects"]:
@@ -384,7 +404,7 @@ class VHDLDomain(Domain):
 				keyBase, keySeparator, keySignature = key[1].partition("(")
 				if keyBase != baseName and not keyBase.endswith(f".{baseName}"):
 					continue
-				elif separator != "" and (keySeparator == "" or keySignature != signature):
+				elif separator != "" and (keySeparator == "" or not signatureMatches(keySignature, signature)):
 					continue
 
 				matches.append(key)
