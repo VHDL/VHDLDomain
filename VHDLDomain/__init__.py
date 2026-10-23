@@ -563,7 +563,7 @@ def readDesigns(sphinx: Sphinx) -> None:
 	for name, value in sphinx.config.vhdl_designs.items():
 		try:
 			configuration = DesignConfiguration.Parse(name, value, Path(sphinx.srcdir))
-			design = configuration.Load()
+			design =        configuration.Load()
 			domain.AddDesign(configuration.Name, design, configuration.Pages, configuration.Directory)
 		except (VHDLDomainException, MissingDependencyError) as ex:
 			notes = "".join(f"\n  {note}" for note in getattr(ex, "__notes__", []))

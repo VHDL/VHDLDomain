@@ -52,7 +52,7 @@ from pyTooling.Decorators        import export
 from pyVHDLModel                 import Design, Library
 from pyVHDLModel.Formatting.VHDL import VHDLWriter
 
-from VHDLDomain.Pages     import DesignPages
+from VHDLDomain.Pages            import DesignPages
 
 if TYPE_CHECKING:  # pragma: no cover
 	from VHDLDomain                import VHDLDomain

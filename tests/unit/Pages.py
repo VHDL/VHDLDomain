@@ -131,7 +131,7 @@ class Libraries(Testcase):
 	"""The pages of a design, without Sphinx."""
 
 	def test_DocNames(self) -> None:
-		design = Design("Demo")
+		design =   Design("Demo")
 		document = Document(Path("a.vhdl"))
 		document._AddDesignUnit(Entity("Counter"))
 		document._AddDesignUnit(Entity("Adder"))

@@ -74,8 +74,8 @@ class DesignPages(GeneratedPages):
 	The generated pages of one design: a page per library, and per context, entity, package and configuration.
 	"""
 
-	_DOMAIN: ClassVar[str] = "vhdl"                    #: The pages' objects belong to domain ``vhdl``.
-	_pages:  ClassVar[dict[str, GeneratedPages]] = {}  #: The pages of every design with pages, by design name.
+	_DOMAIN: ClassVar[str]                       = "vhdl"  #: The pages' objects belong to domain ``vhdl``.
+	_pages:  ClassVar[dict[str, GeneratedPages]] = {}      #: The pages of every design with pages, by design name.
 
 	#: The directive describing a design unit, by role.
 	_DIRECTIVES: ClassVar[dict[str, str]] = {roleName: directive for _, roleName, directive in UNIT_KINDS}
@@ -162,7 +162,7 @@ class DesignPages(GeneratedPages):
 		if roleName != "lib":
 			return []
 
-		library: Library = entity
+		library:  Library               = entity
 		children: list[tuple[str, Any]] = []
 		for collectionName, unitRole, _ in UNIT_KINDS:
 			units = getattr(library, collectionName).values()
@@ -202,11 +202,11 @@ class DesignPages(GeneratedPages):
 		"""
 		name = entity.Identifier
 		if roleName == "lib":
-			title = name
+			title =     name
 			directive = f".. vhdl:library:: {name}\n   :design: {self._designName}\n"
 		else:
-			library = entity.Library.Identifier
-			title = f"{name} ({library})"
+			library =   entity.Library.Identifier
+			title =     f"{name} ({library})"
 			directive = f".. vhdl:{self._DIRECTIVES[roleName]}:: {library}.{name}\n   :design: {self._designName}\n"
 
 		self._ParseReST(sphinxApplication, document, f"{title}\n{'#' * len(title)}\n\n{directive}")
