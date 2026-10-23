@@ -39,7 +39,7 @@ from pathlib             import Path
 from tempfile            import TemporaryDirectory
 from textwrap            import dedent
 from typing              import Any, ClassVar
-from unittest.mock        import patch
+from unittest.mock       import patch
 from warnings            import catch_warnings, filterwarnings
 
 from sphinx.testing.util import SphinxTestApp

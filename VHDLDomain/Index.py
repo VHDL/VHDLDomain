@@ -47,7 +47,7 @@ from sphinx.domains       import Index, IndexEntry
 from pyTooling.Decorators import export
 
 if TYPE_CHECKING:  # pragma: no cover
-	from VHDLDomain       import VHDLDomain
+	from VHDLDomain         import VHDLDomain
 
 
 @export
