@@ -11,8 +11,7 @@
 #                                                                                                                      #
 # License:                                                                                                             #
 # ==================================================================================================================== #
-# Copyright 2017-2023 Patrick Lehmann - Boetzingen, Germany                                                            #
-# Copyright 2016-2017 Patrick Lehmann - Dresden, Germany                                                               #
+# Copyright 2026-2026 Patrick Lehmann - Bötzingen, Germany                                                             #
 #                                                                                                                      #
 # Licensed under the Apache License, Version 2.0 (the "License");                                                      #
 # you may not use this file except in compliance with the License.                                                     #
@@ -30,201 +29,123 @@
 # ==================================================================================================================== #
 #
 """
-**A Sphinx domain providing VHDL language support.**
+The indices of the domain ``vhdl``: entities, packages, subprograms and types, as described by the directives.
 
-This module contains all the indices of the VHDL domain.
+An index lists the described objects - not every object of the designs -, grouped by the first letter of their name,
+each linking to its description. An entry's extra information names where the object is: the library for a design
+unit, the library and design unit for a declaration, preceded by the design if the documentation describes several.
+A subprogram's entry shows its signature, so its overloads are told apart.
+
+An index is a page of its own, referred to as ``:ref:`vhdl-<index name>```, e.g. ``:ref:`vhdl-entities```.
 """
-from typing import Iterable, Optional as Nullable, List, Tuple, Dict
+from __future__           import annotations
 
-from pyGHDL.dom.NonStandard import Design
+from typing               import TYPE_CHECKING, ClassVar, Iterable, Optional as Nullable
+
+from sphinx.domains       import Index, IndexEntry
+
 from pyTooling.Decorators import export
-from pyVHDLModel import DesignUnitKind
-from sphinx.domains import Index, IndexEntry
+
+if TYPE_CHECKING:  # pragma: no cover
+	from VHDLDomain         import VHDLDomain
 
 
 @export
-class BaseIndex(Index):
-	pass
+class VHDLIndex(Index):
+	"""
+	Base-class of the indices of domain ``vhdl``: the described objects of some object types, grouped by first letter.
+
+	A derived class names the index and the object types it lists.
+	"""
+
+	_OBJECT_TYPES: ClassVar[tuple[str, ...]]  #: The object types the index lists.
+
+	def generate(self, docnames: Nullable[Iterable[str]] = None) -> tuple[list[tuple[str, list[IndexEntry]]], bool]:
+		"""
+		Create the index's entries.
+
+		:param docnames: Optional, the documents whose objects are listed. Default: ``None``, all documents.
+		:returns:        The entries grouped by first letter, sorted by name, and ``False``: the groups aren't collapsible.
+		"""
+		domain: VHDLDomain = self.domain  # type: ignore[assignment]
+		documents = None if docnames is None else set(docnames)
+
+		objects = []
+		designs = set()
+		for (objectType, _), (document, nodeID, qualifiedName) in domain.Objects.items():
+			if objectType not in self._OBJECT_TYPES or (documents is not None and document not in documents):
+				continue
+
+			designName, library, name = qualifiedName.split(".", 2)
+			unit, _, member = name.partition(".")
+			objects.append((designName, library, unit, member, objectType, document, nodeID))
+			designs.add(designName.lower())
+
+		groups: dict[str, list[IndexEntry]] = {}
+		for designName, library, unit, member, objectType, document, nodeID in objects:
+			name = unit if member == "" else member
+			location = library if member == "" else f"{library}.{unit}"
+			if len(designs) > 1:
+				location = f"{designName}.{location}"
+
+			entry = IndexEntry(name, 0, document, nodeID, f"{objectType} in {location}", "", "")
+			groups.setdefault(name[0].upper(), []).append(entry)
+
+		content = [
+			(letter, sorted(entries, key=lambda entry: (entry.name.lower(), entry.extra.lower())))
+			for letter, entries in sorted(groups.items())
+		]
+
+		return content, False
 
 
 @export
-class LibraryIndex(BaseIndex):
+class EntityIndex(VHDLIndex):
 	"""
-	An index for VHDL libraries.
+	The index of the described entities: ``:ref:`vhdl-entities```.
 	"""
 
-	name =      "libindex"
-	localname = "Library Index"
-	shortname = "Libraries"
+	name =      "entities"      #: Name of the index, the label ``vhdl-entities``.
+	localname = "Entity Index"  #: Title of the index.
+	shortname = "Entities"      #: Short title of the index, as a link names it.
 
-	def generate(self, docnames: Iterable[str] = None) -> Tuple[List[Tuple[str, List[IndexEntry]]], bool]:
-		result: List[Tuple[str, List[IndexEntry]]] = []
-
-		designs: Dict[str, Design] = self.domain.data["designs"]
-		design = designs["StopWatch"]
-		for library in design.Libraries.values():
-			entries = []
-			for entity in library.Entities.values():
-				entryName = entity.Identifier
-				entryKind = 0 if len(entity.Architectures) == 1 else 1
-				document = f"{entity.Library.Identifier}/{entity.Identifier}"
-				link = f"{entity.Library.Identifier}-{entity.Identifier}"
-				entries.append((entryName, entryKind, document, link, document, "", entity.Documentation))
-				if entryKind == 1:
-					for architecture in entity.Architectures.values():
-						architectureName = architecture.Identifier
-						architectureKind = 2
-						doc = f"{entity.Library.Identifier}/{entity.Identifier}-{architecture.Identifier}"
-						lnk = f"{entity.Library.Identifier}-{entity.Identifier}-{architecture.Identifier}"
-						entries.append((architectureName, architectureKind, doc, lnk, doc, "", architecture.Documentation))
-
-			group = (library.Identifier, entries)
-			result.append(group)
-
-		return result, True
+	_OBJECT_TYPES: ClassVar[tuple[str, ...]] = ("entity", )  #: The object types the index lists.
 
 
 @export
-class DocumentIndex(BaseIndex):
+class PackageIndex(VHDLIndex):
 	"""
-	An index for VHDL documents.
+	The index of the described packages: ``:ref:`vhdl-packages```.
 	"""
 
-	name =      "fileindex"
-	localname = "Document Index"
-	shortname = "Documents"
+	name =      "packages"       #: Name of the index, the label ``vhdl-packages``.
+	localname = "Package Index"  #: Title of the index.
+	shortname = "Packages"       #: Short title of the index, as a link names it.
 
-	def generate(self, docnames: Iterable[str] = None) -> Tuple[List[Tuple[str, List[IndexEntry]]], bool]:
-		result: List[Tuple[str, List[IndexEntry]]] = []
-
-		designs: Dict[str, Design] = self.domain.data["designs"]
-		design = designs["StopWatch"]
-		for library in design.Libraries.values():
-			entries = []
-			for entity in library.Entities.values():
-				entryName = entity.Identifier
-				entryKind = 0 if len(entity.Architectures) == 1 else 1
-				document = f"{entity.Library.Identifier}/{entity.Identifier}"
-				link = f"{entity.Library.Identifier}-{entity.Identifier}"
-				entries.append((entryName, entryKind, document, link, document, "", entity.Documentation))
-				if entryKind == 1:
-					for architecture in entity.Architectures.values():
-						architectureName = architecture.Identifier
-						architectureKind = 2
-						doc = f"{entity.Library.Identifier}/{entity.Identifier}-{architecture.Identifier}"
-						lnk = f"{entity.Library.Identifier}-{entity.Identifier}-{architecture.Identifier}"
-						entries.append((architectureName, architectureKind, doc, lnk, doc, "", architecture.Documentation))
-
-			group = (library.Identifier, entries)
-			result.append(group)
-
-		return result, True
+	_OBJECT_TYPES: ClassVar[tuple[str, ...]] = ("package", )  #: The object types the index lists.
 
 
 @export
-class ComponentIndex(BaseIndex):
+class SubprogramIndex(VHDLIndex):
 	"""
-	An index for VHDL components.
+	The index of the described functions and procedures: ``:ref:`vhdl-subprograms```.
 	"""
 
-	name =      "compindex"
-	localname = "Component Index"
-	shortname = "Components"
+	name =      "subprograms"       #: Name of the index, the label ``vhdl-subprograms``.
+	localname = "Subprogram Index"  #: Title of the index.
+	shortname = "Subprograms"       #: Short title of the index, as a link names it.
 
-	def generate(self, docnames: Iterable[str] = None) -> Tuple[List[Tuple[str, List[IndexEntry]]], bool]:
-		result: List[Tuple[str, List[IndexEntry]]] = []
-
-		designs: Dict[str, Design] = self.domain.data["designs"]
-		design = designs["StopWatch"]
-		for library in design.Libraries.values():
-			entries = []
-			for entity in library.Entities.values():
-				entryName = entity.Identifier
-				entryKind = 0 if len(entity.Architectures) == 1 else 1
-				document = f"{entity.Library.Identifier}/{entity.Identifier}"
-				link = f"{entity.Library.Identifier}-{entity.Identifier}"
-				entries.append((entryName, entryKind, document, link, document, "", entity.Documentation))
-				if entryKind == 1:
-					for architecture in entity.Architectures.values():
-						architectureName = architecture.Identifier
-						architectureKind = 2
-						doc = f"{entity.Library.Identifier}/{entity.Identifier}-{architecture.Identifier}"
-						lnk = f"{entity.Library.Identifier}-{entity.Identifier}-{architecture.Identifier}"
-						entries.append((architectureName, architectureKind, doc, lnk, doc, "", architecture.Documentation))
-
-			group = (library.Identifier, entries)
-			result.append(group)
-
-		return result, True
+	_OBJECT_TYPES: ClassVar[tuple[str, ...]] = ("function", "procedure")  #: The object types the index lists.
 
 
 @export
-class PackageIndex(BaseIndex):
+class TypeIndex(VHDLIndex):
 	"""
-	An index for VHDL packages.
-	"""
-
-	name =      "packindex"
-	localname = "Package Index"
-	shortname = "Packages"
-
-	def generate(self, docnames: Iterable[str] = None) -> Tuple[List[Tuple[str, List[IndexEntry]]], bool]:
-		result: List[Tuple[str, List[IndexEntry]]] = []
-
-		designs: Dict[str, Design] = self.domain.data["designs"]
-		design = designs["StopWatch"]
-		for library in design.Libraries.values():
-			entries = []
-			for package in library.Packages.values():
-				entryName = package.Identifier
-				entryKind = 0
-				document = f"{package.Library.Identifier}/{package.Identifier}"
-				link = f"{package.Library.Identifier}-{package.Identifier}"
-				entries.append((entryName, entryKind, document, link, document, "", package.Documentation))
-
-			group = (library.Identifier, entries)
-			result.append(group)
-
-		return result, True
-
-
-@export
-class SubprogramIndex(BaseIndex):
-	"""
-	An index for VHDL functions or procedures.
+	The index of the described types and subtypes: ``:ref:`vhdl-types```.
 	"""
 
-	name =      "subindex"
-	localname = "Subprogram Index"
-	shortname = "Subprograms"
+	name =      "types"       #: Name of the index, the label ``vhdl-types``.
+	localname = "Type Index"  #: Title of the index.
+	shortname = "Types"       #: Short title of the index, as a link names it.
 
-	def generate(self, docnames: Iterable[str] = None) -> Tuple[List[Tuple[str, List[IndexEntry]]], bool]:
-		result: List[Tuple[str, List[IndexEntry]]] = []
-
-		entry = ("binary2onehot", 0, "lib_Utilities/binary2onehot", "lib_Utilities-binary2onehot", "lib_Utilities/binary2onehot", "", "Conversion from binary to onehot code.")
-		group = ("B", [entry])
-
-		result.append(group)
-
-		return result, True
-
-
-@export
-class TypeIndex(BaseIndex):
-	"""
-	An index for types and subtypes in VHDL.
-	"""
-
-	name =      "typeindex"
-	localname = "Type Index"
-	shortname = "Types"
-
-	def generate(self, docnames: Iterable[str] = None) -> Tuple[List[Tuple[str, List[IndexEntry]]], bool]:
-		result: List[Tuple[str, List[IndexEntry]]] = []
-
-		entry = ("BCD", 0, "lib_Utilities/BCD", "lib_Utilities-BCD", "lib_Utilities/BCD", "", "Binary coded decimal.")
-		group = ("B", [entry])
-
-		result.append(group)
-
-		return result, True
+	_OBJECT_TYPES: ClassVar[tuple[str, ...]] = ("type", "subtype")  #: The object types the index lists.

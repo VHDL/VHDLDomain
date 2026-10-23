@@ -1,78 +1,88 @@
-.. _Roles:
+.. _ROLE:
 
 Roles
 #####
 
+A role refers to an object a directive described, by the object's qualified name or by a part of it ending with the
+object's name:
+
+* An object's qualified name starts with its design and library, e.g. ``StopWatch.lib_StopWatch.Counter``.
+* ``lib_StopWatch.Counter`` and ``Counter`` name the same entity, as long as no other entity has that name.
+* A name matching several objects is resolved in the design and library current where the reference is written -
+  set by :rst:dir:`vhdl:design` and :rst:dir:`vhdl:library` -; otherwise it is warned about, and the reference is
+  shown as text.
+* A subprogram's name may end in its signature, the type marks of its parameters: ``to_index(natural, positive)``.
+  Without a signature, a subprogram with overloads is ambiguous.
+* VHDL identifiers are case-insensitive, so are the names.
+* A leading ``~`` shows only the object's name: ``:vhdl:ent:`~lib_StopWatch.Counter``` shows ``Counter``.
+
+.. code-block:: rst
+
+   The entity :vhdl:ent:`Counter` counts clock cycles, see :vhdl:func:`Utilities.to_index(natural, positive)`.
+
 .. contents:: Table of Contents
    :local:
 
-vhdl:design
-***********
 
-.. rst:role:: design
+Design and library
+******************
 
-   Reference a VHDL design by name.
+.. rst:role:: vhdl:design
 
+   Refer to a design.
 
-vhdl:lib
-********
+.. rst:role:: vhdl:lib
 
-.. rst:role:: lib
-
-   Reference a VHDL library by name.
+   Refer to a library.
 
 
-vhdl:doc
-********
+Design units
+************
 
-.. rst:role:: doc
+.. rst:role:: vhdl:ctx
 
-   Reference a VHDL source file by path.
+   Refer to a context.
 
+.. rst:role:: vhdl:ent
 
-vhdl:ctx
-********
+   Refer to an entity.
 
-.. rst:role:: ctx
+.. rst:role:: vhdl:arch
 
-   Reference a context by library name and context name.
+   Refer to an architecture, by the entity's name and the architecture's: ``Counter.rtl``.
 
+.. rst:role:: vhdl:pack
 
-vhdl:ent
-********
+   Refer to a package.
 
-.. rst:role:: ent
+.. rst:role:: vhdl:config
 
-   Reference a context by library name and entity name.
-
-
-vhdl:arch
-*********
-
-.. rst:role:: arch
-
-   Reference a context by library name, entity name and architecture name.
+   Refer to a configuration.
 
 
-vhdl:pack
-*********
+Declarations
+************
 
-.. rst:role:: pack
+.. rst:role:: vhdl:type
 
-   Reference a context by library name and package name.
+   Refer to a type or subtype, e.g. ``StopWatch_pkg.T_STATE``.
 
+.. rst:role:: vhdl:const
 
-vhdl:packbody
-*************
+   Refer to a constant.
 
-.. rst:role:: packbody
+.. rst:role:: vhdl:func
 
-   Reference a context by library name and package name.
+   Refer to a function, optionally with its signature.
 
+.. rst:role:: vhdl:proc
 
-vhdl:config
-***********
+   Refer to a procedure, optionally with its signature.
 
-.. rst:role:: config
+.. rst:role:: vhdl:generic
 
-   Reference a context by library name and configuration name.
+   Refer to a generic, by the entity's or package's name and the generic's: ``Counter.BITS``.
+
+.. rst:role:: vhdl:port
+
+   Refer to a port, by the entity's name and the port's: ``Counter.Clock``.

@@ -1,8 +1,8 @@
-.. _SRCLICENSE:
+.. _CODELICENSE:
 
-.. Note:: This is a local copy of the `Apache License Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`__.
+.. note:: This is a local copy of the `Apache License Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`__.
 
-.. Attention:: This **Apache License, 2.0** applies to all **source and configuration files of project**, **except documentation**.
+.. attention:: This **Apache License, 2.0** applies to all **source and configuration files of project**, **except documentation**.
 
 Apache License 2.0
 ##################
