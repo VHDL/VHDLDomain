@@ -53,6 +53,7 @@ design, a library or a design unit from the model, and a role refers to what a d
   ``:vhdl:port:``
 * Indices: ``vhdl-entities``, ``vhdl-packages``, ``vhdl-subprograms``, ``vhdl-types``
 * Configuration value ``vhdl_designs``
+* Generated pages per library and design unit, for a design declared with ``pages`` (see :mod:`VHDLDomain.Pages`)
 
 .. rubric:: Names
 
@@ -101,6 +102,7 @@ from VHDLDomain.DesignUnit import ConfigurationDirective, ContextDirective, Enti
 from VHDLDomain.Directive  import DesignDirective, LibraryDirective
 from VHDLDomain.Frontend   import DesignConfiguration, VHDLDomainException
 from VHDLDomain.Index      import EntityIndex, PackageIndex, SubprogramIndex, TypeIndex
+from VHDLDomain.Pages      import DesignPages
 
 
 __all__ = ["OBJECT_TYPES", "ROLES"]
@@ -283,15 +285,19 @@ class VHDLDomain(Domain):
 		"""
 		return self._designs
 
-	def AddDesign(self, name: str, design: Design) -> None:
+	def AddDesign(self, name: str, design: Design, pages: Nullable[str] = None, source: Nullable[Path] = None) -> None:
 		"""
-		Add a design, which the directives can describe.
+		Add a design, which the directives can describe, and generate its pages.
 
 		Besides the designs of ``vhdl_designs``, a design read by another frontend can be added, by a handler of Sphinx'
 		``builder-inited`` event in :file:`conf.py`.
 
 		:param name:                 The design's name, as directives and roles name it.
 		:param design:               The design.
+		:param pages:                Optional, document name the design's pages are generated below. Default: ``None``,
+		                             no pages.
+		:param source:               Optional, the file or directory Sphinx regards as the pages' source. Default:
+		                             ``None``, the Sphinx source directory.
 		:raises ValueError:          If parameter 'name' is ``None`` or empty.
 		:raises TypeError:           If parameter 'name' is not of type :class:`str`.
 		:raises ValueError:          If parameter 'design' is ``None``.
@@ -318,6 +324,9 @@ class VHDLDomain(Domain):
 			raise VHDLDomainException(f"Design '{name}' was added already.")
 
 		self._designs[normalizedName] = design
+		if pages is not None:
+			source = Path(self.env.srcdir) if source is None else source
+			DesignPages.AddPages(self.env, name, design, pages, source)
 
 	def GetDesign(self, name: str) -> Nullable[Design]:
 		"""
@@ -554,7 +563,8 @@ def readDesigns(sphinx: Sphinx) -> None:
 	for name, value in sphinx.config.vhdl_designs.items():
 		try:
 			configuration = DesignConfiguration.Parse(name, value, Path(sphinx.srcdir))
-			domain.AddDesign(configuration.Name, configuration.Load())
+			design =        configuration.Load()
+			domain.AddDesign(configuration.Name, design, configuration.Pages, configuration.Directory)
 		except (VHDLDomainException, MissingDependencyError) as ex:
 			notes = "".join(f"\n  {note}" for note in getattr(ex, "__notes__", []))
 			_logger.error(f"Design '{name}' not read: {ex}{notes}", type=VHDLDomain.name, subtype="design")
@@ -572,7 +582,10 @@ def setup(sphinx: Sphinx) -> dict[str, Any]:
 	for configName, (default, rebuild, types) in VHDLDomain.configValues.items():
 		sphinx.add_config_value(f"{VHDLDomain.name}_{configName}", default, rebuild, types)
 
+	sphinx.connect("builder-inited", DesignPages.Reset)
 	sphinx.connect("builder-inited", readDesigns)
+	sphinx.connect("env-before-read-docs", DesignPages.GenerateAll)
+	sphinx.connect("html-page-context", DesignPages.HideSource)
 
 	return {
 		"version":             __version__,

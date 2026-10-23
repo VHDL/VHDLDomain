@@ -73,6 +73,13 @@ class Parse(Testcase):
 
 		self.assertEqual(Path("/doc").resolve(), configuration.Directory)
 		self.assertEqual({}, configuration.Libraries)
+		self.assertIsNone(configuration.Pages)
+
+	def test_Pages(self) -> None:
+		"""Surrounding slashes are removed from the document name."""
+		configuration = DesignConfiguration.Parse("StopWatch", {"pages": "/designs/StopWatch/"}, Path("/doc"))
+
+		self.assertEqual("designs/StopWatch", configuration.Pages)
 
 	def test_Errors(self) -> None:
 		for name, value, message in (
@@ -86,6 +93,9 @@ class Parse(Testcase):
 			("D", {"libraries": {"": []}},          "vhdl_designs['D'].libraries: Library name is empty."),
 			("D", {"libraries": {"lib": "a.vhdl"}}, "vhdl_designs['D'].libraries['lib']: Value is not a list."),
 			("D", {"libraries": {"lib": [1]}},      "vhdl_designs['D'].libraries['lib']: File is not a string or a path."),
+			("D", {"pages": 1},                     "vhdl_designs['D'].pages: Value is not a string."),
+			("D", {"pages": "a/../b"},              "vhdl_designs['D'].pages: 'a/../b' is not a relative document name."),
+			("D", {"pages": "a\\b"},                "vhdl_designs['D'].pages: 'a\\b' is not a relative document name."),
 		):
 			with self.subTest(message=message):
 				with self.assertRaises(DesignConfigurationError) as context:
@@ -96,18 +106,19 @@ class Parse(Testcase):
 
 class Constructor(Testcase):
 	def test_Checks(self) -> None:
-		for name, directory, libraries, exception in (
-			(None,  Path("."), {},   ValueError),
-			(1,     Path("."), {},   TypeError),
-			("",    Path("."), {},   ValueError),
-			("D",   None,      {},   ValueError),
-			("D",   ".",       {},   TypeError),
-			("D",   Path("."), None, ValueError),
-			("D",   Path("."), [],   TypeError),
+		for name, directory, libraries, pages, exception in (
+			(None,  Path("."), {},   None, ValueError),
+			(1,     Path("."), {},   None, TypeError),
+			("",    Path("."), {},   None, ValueError),
+			("D",   None,      {},   None, ValueError),
+			("D",   ".",       {},   None, TypeError),
+			("D",   Path("."), None, None, ValueError),
+			("D",   Path("."), [],   None, TypeError),
+			("D",   Path("."), {},   1,    TypeError),
 		):
-			with self.subTest(name=name, directory=directory, libraries=libraries):
+			with self.subTest(name=name, directory=directory, libraries=libraries, pages=pages):
 				with self.assertRaises(exception):
-					DesignConfiguration(name, directory, libraries)
+					DesignConfiguration(name, directory, libraries, pages)
 
 
 class SourceFiles(Testcase):
