@@ -94,6 +94,7 @@ License
    Configuration/index
    Directives/index
    Roles/index
+   Indices/index
 
 .. raw:: latex
 
