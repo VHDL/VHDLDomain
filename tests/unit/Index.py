@@ -29,14 +29,14 @@
 # ==================================================================================================================== #
 #
 """Unit tests for the indices of the Sphinx domain ``vhdl``."""
-from textwrap             import dedent
+from textwrap              import dedent
 
-from sphinx.domains       import IndexEntry
+from sphinx.domains        import IndexEntry
 
-from VHDLDomain.Index     import EntityIndex, PackageIndex, SubprogramIndex, TypeIndex
+from VHDLDomain.Index      import EntityIndex, PackageIndex, SubprogramIndex, TypeIndex
 
 from tests.unit.DesignUnit import DesignUnitProject
-from tests.unit.Domain    import Project
+from tests.unit.Domain     import Project
 
 
 if __name__ == "__main__":  # pragma: no cover

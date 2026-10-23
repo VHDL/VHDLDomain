@@ -29,15 +29,15 @@
 # ==================================================================================================================== #
 #
 """Unit tests for reading the designs declared in ``vhdl_designs``."""
-from pathlib              import Path
-from tempfile             import TemporaryDirectory
-from unittest             import skipUnless
-from unittest.mock        import patch
+from pathlib                  import Path
+from tempfile                 import TemporaryDirectory
+from unittest                 import skipUnless
+from unittest.mock            import patch
 
-from pyTooling.Exceptions import MissingDependencyError
-from pyTooling.Testing    import Testcase
+from pyTooling.Exceptions     import MissingDependencyError
+from pyTooling.Testing        import Testcase
 
-from VHDLDomain.Frontend  import DesignConfiguration, DesignConfigurationError
+from VHDLDomain.Frontend      import DesignConfiguration, DesignConfigurationError
 
 try:
 	from pyGHDL.dom.NonStandard import Design as GHDLDesign  # noqa: F401
