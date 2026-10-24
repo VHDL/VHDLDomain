@@ -54,8 +54,8 @@ from pyTooling.MetaClasses       import abstractmethod
 from pyVHDLModel                 import Library
 from pyVHDLModel.Base            import identifiersOf
 from pyVHDLModel.DesignUnit      import Configuration, Context, DesignUnit, Entity, Package
-from pyVHDLModel.Interface       import GenericConstantInterfaceItem, GenericPackageInterfaceItem
-from pyVHDLModel.Interface       import GenericTypeInterfaceItem, PortSignalInterfaceItem
+from pyVHDLModel.Interface       import GenericConstantInterfaceItem, GenericPackageInterfaceItem, \
+                                        GenericTypeInterfaceItem, PortSignalInterfaceItem
 from pyVHDLModel.Object          import Constant, DeferredConstant
 from pyVHDLModel.Subprogram      import Function, Procedure
 from pyVHDLModel.Type            import BaseType, Subtype
