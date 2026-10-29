@@ -138,3 +138,73 @@ the mandatory dependencies too.
 
 .. dependency-table:: documentation
    :caption: Dependencies for building the documentation.
+
+
+.. _DEP/packaging:
+
+Packaging (Optional)
+********************
+
+Additional Python packages needed for installation package generation. These packages are only needed for developers or
+on a CI server.
+
+.. rubric:: Building an Installation Package
+
+:file:`pyproject.toml` lists them as build requirements (``[build-system]``), so ``build`` installs them into an
+isolated build environment itself.
+
+.. tab-set::
+
+   .. tab-item:: Linux/macOS
+      :sync: Linux
+
+      .. code-block:: bash
+
+         python3 -m build --wheel
+
+   .. tab-item:: Windows
+      :sync: Windows
+
+      .. code-block:: powershell
+
+         python -m build --wheel
+
+.. rubric:: Dependency List
+
+.. dependency-table:: packaging
+   :caption: Dependencies for generating an installation package.
+
+
+.. _DEP/publishing:
+
+Publishing (CI-Server only)
+***************************
+
+Additional Python packages needed for publishing the generated installation package to e.g, PyPI or any equivalent
+services. These packages are only needed for maintainers or on a CI server.
+
+.. rubric:: Manually Installing Publishing Requirements
+
+Use the :file:`dist/requirements.txt` file to install all dependencies via ``pip3``. The file will recursively
+install the mandatory dependencies too.
+
+.. tab-set::
+
+   .. tab-item:: Linux/macOS
+      :sync: Linux
+
+      .. code-block:: bash
+
+         pip3 install -U -r dist/requirements.txt
+
+   .. tab-item:: Windows
+      :sync: Windows
+
+      .. code-block:: powershell
+
+         pip install -U -r dist\requirements.txt
+
+.. rubric:: Dependency List
+
+.. dependency-table:: publishing
+   :caption: Dependencies for publishing the package.
