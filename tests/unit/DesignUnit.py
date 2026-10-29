@@ -52,10 +52,10 @@ CONF = dedent("""\
 	from pathlib                   import Path
 
 	from pyVHDLModel               import Design, Document
-	from pyVHDLModel.Base          import Mode
+	from pyVHDLModel.Base          import Direction, Mode, SimpleRange
 	from pyVHDLModel.Configuration import BlockConfiguration
 	from pyVHDLModel.DesignUnit    import Architecture, Configuration, Context, Entity, LibraryClause, Package
-	from pyVHDLModel.Expression    import IntegerLiteral
+	from pyVHDLModel.Expression    import FunctionCall, IntegerLiteral
 	from pyVHDLModel.Interface     import GenericConstantInterfaceItem, GenericTypeInterfaceItem
 	from pyVHDLModel.Interface     import ParameterConstantInterfaceItem, PortSimpleSignalInterfaceItem
 	from pyVHDLModel.Name          import SimpleName
@@ -91,7 +91,13 @@ CONF = dedent("""\
 		document._AddDesignUnit(Entity(
 			"Wide",
 			portItems=[
-				PortSimpleSignalInterfaceItem(("Value", ), Mode.Out, ConstrainedArraySubtypeSymbol(SimpleName("unsigned"), [])),
+				PortSimpleSignalInterfaceItem(
+					("Value", ), Mode.Out,
+					ConstrainedArraySubtypeSymbol(
+						SimpleName("unsigned"), [SimpleRange(IntegerLiteral(7), IntegerLiteral(0), Direction.DownTo)]
+					),
+					FunctionCall()
+				),
 			]
 		))
 		document._AddDesignUnit(Architecture("rtl", EntitySymbol(SimpleName("Counter")), documentation="-- The RTL model."))
@@ -214,17 +220,19 @@ class Entity(DesignUnitProject):
 		self.assertIn("<p>A counter.</p>", self._html("page"))
 
 	def test_Writer(self) -> None:
-		"""What pyVHDLModel can't write yet is written by its name, and warned about."""
+		"""What pyVHDLModel writes is written as VHDL; what it can't write yet is written as ``...``, and warned about."""
 		self._page(".. vhdl:entity:: Wide\n")
 
 		self.assertEqual(
 			[
-				"/src/page.rst:10: WARNING: vhdl:entity: pyVHDLModel can't write a 'ConstrainedArraySubtypeSymbol' yet, "
-				"written as 'unsigned'. [vhdl.writer]"
+				"/src/page.rst:10: WARNING: vhdl:entity: pyVHDLModel can't write a 'FunctionCall' yet, written as '...'. "
+				"[vhdl.writer]"
 			],
 			self._warningLines()
 		)
-		self.assertIn('<span class="pre">unsigned</span>', self._html("page"))
+		html = self._html("page")
+		self.assertIn('<span class="pre">unsigned(7</span>', html)
+		self.assertIn('<span class="pre">0)</span>', html)
 
 
 class Errors(DesignUnitProject):

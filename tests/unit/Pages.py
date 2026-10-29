@@ -49,12 +49,9 @@ if __name__ == "__main__":  # pragma: no cover
 	exit(1)
 
 
-#: The warning of the generated page of entity ``Wide``, whose port type pyVHDLModel can't write yet. The page's source
-#: is the Sphinx source directory, as the hand-built design's files don't exist.
-WIDE = (
-	"/src:4: WARNING: vhdl:entity: pyVHDLModel can't write a 'ConstrainedArraySubtypeSymbol' yet, written as 'unsigned'. "
-	"[vhdl.writer]"
-)
+#: The warning of the generated page of entity ``Wide``, whose port default pyVHDLModel can't write yet. The page's
+#: source is the Sphinx source directory, as the hand-built design's files don't exist.
+WIDE = "/src:4: WARNING: vhdl:entity: pyVHDLModel can't write a 'FunctionCall' yet, written as '...'. [vhdl.writer]"
 
 
 class GeneratedPages(DesignUnitProject):
