@@ -3,30 +3,41 @@
 StopWatch
 #########
 
-.. #
-   :ref:`vhdl-compindex`
-   :ref:`vhdl-packindex`
-   :ref:`vhdl-subindex`
-   :ref:`vhdl-typeindex`
+.. vhdl:design:: StopWatch
 
-.. #vhdl:describedesign::
+   A stop watch counting seconds and minutes on a 7-segment display.
 
 lib_Utilities
 *************
 
-.. vhdl:describeentity:: 	lib_Utilities.Counter
+.. vhdl:library:: lib_Utilities
 
-.. vhdl:describeentity:: 	lib_Utilities.Debouncer
+.. vhdl:package:: Utilities_pkg
 
-.. vhdl:describeentity:: 	lib_Utilities.sync_Bits
+.. vhdl:context:: Utilities_ctx
+
+.. vhdl:entity:: Counter
+
+.. vhdl:entity:: Debouncer
+
+.. vhdl:entity:: sync_Bits
+
 
 lib_StopWatch
 *************
 
-.. vhdl:describeentity:: 	lib_StopWatch.seg7_Encoder
+.. vhdl:library:: lib_StopWatch
 
-.. vhdl:describeentity:: 	lib_StopWatch.seg7_Display
+.. vhdl:package:: StopWatch_pkg
 
-.. vhdl:describeentity:: 	lib_StopWatch.StopWatch
+.. vhdl:context:: StopWatch_ctx
 
-.. vhdl:describeentity:: 	lib_StopWatch.toplevel
+.. vhdl:entity:: seg7_Encoder
+
+.. vhdl:entity:: seg7_Display
+
+.. vhdl:configuration:: seg7_Display_cfg
+
+.. vhdl:entity:: StopWatch
+
+.. vhdl:entity:: toplevel

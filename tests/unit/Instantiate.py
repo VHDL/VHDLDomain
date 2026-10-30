@@ -11,7 +11,7 @@
 #                                                                                                                      #
 # License:                                                                                                             #
 # ==================================================================================================================== #
-# Copyright 2017-2023 Patrick Lehmann - Boetzingen, Germany                                                            #
+# Copyright 2017-2026 Patrick Lehmann - Boetzingen, Germany                                                            #
 # Copyright 2016-2017 Patrick Lehmann - Dresden, Germany                                                               #
 #                                                                                                                      #
 # Licensed under the Apache License, Version 2.0 (the "License");                                                      #
@@ -30,10 +30,10 @@
 # ==================================================================================================================== #
 #
 """Instantiation tests for the VHDL domain."""
-from unittest import TestCase
+from pyTooling.Testing  import Testcase
 
-from pyVHDLModel import Library
-
+from pyVHDLModel        import Library
+from pyVHDLModel.Name   import SimpleName
 from pyVHDLModel.Symbol import LibraryReferenceSymbol
 
 
@@ -44,15 +44,16 @@ if __name__ == "__main__":  # pragma: no cover
 	exit(1)
 
 
-class Symbols(TestCase):
+class Symbols(Testcase):
 	def test_LibraryReferenceSymbol(self):
-		symbol = LibraryReferenceSymbol("Lib")
+		name = SimpleName("Lib")
+		symbol = LibraryReferenceSymbol(name)
 
-		self.assertEqual("Lib", symbol.Identifier)
-		self.assertEqual("lib", symbol.NormalizedIdentifier)
-		self.assertIs(symbol, symbol.Root)
-		self.assertIsNone(symbol.Prefix)
-		self.assertFalse(symbol.HasPrefix)
+		self.assertIs(name, symbol.Name)
+		self.assertEqual("Lib", symbol.Name.Identifier)
+		self.assertEqual("lib", symbol.Name.NormalizedIdentifier)
+		self.assertIs(name, symbol.Name.Root)
+		self.assertFalse(symbol.Name.HasPrefix)
 		self.assertFalse(symbol.IsResolved)
 
 		library = Library("liB")

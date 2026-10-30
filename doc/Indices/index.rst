@@ -1,27 +1,37 @@
-.. _Indices:
+.. _INDEX:
 
 Indices
 #######
 
-.. contents:: Table of Contents
-   :local:
+The domain creates an index page per kind of object: it lists the described objects - not every object of the
+designs -, grouped by the first letter of their name, each linking to its description. An entry names where the object
+is: the library of a design unit, the library and design unit of a declaration - preceded by the design, if the
+documentation describes several. A subprogram's entry shows its signature, so its overloads are told apart.
 
-Component Index
-***************
+.. list-table::
+   :header-rows: 1
 
-This index can be referenced via ``:ref:`vhdl-compindex```
+   * - Index
+     - Lists
+     - Reference
+   * - Entity Index
+     - entities
+     - ``:ref:`vhdl-entities```
+   * - Package Index
+     - packages
+     - ``:ref:`vhdl-packages```
+   * - Subprogram Index
+     - functions and procedures
+     - ``:ref:`vhdl-subprograms```
+   * - Type Index
+     - types and subtypes
+     - ``:ref:`vhdl-types```
 
-Package Index
-*************
+An index can be listed in a table of contents by its name, e.g. ``vhdl-entities``:
 
-This index can be referenced via ``:ref:`vhdl-packindex```
+.. code-block:: rst
 
-Subprogram Index
-****************
+   .. toctree::
 
-This index can be referenced via ``:ref:`vhdl-subindex```
-
-Type Index
-**********
-
-This index can be referenced via ``:ref:`vhdl-typeindex```
+      Entities <vhdl-entities>
+      Subprograms <vhdl-subprograms>

@@ -11,7 +11,7 @@
 #                                                                                                                      #
 # License:                                                                                                             #
 # ==================================================================================================================== #
-# Copyright 2017-2023 Patrick Lehmann - Boetzingen, Germany                                                            #
+# Copyright 2017-2026 Patrick Lehmann - Boetzingen, Germany                                                            #
 # Copyright 2016-2017 Patrick Lehmann - Dresden, Germany                                                               #
 #                                                                                                                      #
 # Licensed under the Apache License, Version 2.0 (the "License");                                                      #
@@ -30,582 +30,311 @@
 # ==================================================================================================================== #
 #
 """
-**A Sphinx domain providing VHDL language support.**
+The directives of the domain ``vhdl``: each describes an object of a design read into the domain.
 
-This module contains all the directives of the VHDL domain.
+``vhdl:design`` and ``vhdl:library`` set the design and library the following directives and references of the
+document are in, until the next one.
 """
-from enum import Flag, auto
-from textwrap import dedent
-from typing import List, Dict, Tuple
+from __future__                  import annotations
 
-from docutils import nodes
-from docutils.nodes import Node, section, table, tgroup
-from sphinx.directives import ObjectDescription
-from sphinx.domains import Domain
-from pyTooling.Decorators import export
-from pyGHDL.dom.DesignUnit import Entity
-from pyGHDL.dom.InterfaceItem import GenericConstantInterfaceItem, PortSignalInterfaceItem
+from typing                      import TYPE_CHECKING, ClassVar, Optional as Nullable
 
+from docutils                    import nodes
+from docutils.nodes              import Node
+from docutils.parsers.rst        import directives
+from sphinx                      import addnodes
+from sphinx.util.docutils        import SphinxDirective
+from sphinx.util.logging         import getLogger
+from sphinx.util.nodes           import make_id
 
-@export
-class ParameterStyle(Flag):
-	Never = auto()
-	Table = auto()
-	Sections = auto()
+from pyTooling.Decorators        import export
 
+from pyVHDLModel                 import Design, Library
+from pyVHDLModel.Formatting.VHDL import VHDLWriter
 
-@export
-class ArchitecturesStyle(Flag):
-	Never = auto()
-	Multiple = auto()
-	Always = auto()
+from VHDLDomain.Pages            import DesignPages
+
+if TYPE_CHECKING:  # pragma: no cover
+	from VHDLDomain                import VHDLDomain
 
 
-@export
-def strip(option: str):
-	return option.strip().lower()
+_logger = getLogger(__name__)
 
 
 @export
-class BaseDirective(ObjectDescription):
-	has_content: bool = False
+class VHDLDirective(SphinxDirective):
 	"""
-	A boolean; ``True`` if content is allowed.
-
-	Client code must handle the case where content is required but not supplied (an empty content list will be supplied).
+	Base-class of the directives of domain ``vhdl``: access to the domain, the current design and library, and the
+	registration of a described object.
 	"""
 
-	required_arguments = 0
-	"""Number of required directive arguments."""
+	_WARNING_TYPE: ClassVar[str] = "vhdl"  #: Type of the warnings the directives emit, the domain's name.
 
-	optional_arguments = 0
-	"""Number of optional arguments after the required arguments."""
+	directiveName: ClassVar[str]  #: Name the directive is invoked by, used in every warning.
 
-	final_argument_whitespace = False
-	"""A boolean, indicating if the final argument may contain whitespace."""
+	def _Domain(self) -> VHDLDomain:
+		"""
+		Return the domain ``vhdl``.
 
-	option_spec = None
-	"""
-	Mapping of option names to validator functions.
+		:returns: The domain.
+		"""
+		return self.env.get_domain("vhdl")  # type: ignore[return-value]
 
-	A dictionary, mapping known option names to conversion functions such as :py:class:`int` or :py:class:`float`
-	(default: {}, no options). Several conversion functions are defined in the ``directives/__init__.py`` module.
+	def _CurrentDesign(self) -> tuple[Nullable[str], Nullable[Design]]:
+		"""
+		Return the design the directive is in: the one of option ``:design:``, else the current one.
 
-	Option conversion functions take a single parameter, the option argument (a string or :py:class:`None`), validate it
-	and/or convert it to the appropriate form. Conversion functions may raise :py:exc:`ValueError` and
-	:py:exc:`TypeError` exceptions.
-	"""
+		A missing design is warned about.
 
-	# def __init__(self, *args, **kwargs):
-	# 	super().__init__(*args, **kwargs)
+		:returns: The design's name and the design, or ``None`` and ``None`` if no design is current, or the name and
+		          ``None`` if the design wasn't read.
+		"""
+		if (name := self.options.get("design", self.env.ref_context.get("vhdl:design", None))) is None:
+			_logger.warning(
+				f"{self.directiveName}: No design: give option ':design:' or place a 'vhdl:design' before it.",
+				location=self.get_location(), type=self._WARNING_TYPE, subtype="design"
+			)
+			return None, None
 
-
-@export
-class DescribeDesign(BaseDirective):
-	"""
-	This directive will be replaced by the description of a VHDL design.
-	"""
-
-	has_content = False
-	required_arguments = 0
-	optional_arguments = 0
-
-	def run(self) -> List[Node]:
-		from VHDLDomain import Design
-
-		vhdlDomain: Domain = self.env.domains["vhdl"]
-		designs: Dict[str, Design] = vhdlDomain.data["designs"]
-		design = designs["StopWatch"]
-
-		paragraph = nodes.paragraph(text="Describe design")
-
-		items = []
-		for document in design.Documents:
-			term = nodes.term(text=f"{document.ShortPath}")
-			description = nodes.paragraph(text=f"{document.Documentation}")
-			description = nodes.literal_block(text=f"{document.Documentation}")
-			definition = nodes.definition("", description)
-
-			items.append(nodes.definition_list_item("", term, definition))
-
-		definitionList = nodes.definition_list("", *items)
-
-		return [paragraph, definitionList]
-
-
-@export
-class DescribeLibrary(BaseDirective):
-	"""
-	This directive will be replaced by the description of a VHDL library.
-	"""
-
-	has_content = False
-	required_arguments = 0
-	optional_arguments = 0
-
-	def run(self) -> List[Node]:
-		from VHDLDomain import Design
-
-		vhdlDomain: Domain = self.env.domains["vhdl"]
-		designs: Dict[str, Design] = vhdlDomain.data["designs"]
-		design = designs["StopWatch"]
-
-		paragraph = nodes.paragraph(text="Describe library")
-
-		return [paragraph]
-
-
-@export
-class DescribeDocument(BaseDirective):
-	"""
-	This directive will be replaced by the description of a VHDL document.
-	"""
-
-	has_content = False
-	required_arguments = 0
-	optional_arguments = 0
-
-	def run(self) -> List[Node]:
-		from VHDLDomain import Design
-
-		vhdlDomain: Domain = self.env.domains["vhdl"]
-		designs: Dict[str, Design] = vhdlDomain.data["designs"]
-		design = designs["StopWatch"]
-
-
-		paragraph = nodes.paragraph(text="Describe document")
-
-		return [paragraph]
-
-
-@export
-class DescribeContext(BaseDirective):
-	"""
-	This directive will be replaced by the description of a VHDL context.
-	"""
-
-	has_content = False
-	required_arguments = 0
-	optional_arguments = 1
-
-	option_spec = {
-		"referencedby":  strip,
-	}
-
-	def run(self) -> List[Node]:
-		from VHDLDomain import Design
-
-		vhdlDomain: Domain = self.env.domains["vhdl"]
-		designs: Dict[str, Design] = vhdlDomain.data["designs"]
-		design = designs["StopWatch"]
-
-		paragraph = nodes.paragraph(text="Describe context")
-
-		return [paragraph]
-
-
-@export
-class DescribeEntity(BaseDirective):
-	"""
-	This directive will be replaced by the description of a VHDL entity.
-	"""
-
-	has_content = True
-	required_arguments = 0
-	optional_arguments = 4
-
-	option_spec = {
-		"genericlist":   strip,
-		"portlist":      strip,
-		"architectures": strip,
-		"referencedby":  strip,
-	}
-
-	def _PrepareTable(self, columns: Dict[str, int], classes: List[str]) -> Tuple[table, tgroup]:
-		tableGroup = nodes.tgroup(cols=(len(columns)))
-		table = nodes.table("", tableGroup, classes=classes)
-
-		tableRow = nodes.row()
-		for columnTitle, width in columns.items():
-			tableGroup += nodes.colspec(colwidth=width)
-			tableRow += nodes.entry("", nodes.paragraph(text=columnTitle))
-
-		tableGroup += nodes.thead("", tableRow)
-
-		return table, tableGroup
-
-	def CreateDefinitionSection(self, entity: Entity) -> section:
-		title = nodes.title(text="Definition")
-		paragraph = nodes.literal_block(text=dedent(f"""\
-		entity {entity.Identifier} is
-		  generics (
-		    MODULO : positive;
-		    BITS   : positive := log2(MODULO)
-		  );
-		  ports (
-		    Clock : std_logic;
-		    Reset : std_logic
-		  );
-		end entity;
-		"""))
-		section = nodes.section(
-			"",
-			title,
-			paragraph,
-			ids=[f"{entity.NormalizedIdentifier}-definition"],
-			classes=["vhdl", "vhdl-entity-definition-section"]
-		)
-
-		return section
-
-	def CreateGenericSection(self, entity: Entity, style: ParameterStyle) -> section:
-		content = [
-			nodes.title(text="Generics")
-		]
-
-		if True:
-			content.append(nodes.paragraph(text="list of all generics"))
-
-		if style is ParameterStyle.Table:
-			table, tableGroup = self._PrepareTable(
-				columns={
-					"Generic Name": 2,
-					"Type": 1,
-					"Default Value": 4,
-				},
-				classes=["vhdl", "vhdl-generic-table"]
+		if (design := self._Domain().GetDesign(name)) is None:
+			_logger.warning(
+				f"{self.directiveName}: Design '{name}' was not read.",
+				location=self.get_location(), type=self._WARNING_TYPE, subtype="design"
 			)
 
-			tableBody = nodes.tbody()
-			tableGroup += tableBody
+		return name, design
 
-			for generic in entity.GenericItems:
-				cellGenericName = nodes.entry()
-				cellGenericType = nodes.entry()
-				cellDefaultValue = nodes.entry()
-				tableBody += nodes.row("", cellGenericName, cellGenericType, cellDefaultValue)
+	def _NodeID(self, objectType: str, qualifiedName: str) -> str:
+		"""
+		Return the anchor of a described object, unique in the document.
 
-				if isinstance(generic, GenericConstantInterfaceItem):
-					cellGenericName += nodes.paragraph(text=", ".join(generic.Identifiers))
-					cellGenericType += nodes.paragraph(text=generic.Documentation)
-					if generic.DefaultExpression is not None:
-						cellDefaultValue += nodes.paragraph(text="??")  # str(generic.DefaultExpression))
+		The anchor is built from the object type and the lower-case qualified name, e.g.
+		``vhdl-entity-stopwatch.lib_stopwatch.counter``.
 
-			content.append(table)
-		elif style is ParameterStyle.Sections:
-			for generic in entity.GenericItems:
-				if isinstance(generic, GenericConstantInterfaceItem):
-					genericSection = nodes.section(ids=[f"{entity.NormalizedIdentifier}-generic-{nID}" for nID in generic.NormalizedIdentifiers])
-					genericSection.append(nodes.title(text=", ".join(generic.Identifiers)))
-					genericSection.append(nodes.paragraph(text=generic.Documentation))
+		:param objectType:    The object type, as ``entity``.
+		:param qualifiedName: The object's qualified name, as ``StopWatch.lib_StopWatch.Counter``.
+		:returns:             The anchor, from the lower-case qualified name.
+		"""
+		return make_id(self.env, self.state.document, f"vhdl-{objectType}", qualifiedName.lower())
 
-					content.append(genericSection)
+	def _Target(self, objectType: str, qualifiedName: str, indexText: str) -> list[Node]:
+		"""
+		Create the target and the index entry of a described object, and register it in the domain.
 
-		section = nodes.section(
-			ids=[f"{entity.NormalizedIdentifier}-generics"],
-			classes=["vhdl", "vhdl-entity-generic-section"]
-		)
-		section.extend(content)
+		:param objectType:    The object type, as ``entity``.
+		:param qualifiedName: The object's qualified name, as ``StopWatch.lib_StopWatch.Counter``.
+		:param indexText:     The text of the object's entry in the general index.
+		:returns:             The index node and the target node.
+		"""
+		nodeID = self._NodeID(objectType, qualifiedName)
+		target = nodes.target("", "", ids=[nodeID])
+		self.set_source_info(target)
+		self.state.document.note_explicit_target(target)
+		self._Domain().NoteObject(objectType, qualifiedName, nodeID, target)
 
-		return section
+		return [addnodes.index(entries=[("single", indexText, nodeID, "", None)]), target]
 
-	def CreatePortSection(self, entity: Entity, style: ParameterStyle) -> section:
-		content = [
-			nodes.title(text="Ports")
-		]
+	def _Documentation(self, documentation: Nullable[str]) -> list[Node]:
+		"""
+		Parse an object's documentation comment as reStructuredText.
 
-		if True:
-			content.append(nodes.paragraph(text="list of all ports"))
+		A line's leading comment marker ``--`` and the space following it are removed, so a comment block reads as text.
 
-		if style is ParameterStyle.Table:
-			table, tableGroup = self._PrepareTable(
-				columns={
-					"Port Name": 2,
-					"Direction": 1,
-					"Type": 1,
-					"Default Value": 3
-				},
-				classes=["vhdl", "vhdl-port-table"]
+		:param documentation: The documentation comment, as the frontend extracted it, or ``None``.
+		:returns:             The parsed nodes, none for no or an empty comment.
+		"""
+		if documentation is None:
+			return []
+
+		lines = []
+		for line in documentation.splitlines():
+			line = line.strip()
+			if line.startswith("--"):
+				line = line[3:] if line.startswith("-- ") else line[2:]
+
+			lines.append(line)
+
+		if (text := "\n".join(lines).strip()) == "":
+			return []
+
+		return self.parse_text_to_nodes(text)
+
+	def _Format(self, element: object) -> str:
+		"""
+		Write a model element - a symbol, an expression - as VHDL source text.
+
+		An element the writer of pyVHDLModel can't write yet is written by its name, if it has one, and warned about.
+
+		:param element: The model element.
+		:returns:       The VHDL source text.
+		"""
+		try:
+			return VHDLWriter().Format(element)  # type: ignore[arg-type]
+		except NotImplementedError:
+			text = VHDLWriter().Format(name) if (name := getattr(element, "Name", None)) is not None else "..."
+			_logger.warning(
+				f"{self.directiveName}: pyVHDLModel can't write a '{type(element).__name__}' yet, written as '{text}'.",
+				location=self.get_location(), type=self._WARNING_TYPE, subtype="writer"
+			)
+			return text
+
+
+@export
+class DesignDirective(VHDLDirective):
+	"""
+	The directive ``vhdl:design``: a design's target and index entry, and the current design of the document.
+
+	.. code-block:: rst
+
+	   .. vhdl:design:: StopWatch
+
+	The argument is the design's name, a key of ``vhdl_designs``. Every directive and reference following it in the
+	document is in this design. The directive writes no visible output except its content; placed above a page's title,
+	its target is the title, as a label is. With ``:no-index:``, it only makes the design the current one - for the
+	other pages of a design.
+
+	A design with generated pages (key ``pages`` in ``vhdl_designs``) lists its library pages in a hidden table of
+	contents, so they are below the directive's document in the navigation.
+	"""
+
+	directiveName: ClassVar[str] = "vhdl:design"  #: Name the directive is invoked by.
+
+	has_content =        True                            #: The content describes the design.
+	required_arguments = 1                               #: The design's name.
+	option_spec =        {"no-index": directives.flag}   #: Make the design current, without a target and index entry.
+
+	def run(self) -> list[Node]:
+		"""
+		Register the design, make it the current one, and parse the content.
+
+		:returns: An index node, the design's target and the content's nodes.
+		"""
+		name = self.arguments[0].strip()
+		self.env.ref_context["vhdl:design"] = name
+		self.env.ref_context.pop("vhdl:library", None)
+
+		if self._Domain().GetDesign(name) is None:
+			_logger.warning(
+				f"{self.directiveName}: Design '{name}' was not read.",
+				location=self.get_location(), type=self._WARNING_TYPE, subtype="design"
 			)
 
-			tableBody = nodes.tbody()
-			tableGroup += tableBody
+		result = [] if "no-index" in self.options else self._Target("design", name, f"{name} (VHDL design)")
+		result.extend(self.parse_content_to_nodes())
+		if "no-index" not in self.options and DesignPages.HasPages(name.lower()):
+			result.append(DesignPages.GetPages(name.lower()).TableOfContents(self.env.docname))
 
-			for port in entity.PortItems:
-				cellPortName = nodes.entry()
-				cellPortDirection = nodes.entry()
-				cellPortType = nodes.entry()
-				cellDefaultValue = nodes.entry()
-				tableBody += nodes.row("", cellPortName, cellPortDirection, cellPortType, cellDefaultValue)
+		return result
 
-				if isinstance(port, PortSignalInterfaceItem):
-					cellPortName += nodes.paragraph(text=", ".join(port.Identifiers))
-					cellPortDirection += nodes.paragraph(text=str(port.Mode))
-					cellPortType += nodes.paragraph(text=port.Documentation)
-					if port.DefaultExpression is not None:
-						cellDefaultValue += nodes.paragraph(text=str(port.DefaultExpression))
 
-			content.append(table)
-		elif style is ParameterStyle.Sections:
-			for port in entity.PortItems:
-				if isinstance(port, PortSignalInterfaceItem):
-					portSection = nodes.section(ids=[f"{entity.NormalizedIdentifier}-port-{nID}" for nID in port.NormalizedIdentifiers])
-					portSection.append(nodes.title(text=", ".join(port.Identifiers)))
-					portSection.append(nodes.paragraph(text=port.Documentation))
+@export
+class LibraryDirective(VHDLDirective):
+	"""
+	The directive ``vhdl:library``: a library's target, index entry and design units, and the current library of the
+	document.
 
-					content.append(portSection)
+	.. code-block:: rst
 
-		section = nodes.section(
-			ids=[f"{entity.NormalizedIdentifier}-ports"],
-			classes=["vhdl", "vhdl-entity-port-section"]
-		)
-		section.extend(content)
+	   .. vhdl:library:: lib_StopWatch
+	      :design: StopWatch
 
-		return section
+	The argument is the library's name; without ``:design:``, the library is in the current design. Every directive and
+	reference following it in the document is in this library. The directive writes the library's documentation, its
+	content, and a table of the library's design units - each name referring to the unit's description, if there is
+	one. With ``:no-index:``, it only makes the library the current one, and writes nothing.
+	"""
 
-	def CreateArchitectureSection(self, entity: Entity) -> section:
-		title = nodes.title(text="Architectures")
-		paragraph = nodes.paragraph(text=", ".join(entity.Architectures))
-		section = nodes.section(
+	directiveName: ClassVar[str] = "vhdl:library"  #: Name the directive is invoked by.
+
+	has_content =        True  #: The content describes the library.
+	required_arguments = 1     #: The library's name.
+	option_spec =        {
+		"design":   directives.unchanged_required,
+		"no-index": directives.flag,
+	}  #: The design, if not the current one; ``:no-index:`` makes the library current, without describing it.
+
+	#: The kinds of design units the table lists, with the collection of :class:`~pyVHDLModel.Library` and the role.
+	_UNIT_KINDS: ClassVar[tuple[tuple[str, str, str], ...]] = (
+		("Context",       "Contexts",       "ctx"),
+		("Entity",        "Entities",       "ent"),
+		("Package",       "Packages",       "pack"),
+		("Configuration", "Configurations", "config"),
+	)
+
+	def run(self) -> list[Node]:
+		"""
+		Register the library, make it the current one, and write its documentation, content and design units.
+
+		:returns: An index node, the library's target, and the library's description.
+		"""
+		name = self.arguments[0].strip()
+		designName, design = self._CurrentDesign()
+		if designName is None:
+			return []
+
+		self.env.ref_context["vhdl:design"] =  designName
+		self.env.ref_context["vhdl:library"] = name
+		if "no-index" in self.options:
+			return []
+
+		result = self._Target("library", f"{designName}.{name}", f"{name} (VHDL library in {designName})")
+		if design is None:
+			return result
+
+		if (library := design.Libraries.get(name.lower(), None)) is None:
+			_logger.warning(
+				f"{self.directiveName}: Library '{name}' is not in design '{designName}'.",
+				location=self.get_location(), type=self._WARNING_TYPE, subtype="library"
+			)
+			return result
+
+		if library.Documentation is not None:
+			result.append(nodes.paragraph(library.Documentation, library.Documentation))
+
+		result.extend(self.parse_content_to_nodes())
+		if (table := self._DesignUnits(library)) is not None:
+			result.append(table)
+
+		return result
+
+	def _DesignUnits(self, library: Library) -> Nullable[nodes.table]:
+		"""
+		Create the table of a library's design units: kind and name, the name referring to the unit's description.
+
+		:param library: The library.
+		:returns:       The table, or ``None`` if the library has no design units.
+		"""
+		rows: list[nodes.row] = []
+		for kindName, collectionName, roleName in self._UNIT_KINDS:
+			for unit in getattr(library, collectionName).values():
+				reference = addnodes.pending_xref(
+					"", refdomain="vhdl", reftype=roleName, reftarget=f"{library.Identifier}.{unit.Identifier}",
+					refexplicit=True, refwarn=False, refdoc=self.env.docname
+				)
+				reference["vhdl:design"] =  self.env.ref_context["vhdl:design"]
+				reference["vhdl:library"] = library.Identifier
+				reference += nodes.literal(unit.Identifier, unit.Identifier)
+
+				rows.append(nodes.row(
+					"",
+					nodes.entry("", nodes.paragraph(kindName, kindName)),
+					nodes.entry("", nodes.paragraph("", "", reference))
+				))
+
+		if len(rows) == 0:
+			return None
+
+		table = nodes.table("", classes=["vhdl", "vhdl-library-units"])
+		table += (tableGroup := nodes.tgroup(cols=2))
+		tableGroup += nodes.colspec(colwidth=20)
+		tableGroup += nodes.colspec(colwidth=80)
+		tableGroup += (tableHeader := nodes.thead())
+		tableHeader += nodes.row(
 			"",
-			title,
-			paragraph,
-			ids=[f"{entity.NormalizedIdentifier}-architectures"],
-			classes=["vhdl", "vhdl-entity-architectures-section"]
+			nodes.entry("", nodes.paragraph("Kind", "Kind")),
+			nodes.entry("", nodes.paragraph("Design Unit", "Design Unit"))
 		)
+		tableGroup += (tableBody := nodes.tbody())
+		tableBody.extend(rows)
 
-		return section
-
-	def CreateReferencedBySection(self, entity: Entity) -> section:
-		title = nodes.title(text="Referenced By")
-		paragraph = nodes.paragraph(text="list of usages and back links")
-		section = nodes.section(
-			"",
-			title,
-			paragraph,
-			ids=[f"{entity.NormalizedIdentifier}-referenced-by"],
-			classes=["vhdl", "vhdl-entity-referencedby-section"]
-		)
-
-		return section
-
-	def CreateInnerHierarchySection(self, entity: Entity) -> section:
-		title = nodes.title(text="Inner Hierarchy")
-		paragraph = nodes.paragraph(text="diagram of inner instances")
-		section = nodes.section(
-			"",
-			title,
-			paragraph,
-			ids=[f"{entity.NormalizedIdentifier}-hierarchy"],
-			classes=["vhdl", "vhdl-entity-innerhierarchy-section"]
-		)
-
-		return section
-
-	def ParseParameterStyleOption(self, optionName: str) -> ParameterStyle:
-		try:
-			option = self.options[optionName]
-		except KeyError:
-			try:
-				option = self.defaultValues[optionName]
-			except KeyError:
-				return ParameterStyle.Table
-
-		if option == "never":
-			return ParameterStyle.Never
-		elif option == "table":
-			return ParameterStyle.Table
-		elif option == "sections":
-			return ParameterStyle.Sections
-		else:
-			raise ValueError(f"value '{option}' is not in list of choices: never, table, sections.")
-
-	def ParseArchitecturesStyleOption(self, optionName: str) -> ArchitecturesStyle:
-		try:
-			option = self.options[optionName]
-		except KeyError:
-			try:
-				option = self.defaultValues[optionName]
-			except KeyError:
-				return ArchitecturesStyle.Multiple
-
-		if option == "never":
-			return ArchitecturesStyle.Never
-		elif option == "multiple":
-			return ArchitecturesStyle.Multiple
-		elif option == "always":
-			return ArchitecturesStyle.Always
-		else:
-			raise ValueError(f"value '{option}' is not in list of choices: never, multiple, always.")
-
-	def ParseBooleanOption(self, optionName: str, default: bool) -> bool:
-		try:
-			option = self.options[optionName]
-		except KeyError:
-			try:
-				option = self.defaultValues[optionName]
-			except KeyError:
-				return default
-
-		if option in ("yes", "true"):
-			return True
-		elif option in ("no", "false"):
-			return False
-		else:
-			raise ValueError(f"Value '{option}' not supported for a boolean value (yes/true, no/false).")
-
-	def run(self) -> List[Node]:
-		from VHDLDomain import Design
-
-		if len(self.arguments) == 1:
-			try:
-				libraryName, entityName = self.arguments[0].split(".")
-			except ValueError:
-				raise ValueError(f"Parameter to 'vhdl:describeentity' has incorrect format.")
-		else:
-			raise ValueError(f"Parameter to 'vhdl:describeentity' directive has too many content lines ({len(self.arguments)}).")
-
-		# TODO: Can this be done in an __init__ or so?
-		self.directiveName = self.name.split(":")[1]
-		self.defaultValues = self.env.config.vhdl_defaults[self.directiveName]
-
-		optionDefinition = self.ParseBooleanOption("definition", True)
-		optionGenerics = self.ParseParameterStyleOption("genericlist")
-		optionPorts = self.ParseParameterStyleOption("portlist")
-		optionArchitectures = self.ParseArchitecturesStyleOption("architectures")
-		optionReferencedBy = self.ParseBooleanOption("referencedby", True)
-		optionHierarchy = self.ParseBooleanOption("hierarchy", True)
-
-		vhdlDomain: Domain = self.env.domains["vhdl"]
-		designs: Dict[str, Design] = vhdlDomain.data["designs"]
-		design = designs["StopWatch"]
-		library = design.GetLibrary(libraryName.lower())
-		entity = library.Entities[entityName.lower()]
-
-		content = [
-			nodes.title(text=entity.Identifier),
-			nodes.paragraph(text=entity.Documentation)
-		]
-
-		if optionDefinition:
-			content.append(self.CreateDefinitionSection(entity))
-
-		if optionGenerics is not ParameterStyle.Never:
-			content.append(self.CreateGenericSection(entity, optionGenerics))
-		if optionPorts is not ParameterStyle.Never:
-			content.append(self.CreatePortSection(entity, optionPorts))
-
-		if (optionArchitectures is ArchitecturesStyle.Always or
-			(optionArchitectures is ArchitecturesStyle.Multiple and len(entity.Architectures) > 1)):
-			content.append(self.CreateArchitectureSection(entity))
-
-		if optionReferencedBy:
-			content.append(self.CreateReferencedBySection(entity))
-
-		if optionHierarchy:
-			content.append(self.CreateInnerHierarchySection(entity))
-
-		entitySection = nodes.section(
-			ids=[entity.NormalizedIdentifier],
-			classes=["vhdl", "vhdl-entity-section"]
-		)
-		entitySection.extend(content)
-
-		return [entitySection]
-
-
-@export
-class DescribeArchitecture(BaseDirective):
-	"""
-	This directive will be replaced by the description of a VHDL architecture.
-	"""
-
-	has_content = False
-	required_arguments = 0
-	optional_arguments = 0
-
-	def run(self) -> List[Node]:
-		from VHDLDomain import Design
-
-		vhdlDomain: Domain = self.env.domains["vhdl"]
-		designs: Dict[str, Design] = vhdlDomain.data["designs"]
-		design = designs["StopWatch"]
-
-		paragraph = nodes.paragraph(text="Describe architecture")
-
-		return [paragraph]
-
-
-@export
-class DescribePackage(BaseDirective):
-	"""
-	This directive will be replaced by the description of a VHDL package.
-	"""
-
-	has_content = False
-	required_arguments = 0
-	optional_arguments = 2
-
-	option_spec = {
-		"genericlist":   strip,
-		"referencedby":  strip,
-	}
-
-	def run(self) -> List[Node]:
-		from VHDLDomain import Design
-
-		vhdlDomain: Domain = self.env.domains["vhdl"]
-		designs: Dict[str, Design] = vhdlDomain.data["designs"]
-		design = designs["StopWatch"]
-
-		paragraph = nodes.paragraph(text="Describe package")
-
-		return [paragraph]
-
-
-@export
-class DescribePackageBody(BaseDirective):
-	"""
-	This directive will be replaced by the description of a VHDL package body.
-	"""
-
-	has_content = False
-	required_arguments = 0
-	optional_arguments = 0
-
-	def run(self) -> List[Node]:
-		from VHDLDomain import Design
-
-		vhdlDomain: Domain = self.env.domains["vhdl"]
-		designs: Dict[str, Design] = vhdlDomain.data["designs"]
-		design = designs["StopWatch"]
-
-		paragraph = nodes.paragraph(text="Describe package body")
-
-		return [paragraph]
-
-
-@export
-class DescribeConfiguration(BaseDirective):
-	"""
-	This directive will be replaced by the description of a VHDL configuration.
-	"""
-
-	has_content = False
-	required_arguments = 0
-	optional_arguments = 1
-
-	option_spec = {
-		"referencedby":  strip,
-	}
-
-	def run(self) -> List[Node]:
-		from VHDLDomain import Design
-
-		vhdlDomain: Domain = self.env.domains["vhdl"]
-		designs: Dict[str, Design] = vhdlDomain.data["designs"]
-		design = designs["StopWatch"]
-
-		paragraph = nodes.paragraph(text="Describe configuration")
-
-		return [paragraph]
+		return table

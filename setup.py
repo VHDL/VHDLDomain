@@ -11,7 +11,7 @@
 #                                                                                                                      #
 # License:                                                                                                             #
 # ==================================================================================================================== #
-# Copyright 2017-2023 Patrick Lehmann - Boetzingen, Germany                                                            #
+# Copyright 2017-2026 Patrick Lehmann - Boetzingen, Germany                                                            #
 # Copyright 2016-2017 Patrick Lehmann - Dresden, Germany                                                               #
 #                                                                                                                      #
 # Licensed under the Apache License, Version 2.0 (the "License");                                                      #
@@ -29,26 +29,44 @@
 # SPDX-License-Identifier: Apache-2.0                                                                                  #
 # ==================================================================================================================== #
 #
-"""Package installer for 'Sphinx domain providing VHDL language support'."""
+"""
+Package installer for 'A Sphinx domain providing VHDL language support'.
+"""
+from setuptools          import setup
+
 from pathlib             import Path
 from pyTooling.Packaging import DescribePythonPackageHostedOnGitHub, DEFAULT_CLASSIFIERS
+from pyTooling.Warning   import WarningCollector
 
 gitHubNamespace =        "VHDL"
 packageName =            "VHDLDomain"
 packageDirectory =       packageName
 packageInformationFile = Path(f"{packageDirectory}/__init__.py")
 
-DescribePythonPackageHostedOnGitHub(
-	packageName=packageName,
-	description="A Sphinx domain providing VHDL language support.",
-	gitHubNamespace=gitHubNamespace,
-	keywords="Python3 VHDL Language Domain",
-	sourceFileWithVersion=packageInformationFile,
-	developmentStatus="alpha",
-	classifiers=list(DEFAULT_CLASSIFIERS) + [
-		"Framework :: Sphinx :: Extension",
-		"Topic :: Documentation :: Sphinx",
-		"Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
-		"Topic :: Software Development :: Documentation",
-	]
-)
+with WarningCollector() as warnings:
+	setup(
+		**DescribePythonPackageHostedOnGitHub(
+			packageName=packageName,
+			description="A Sphinx domain providing VHDL language support.",
+			gitHubNamespace=gitHubNamespace,
+			keywords=["Python3", "VHDL", "Sphinx", "Sphinx Extension", "Sphinx Domain", "Documentation"],
+			unittestRequirementsFile=Path("tests/requirements.txt"),
+			sourceFileWithVersion=packageInformationFile,
+			classifiers=list(DEFAULT_CLASSIFIERS) + [
+				"Framework :: Sphinx :: Domain",
+				"Framework :: Sphinx :: Extension",
+				"Topic :: Documentation :: Sphinx",
+				"Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+				"Topic :: Software Development :: Documentation",
+			],
+			developmentStatus="alpha",
+			pythonVersions=("3.12", "3.13", "3.14", "3.15"),
+			dataFiles={
+				packageName: ["py.typed"]
+			},
+			debug=True
+		)
+	)
+
+for warning in warnings:
+	print(f"[setup.py] WARNING: {warning}")

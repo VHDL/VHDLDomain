@@ -1,183 +1,210 @@
-.. _dependency:
+.. _DEP:
 
-Dependency
-##########
+Dependencies
+############
 
-.. |img-VHDLDomain-lib-status| image:: https://img.shields.io/librariesio/release/pypi/VHDLDomain
-   :alt: Libraries.io status for latest release
-   :height: 22
-   :target: https://libraries.io/github/VHDL/VHDLDomain
+.. _DEP/package:
 
-+------------------------------------------+------------------------------------------+
-| `Libraries.io <https://libraries.io/>`_  | Requires.io                              |
-+==========================================+==========================================+
-| |img-VHDLDomain-lib-status|              | Service was shutdown                     |
-+------------------------------------------+------------------------------------------+
+VHDLDomain Package (Mandatory)
+******************************
 
+.. rubric:: Manually Installing Package Requirements
 
-.. _dependency-package:
+Use the :file:`requirements.txt` file to install all dependencies via ``pip3`` or install the package directly from
+PyPI (see :ref:`INSTALL`).
 
-VHDLDomain Package
-******************
+.. tab-set::
 
-+--------------------------------------------------------+-------------+------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------+
-| **Package**                                            | **Version** | **License**                                                                              | **Dependencies**                                                                                                                |
-+========================================================+=============+==========================================================================================+=================================================================================================================================+
-| `pyTooling <https://GitHub.com/pyTooling/pyTooling>`__ | ≥2.12.0     | `Apache License, 2.0 <https://GitHub.com/pyTooling/pyTooling/blob/master/LICENSE.txt>`__ | *None*                                                                                                                          |
-+--------------------------------------------------------+-------------+------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------+
-| `Sphinx <https://GitHub.com/sphinx-doc/sphinx>`__      | ≥5.3.0      | `BSD-2-Clause <https://GitHub.com/sphinx-doc/sphinx/blob/master/LICENSE>`__ |br|         | * ❓`sphinxcontrib-applehelp <>`__                                                                                              |
-|                                                        |             |                                                                                          | * ❓`sphinxcontrib-devhelp <>`__                                                                                                |
-|                                                        |             | * ``sphinx.util.smartypants``                                                            | * ❓`sphinxcontrib-jsmath <>`__                                                                                                 |
-|                                                        |             | * ``smartypants.py``                                                                     | * ❓`sphinxcontrib-htmlhelp <>`__                                                                                               |
-|                                                        |             | * ``NumpyDocstring._parse_numpydoc_see_also_section``                                    | * ❓`sphinxcontrib-serializinghtml <>`__                                                                                        |
-|                                                        |             |                                                                                          | * ❓`sphinxcontrib-qthelp <>`__                                                                                                 |
-|                                                        |             |                                                                                          | * ❓`Jinja2 <>`__                                                                                                               |
-|                                                        |             |                                                                                          | * ❓`Pygments <>`__                                                                                                             |
-|                                                        |             |                                                                                          | * ❓`docutils <>`__                                                                                                             |
-|                                                        |             |                                                                                          | * ❓`snowballstemmer <>`__                                                                                                      |
-|                                                        |             |                                                                                          | * ❓`babel <>`__                                                                                                                |
-|                                                        |             |                                                                                          | * ❓`alabaster <>`__                                                                                                            |
-|                                                        |             |                                                                                          | * ❓`imagesize <>`__                                                                                                            |
-|                                                        |             |                                                                                          | * ❓`requests <>`__                                                                                                             |
-|                                                        |             |                                                                                          | * ❓`packaging <>`__                                                                                                            |
-|                                                        |             |                                                                                          | * ❓`importlib-metadata <>`__                                                                                                   |
-|                                                        |             |                                                                                          | * ❓`colorama <>`__                                                                                                             |
-+--------------------------------------------------------+-------------+------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------+
-| ❗❗`pyGHDL <https://GitHub.com/GHDL/ghdl>`__          | ≥?.??.?     | `GPL 2 <https://GitHub.com/GHDL/ghdl/blob/master/COPYING.md>`__                          | * `pyVHDLModel <https://GitHub.com/pyTooling/pyTooling/blob/master/LICENSE.txt>`__                                              |
-|                                                        |             |                                                                                          |   * `pyTooling <https://GitHub.com/pyTooling/pyTooling/blob/master/LICENSE.txt>`__                                              |
-+--------------------------------------------------------+-------------+------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------+
+   .. tab-item:: Linux/macOS
+      :sync: Linux
 
-.. # ❗❓
-.. # importlib-metadata, could be removed if VHDLDomain is limited to Py 3.10/3.11
+      .. code-block:: bash
 
-.. _dependency-testing:
+         pip3 install -U -r requirements.txt
 
-Unit Testing / Coverage / Type Checking (Optional)
-**************************************************
+   .. tab-item:: Windows
+      :sync: Windows
 
-Additional Python packages needed for testing, code coverage collection and static type checking. These packages are
-only needed for developers or on a CI server, thus sub-dependencies are not evaluated further.
+      .. code-block:: powershell
 
-
-.. rubric:: Manually Installing Test Requirements
-
-Use the :file:`tests/requirements.txt` file to install all dependencies via ``pip3``. The file will recursively install
-the mandatory dependencies too.
-
-.. code-block:: shell
-
-   pip3 install -U -r tests/requirements.txt
-
+         pip install -U -r requirements.txt
 
 .. rubric:: Dependency List
 
-+-----------------------------------------------------------+-------------+----------------------------------------------------------------------------------------+----------------------+
-| **Package**                                               | **Version** | **License**                                                                            | **Dependencies**     |
-+===========================================================+=============+========================================================================================+======================+
-| `pytest <https://GitHub.com/pytest-dev/pytest>`__         | ≥7.2.0      | `MIT <https://GitHub.com/pytest-dev/pytest/blob/master/LICENSE>`__                     | *Not yet evaluated.* |
-+-----------------------------------------------------------+-------------+----------------------------------------------------------------------------------------+----------------------+
-| `pytest-cov <https://GitHub.com/pytest-dev/pytest-cov>`__ | ≥4.0.0      | `MIT <https://GitHub.com/pytest-dev/pytest-cov/blob/master/LICENSE>`__                 | *Not yet evaluated.* |
-+-----------------------------------------------------------+-------------+----------------------------------------------------------------------------------------+----------------------+
-| `Coverage <https://GitHub.com/nedbat/coveragepy>`__       | ≥7.0        | `Apache License, 2.0 <https://GitHub.com/nedbat/coveragepy/blob/master/LICENSE.txt>`__ | *Not yet evaluated.* |
-+-----------------------------------------------------------+-------------+----------------------------------------------------------------------------------------+----------------------+
-| `mypy <https://GitHub.com/python/mypy>`__                 | ≥0.990      | `MIT <https://GitHub.com/python/mypy/blob/master/LICENSE>`__                           | *Not yet evaluated.* |
-+-----------------------------------------------------------+-------------+----------------------------------------------------------------------------------------+----------------------+
-| `lxml <https://GitHub.com/lxml/lxml>`__                   | ≥4.9        | `BSD 3-Clause <https://GitHub.com/lxml/lxml/blob/master/LICENSE.txt>`__                | *Not yet evaluated.* |
-+-----------------------------------------------------------+-------------+----------------------------------------------------------------------------------------+----------------------+
+.. dependency-table:: package
+   :caption: Mandatory dependencies of the VHDLDomain package.
 
 
-.. _dependency-documentation:
+.. _DEP/testing:
+
+Unit Testing / Coverage (Optional)
+**********************************
+
+Additional Python packages needed for testing and code coverage collection. These packages are only needed for
+developers or on a CI server.
+
+.. rubric:: Manually Installing Test Requirements
+
+Use the :file:`tests/unit/requirements.txt` file to install all dependencies via ``pip3``. The file will recursively
+install the mandatory dependencies too.
+
+.. tab-set::
+
+   .. tab-item:: Linux/macOS
+      :sync: Linux
+
+      .. code-block:: bash
+
+         pip3 install -U -r tests/unit/requirements.txt
+
+   .. tab-item:: Windows
+      :sync: Windows
+
+      .. code-block:: powershell
+
+         pip install -U -r tests\unit\requirements.txt
+
+.. rubric:: Dependency List
+
+.. dependency-table:: unittest
+   :caption: Dependencies for unit testing and code coverage.
+
+
+.. _DEP/typing:
+
+Static Type Checking (Optional)
+*******************************
+
+Additional Python packages needed for static type checking. These packages are only needed for developers or on a CI
+server.
+
+.. rubric:: Manually Installing Static Type Checking Requirements
+
+Use the :file:`tests/typing/requirements.txt` file to install all dependencies via ``pip3``. The file will recursively
+install the mandatory dependencies too.
+
+.. tab-set::
+
+   .. tab-item:: Linux/macOS
+      :sync: Linux
+
+      .. code-block:: bash
+
+         pip3 install -U -r tests/typing/requirements.txt
+
+   .. tab-item:: Windows
+      :sync: Windows
+
+      .. code-block:: powershell
+
+         pip install -U -r tests\typing\requirements.txt
+
+.. rubric:: Dependency List
+
+.. dependency-table:: typing
+   :caption: Dependencies for static type checking.
+
+
+.. _DEP/documentation:
 
 Sphinx Documentation (Optional)
 *******************************
 
-Additional Python packages needed for documentation generation. These packages are only needed for developers or on a
-CI server, thus sub-dependencies are not evaluated further.
-
+Additional Python packages needed for building the documentation. These packages are only needed for developers or on
+a CI server.
 
 .. rubric:: Manually Installing Documentation Requirements
 
 Use the :file:`doc/requirements.txt` file to install all dependencies via ``pip3``. The file will recursively install
 the mandatory dependencies too.
 
-.. code-block:: shell
+.. tab-set::
 
-   pip3 install -U -r doc/requirements.txt
+   .. tab-item:: Linux/macOS
+      :sync: Linux
 
+      .. code-block:: bash
+
+         pip3 install -U -r doc/requirements.txt
+
+   .. tab-item:: Windows
+      :sync: Windows
+
+      .. code-block:: powershell
+
+         pip install -U -r doc\requirements.txt
 
 .. rubric:: Dependency List
 
-+-------------------------------------------------------------------------------------------------+--------------+----------------------------------------------------------------------------------------------------------+----------------------+
-| **Package**                                                                                     | **Version**  | **License**                                                                                              | **Dependencies**     |
-+=================================================================================================+==============+==========================================================================================================+======================+
-| `Sphinx <https://GitHub.com/sphinx-doc/sphinx>`__                                               | ≥5.3.0       | `BSD 3-Clause <https://GitHub.com/sphinx-doc/sphinx/blob/master/LICENSE>`__                              | *Not yet evaluated.* |
-+-------------------------------------------------------------------------------------------------+--------------+----------------------------------------------------------------------------------------------------------+----------------------+
-| `sphinx_btd_theme <https://GitHub.com/buildthedocs/sphinx.theme>`__                             |              | `MIT <https://GitHub.com/buildthedocs/sphinx.theme/blob/master/LICENSE>`__                               | *Not yet evaluated.* |
-+-------------------------------------------------------------------------------------------------+--------------+----------------------------------------------------------------------------------------------------------+----------------------+
-| `autoapi <https://GitHub.com/carlos-jenkins/autoapi>`__                                         |              | `Apache License, 2.0 <https://GitHub.com/carlos-jenkins/autoapi/blob/master/LICENSE>`__                  | *Not yet evaluated.* |
-+-------------------------------------------------------------------------------------------------+--------------+----------------------------------------------------------------------------------------------------------+----------------------+
-| ❗❗ `sphinx_fontawesome <https://GitHub.com/fraoustin/sphinx_fontawesome>`__                   | ≥0.0.6       | `GPL 2.0 <https://GitHub.com/fraoustin/sphinx_fontawesome/blob/master/LICENSE>`__                        | *Not yet evaluated.* |
-+-------------------------------------------------------------------------------------------------+--------------+----------------------------------------------------------------------------------------------------------+----------------------+
-| `sphinx_autodoc_typehints <https://GitHub.com/agronholm/sphinx-autodoc-typehints>`__            | ≥1.19.5      | `MIT <https://GitHub.com/agronholm/sphinx-autodoc-typehints/blob/master/LICENSE>`__                      | *Not yet evaluated.* |
-+-------------------------------------------------------------------------------------------------+--------------+----------------------------------------------------------------------------------------------------------+----------------------+
+.. dependency-table:: documentation
+   :caption: Dependencies for building the documentation.
 
 
-.. _dependency-packaging:
+.. _DEP/packaging:
 
 Packaging (Optional)
 ********************
 
 Additional Python packages needed for installation package generation. These packages are only needed for developers or
-on a CI server, thus sub-dependencies are not evaluated further.
+on a CI server.
 
+.. rubric:: Building an Installation Package
 
-.. rubric:: Manually Installing Packaging Requirements
+:file:`pyproject.toml` lists them as build requirements (``[build-system]``), so ``build`` installs them into an
+isolated build environment itself.
 
-Use the :file:`build/requirements.txt` file to install all dependencies via ``pip3``. The file will recursively
-install the mandatory dependencies too.
+.. tab-set::
 
-.. code-block:: shell
+   .. tab-item:: Linux/macOS
+      :sync: Linux
 
-   pip3 install -U -r build/requirements.txt
+      .. code-block:: bash
 
+         python3 -m build --wheel
+
+   .. tab-item:: Windows
+      :sync: Windows
+
+      .. code-block:: powershell
+
+         python -m build --wheel
 
 .. rubric:: Dependency List
 
-+----------------------------------------------------------------------------+--------------+----------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------+
-| **Package**                                                                | **Version**  | **License**                                                                                              | **Dependencies**                                                                                                                                     |
-+============================================================================+==============+==========================================================================================================+======================================================================================================================================================+
-| `pyTooling <https://GitHub.com/pyTooling/pyTooling>`__                     | ≥2.12.0      | `Apache License, 2.0 <https://GitHub.com/pyTooling/pyTooling/blob/main/LICENSE.md>`__                    | *None*                                                                                                                                               |
-+----------------------------------------------------------------------------+--------------+----------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `wheel <https://GitHub.com/pypa/wheel>`__                                  | ≥0.38.1      | `MIT <https://github.com/pypa/wheel/blob/main/LICENSE.txt>`__                                            | *Not yet evaluated.*                                                                                                                                 |
-+----------------------------------------------------------------------------+--------------+----------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------+
+.. dependency-table:: packaging
+   :caption: Dependencies for generating an installation package.
 
 
-.. _dependency-publishing:
+.. _DEP/publishing:
 
 Publishing (CI-Server only)
 ***************************
 
 Additional Python packages needed for publishing the generated installation package to e.g, PyPI or any equivalent
-services. These packages are only needed for maintainers or on a CI server, thus sub-dependencies are not evaluated
-further.
-
+services. These packages are only needed for maintainers or on a CI server.
 
 .. rubric:: Manually Installing Publishing Requirements
 
 Use the :file:`dist/requirements.txt` file to install all dependencies via ``pip3``. The file will recursively
 install the mandatory dependencies too.
 
-.. code-block:: shell
+.. tab-set::
 
-   pip3 install -U -r dist/requirements.txt
+   .. tab-item:: Linux/macOS
+      :sync: Linux
 
+      .. code-block:: bash
+
+         pip3 install -U -r dist/requirements.txt
+
+   .. tab-item:: Windows
+      :sync: Windows
+
+      .. code-block:: powershell
+
+         pip install -U -r dist\requirements.txt
 
 .. rubric:: Dependency List
 
-+----------------------------------------------------------+--------------+-------------------------------------------------------------------------------------------+----------------------+
-| **Package**                                              | **Version**  | **License**                                                                               | **Dependencies**     |
-+==========================================================+==============+===========================================================================================+======================+
-| `wheel <https://GitHub.com/pypa/wheel>`__                | ≥0.38.1      | `MIT <https://github.com/pypa/wheel/blob/main/LICENSE.txt>`__                             | *Not yet evaluated.* |
-+----------------------------------------------------------+--------------+-------------------------------------------------------------------------------------------+----------------------+
-| `Twine <https://GitHub.com/pypa/twine/>`__               | any          | `Apache License, 2.0 <https://github.com/pypa/twine/blob/main/LICENSE>`__                 | *Not yet evaluated.* |
-+----------------------------------------------------------+--------------+-------------------------------------------------------------------------------------------+----------------------+
+.. dependency-table:: publishing
+   :caption: Dependencies for publishing the package.
