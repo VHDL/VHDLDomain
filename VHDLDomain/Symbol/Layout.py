@@ -485,10 +485,10 @@ class SymbolLayout(metaclass=ExtendedType, slots=True):
 
 		self._symbol =     symbol
 		self._rectangles = rectangles = []
-		self._lines =      lines = []
-		self._circles =    circles = []
-		self._polygons =   polygons = []
-		self._texts =      texts = []
+		self._lines =      lines =      []
+		self._circles =    circles =    []
+		self._polygons =   polygons =   []
+		self._texts =      texts =      []
 
 		pins =       [pin for group in symbol.PinGroups for pin in group.Pins]
 		leftPins =   [pin for pin in pins if pin.Side is PinSide.Left]
