@@ -28,17 +28,27 @@
 # SPDX-License-Identifier: Apache-2.0                                                                                  #
 # ==================================================================================================================== #
 #
-"""Unit tests for the renderers of an interface symbol: SVG and TikZ."""
-from textwrap                import dedent
-from xml.etree.ElementTree   import fromstring
+"""Unit tests for the renderers of an interface symbol: SVG, TikZ and matplotlib."""
+from textwrap                     import dedent
+from unittest                     import skipUnless
+from unittest.mock                import patch
+from xml.etree.ElementTree        import fromstring
 
-from pyTooling.Testing       import Testcase
+from pyTooling.Exceptions         import MissingDependencyError
+from pyTooling.Testing            import Testcase
 
-from VHDLDomain.Symbol       import InterfaceSymbol, Pin, PinGroup, PinSide
-from VHDLDomain.Symbol.SVG   import SVGRenderer
-from VHDLDomain.Symbol.TikZ  import TikZRenderer
+from VHDLDomain.Symbol            import InterfaceSymbol, Pin, PinGroup, PinSide
+from VHDLDomain.Symbol.Matplotlib import MatplotlibRenderer
+from VHDLDomain.Symbol.SVG        import SVGRenderer
+from VHDLDomain.Symbol.TikZ       import TikZRenderer
 
-from tests.unit.SymbolLayout import Fifo, Inverter
+from tests.unit.SymbolLayout      import Fifo, Inverter
+
+try:
+	import matplotlib  # noqa: F401
+	matplotlibIsInstalled = True
+except ImportError:
+	matplotlibIsInstalled = False
 
 
 if __name__ == "__main__":  # pragma: no cover
@@ -215,3 +225,94 @@ class TikZ(Testcase):
 		self.assertEqual("Parameter 'symbol' is not of type 'InterfaceSymbol'.", str(context.exception))
 		self.assertEqual(["Got type 'str'."], context.exception.__notes__)
 
+
+class Matplotlib(Testcase):
+	@skipUnless(matplotlibIsInstalled, "matplotlib isn't installed.")
+	def test_PNG(self) -> None:
+		png = MatplotlibRenderer().Render(Fifo())
+
+		self.assertTrue(png.startswith(b"\x89PNG\r\n\x1a\n"))
+		self.assertGreater(len(png), 0)
+
+	@skipUnless(matplotlibIsInstalled, "matplotlib isn't installed.")
+	def test_SVG(self) -> None:
+		"""Texts stay text in an SVG image."""
+		svg = MatplotlibRenderer().Render(Fifo(), "svg")
+
+		self.assertIn(b"<svg", svg)
+		self.assertIn(b">std_logic_vector(DATA_BITS - 1 downto 0)</text>", svg)
+
+	@skipUnless(matplotlibIsInstalled, "matplotlib isn't installed.")
+	def test_PDF(self) -> None:
+		pdf = MatplotlibRenderer().Render(Fifo(), "pdf")
+
+		self.assertTrue(pdf.startswith(b"%PDF-"))
+
+	@skipUnless(matplotlibIsInstalled, "matplotlib isn't installed.")
+	def test_DPI(self) -> None:
+		"""The size of a PNG image is the layout's size in points at the resolution."""
+		png = MatplotlibRenderer(dpi=72).Render(Inverter())
+
+		self.assertEqual(72, MatplotlibRenderer(dpi=72).DPI)
+		self.assertEqual(182, int.from_bytes(png[16:20], "big"))
+		self.assertEqual(72, int.from_bytes(png[20:24], "big"))
+
+	def test_MissingDependency(self) -> None:
+		with patch.dict("sys.modules", {"matplotlib": None}):
+			with self.assertRaises(MissingDependencyError) as context:
+				MatplotlibRenderer().Render(Inverter())
+
+		self.assertEqual("Optional dependency 'matplotlib' not installed.", str(context.exception))
+
+	def test_DPI_None(self) -> None:
+		with self.assertRaises(ValueError) as context:
+			MatplotlibRenderer(dpi=None)
+
+		self.assertEqual("Parameter 'dpi' is None.", str(context.exception))
+
+	def test_DPI_WrongType(self) -> None:
+		with self.assertRaises(TypeError) as context:
+			MatplotlibRenderer(dpi=72.0)
+
+		self.assertEqual("Parameter 'dpi' is not of type 'int'.", str(context.exception))
+		self.assertEqual(["Got type 'float'."], context.exception.__notes__)
+
+	def test_DPI_NotPositive(self) -> None:
+		with self.assertRaises(ValueError) as context:
+			MatplotlibRenderer(dpi=0)
+
+		self.assertEqual("Parameter 'dpi' isn't positive.", str(context.exception))
+		self.assertEqual(["Got value '0'."], context.exception.__notes__)
+
+	def test_Symbol_None(self) -> None:
+		with self.assertRaises(ValueError) as context:
+			MatplotlibRenderer().Render(None)
+
+		self.assertEqual("Parameter 'symbol' is None.", str(context.exception))
+
+	def test_Symbol_WrongType(self) -> None:
+		with self.assertRaises(TypeError) as context:
+			MatplotlibRenderer().Render("inv")
+
+		self.assertEqual("Parameter 'symbol' is not of type 'InterfaceSymbol'.", str(context.exception))
+		self.assertEqual(["Got type 'str'."], context.exception.__notes__)
+
+	def test_Format_None(self) -> None:
+		with self.assertRaises(ValueError) as context:
+			MatplotlibRenderer().Render(Inverter(), None)
+
+		self.assertEqual("Parameter 'format' is None.", str(context.exception))
+
+	def test_Format_WrongType(self) -> None:
+		with self.assertRaises(TypeError) as context:
+			MatplotlibRenderer().Render(Inverter(), 5)
+
+		self.assertEqual("Parameter 'format' is not of type 'str'.", str(context.exception))
+		self.assertEqual(["Got type 'int'."], context.exception.__notes__)
+
+	def test_Format_Unknown(self) -> None:
+		with self.assertRaises(ValueError) as context:
+			MatplotlibRenderer().Render(Inverter(), "jpeg")
+
+		self.assertEqual("Parameter 'format' is not a supported image format.", str(context.exception))
+		self.assertEqual(["Got value 'jpeg'.", "Supported formats: png, svg, pdf"], context.exception.__notes__)
