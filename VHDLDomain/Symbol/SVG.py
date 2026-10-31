@@ -30,9 +30,10 @@
 """
 Render an interface symbol as an SVG image.
 
-The image is SVG 1.1 text without external resources. Texts stay text (selectable and searchable) in a ``monospace``
-font, lines and texts are drawn in ``currentColor``, so the image takes the text color of the page it is embedded in
-and works on light and dark pages. The output is deterministic: the same symbol gives the same text.
+The image is SVG 1.1 text without external resources. Texts stay text (selectable and searchable) in their font size and
+generic font family, e.g. ``monospace``. Lines and texts are drawn in ``currentColor``, so the image takes the text
+color of the page it is embedded in and works on light and dark pages. The output is deterministic: the same symbol
+gives the same text.
 
 .. code-block:: python
 
@@ -49,7 +50,7 @@ from pyTooling.Decorators     import export
 from pyTooling.MetaClasses    import ExtendedType
 
 from VHDLDomain.Symbol        import InterfaceSymbol
-from VHDLDomain.Symbol.Layout import BUS_LINE_WIDTH, DASH_PATTERN, FONT_SIZE, LINE_WIDTH, LineStyle, SymbolLayout, \
+from VHDLDomain.Symbol.Layout import BUS_LINE_WIDTH, DASH_PATTERN, LINE_WIDTH, FontFamily, LineStyle, SymbolLayout, \
                                      TextAnchor, TextStyle
 
 
@@ -94,12 +95,17 @@ class SVGRenderer(metaclass=ExtendedType, slots=True):
 			TextStyle.Bold:    " font-weight=\"bold\"",
 			TextStyle.Italic:  " font-style=\"italic\""
 		}
+		fontFamilies = {
+			FontFamily.Monospace: "monospace",
+			FontFamily.SansSerif: "sans-serif",
+			FontFamily.Serif:     "serif"
+		}
 
 		width =  f"{layout.Width:g}"
 		height = f"{layout.Height:g}"
 		output = [
 			f"<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"{width}pt\" height=\"{height}pt\" "
-			f"viewBox=\"0 0 {width} {height}\" font-family=\"monospace\" font-size=\"{FONT_SIZE:g}\">",
+			f"viewBox=\"0 0 {width} {height}\">",
 			f"<title>{escape(symbol.Name)}</title>",
 			f"<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"{LINE_WIDTH:g}\">"
 		]
@@ -131,8 +137,9 @@ class SVGRenderer(metaclass=ExtendedType, slots=True):
 		for text in layout.Texts:
 			position = text.Position
 			output.append(
-				f"<text x=\"{position.x:g}\" y=\"{position.y:g}\" text-anchor=\"{anchors[text.Anchor]}\""
-				f"{textStyles[text.Style]}>{escape(text.Content)}</text>"
+				f"<text x=\"{position.x:g}\" y=\"{position.y:g}\" text-anchor=\"{anchors[text.Anchor]}\" "
+				f"font-family=\"{fontFamilies[text.FontFamily]}\" font-size=\"{text.FontSize:g}\"{textStyles[text.Style]}>"
+				f"{escape(text.Content)}</text>"
 			)
 
 		output.append("</g>")

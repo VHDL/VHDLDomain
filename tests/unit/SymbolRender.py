@@ -75,10 +75,8 @@ def Escaping() -> InterfaceSymbol:
 
 class SVG(Testcase):
 	def test_Inverter(self) -> None:
-		expected = (
-			"<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"182pt\" height=\"72pt\" "
-			"viewBox=\"0 0 182 72\" font-family=\"monospace\" font-size=\"10\">\n"
-		) + dedent("""\
+		expected = dedent("""\
+			<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="182pt" height="72pt" viewBox="0 0 182 72">
 			<title>inv</title>
 			<g fill="none" stroke="currentColor" stroke-width="1">
 			<rect x="34" y="18" width="108" height="22" stroke-dasharray="4 2"/>
@@ -88,13 +86,13 @@ class SVG(Testcase):
 			<circle cx="145" cy="54" r="3"/>
 			</g>
 			<g fill="currentColor" xml:space="preserve">
-			<text x="88" y="14.5" text-anchor="middle" font-weight="bold">inv</text>
-			<text x="40" y="32.5" text-anchor="start">WIDTH</text>
-			<text x="76" y="32.5" text-anchor="start">: positive</text>
-			<text x="46" y="57.5" text-anchor="start">a</text>
-			<text x="28" y="49" text-anchor="end">bit</text>
-			<text x="130" y="57.5" text-anchor="end">y_n</text>
-			<text x="154" y="49" text-anchor="start">bit</text>
+			<text x="88" y="14.5" text-anchor="middle" font-family="monospace" font-size="10" font-weight="bold">inv</text>
+			<text x="40" y="32.5" text-anchor="start" font-family="monospace" font-size="10">WIDTH</text>
+			<text x="76" y="32.5" text-anchor="start" font-family="monospace" font-size="10">: positive</text>
+			<text x="46" y="57.5" text-anchor="start" font-family="monospace" font-size="10">a</text>
+			<text x="28" y="49" text-anchor="end" font-family="monospace" font-size="10">bit</text>
+			<text x="130" y="57.5" text-anchor="end" font-family="monospace" font-size="10">y_n</text>
+			<text x="154" y="49" text-anchor="start" font-family="monospace" font-size="10">bit</text>
 			</g>
 			</svg>
 			""")
@@ -156,20 +154,20 @@ class SVG(Testcase):
 class TikZ(Testcase):
 	def test_Inverter(self) -> None:
 		expected = dedent("""\
-			\\begin{tikzpicture}[x=1pt, y=1pt, line width=1pt, font=\\fontsize{10}{14}\\selectfont\\ttfamily]
+			\\begin{tikzpicture}[x=1pt, y=1pt, line width=1pt]
 			\\useasboundingbox (0,0) rectangle (182,72);
 			\\draw[dash pattern=on 4pt off 2pt] (34,54) rectangle (142,32);
 			\\draw (34,32) rectangle (142,4);
 			\\draw (4,18) -- (34,18);
 			\\draw (178,18) -- (148,18);
 			\\draw (145,18) circle[radius=3];
-			\\node[anchor=base, inner sep=0pt] at (88,57.5) {\\bfseries inv};
-			\\node[anchor=base west, inner sep=0pt] at (40,39.5) {WIDTH};
-			\\node[anchor=base west, inner sep=0pt] at (76,39.5) {: positive};
-			\\node[anchor=base west, inner sep=0pt] at (46,14.5) {a};
-			\\node[anchor=base east, inner sep=0pt] at (28,23) {bit};
-			\\node[anchor=base east, inner sep=0pt] at (130,14.5) {y\\_n};
-			\\node[anchor=base west, inner sep=0pt] at (154,23) {bit};
+			\\node[anchor=base, inner sep=0pt, font=\\fontsize{10}{14}\\selectfont\\ttfamily] at (88,57.5) {\\bfseries inv};
+			\\node[anchor=base west, inner sep=0pt, font=\\fontsize{10}{14}\\selectfont\\ttfamily] at (40,39.5) {WIDTH};
+			\\node[anchor=base west, inner sep=0pt, font=\\fontsize{10}{14}\\selectfont\\ttfamily] at (76,39.5) {: positive};
+			\\node[anchor=base west, inner sep=0pt, font=\\fontsize{10}{14}\\selectfont\\ttfamily] at (46,14.5) {a};
+			\\node[anchor=base east, inner sep=0pt, font=\\fontsize{10}{14}\\selectfont\\ttfamily] at (28,23) {bit};
+			\\node[anchor=base east, inner sep=0pt, font=\\fontsize{10}{14}\\selectfont\\ttfamily] at (130,14.5) {y\\_n};
+			\\node[anchor=base west, inner sep=0pt, font=\\fontsize{10}{14}\\selectfont\\ttfamily] at (154,23) {bit};
 			\\end{tikzpicture}
 			""")
 

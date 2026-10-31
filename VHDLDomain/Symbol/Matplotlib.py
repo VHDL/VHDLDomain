@@ -51,7 +51,7 @@ from pyTooling.Exceptions     import MissingDependencyError
 from pyTooling.MetaClasses    import ExtendedType
 
 from VHDLDomain.Symbol        import InterfaceSymbol
-from VHDLDomain.Symbol.Layout import BUS_LINE_WIDTH, DASH_PATTERN, FONT_SIZE, LINE_WIDTH, LineStyle, SymbolLayout, \
+from VHDLDomain.Symbol.Layout import BUS_LINE_WIDTH, DASH_PATTERN, LINE_WIDTH, FontFamily, LineStyle, SymbolLayout, \
                                      TextAnchor, TextStyle
 
 
@@ -61,7 +61,8 @@ class MatplotlibRenderer(metaclass=ExtendedType, slots=True):
 	Renders an interface symbol with :term:`matplotlib` as PNG, SVG or PDF.
 
 	The figure is as large as the layout: one point of the layout is one point (1/72 inch) of the figure. Lines and
-	texts are black on a white background. Texts use matplotlib's ``monospace`` family; in an SVG file they stay text.
+	texts are black on a white background. Texts use their font size and matplotlib's generic family of their font
+	family, e.g. ``monospace``; in an SVG file they stay text.
 
 	matplotlib's object API is used, so no global :mod:`~matplotlib.pyplot` state is touched and no display is needed.
 	"""
@@ -168,6 +169,11 @@ class MatplotlibRenderer(metaclass=ExtendedType, slots=True):
 			TextStyle.Bold:    "normal",
 			TextStyle.Italic:  "italic"
 		}
+		fontFamilies = {
+			FontFamily.Monospace: "monospace",
+			FontFamily.SansSerif: "sans-serif",
+			FontFamily.Serif:     "serif"
+		}
 
 		figure = Figure(figsize=(layout.Width / 72, layout.Height / 72), facecolor="white")
 		axes =   figure.add_axes((0.0, 0.0, 1.0, 1.0))
@@ -205,9 +211,9 @@ class MatplotlibRenderer(metaclass=ExtendedType, slots=True):
 			position = text.Position
 			axes.text(
 				position.x, position.y, text.Content,
-				horizontalalignment=alignments[text.Anchor], verticalalignment="baseline", family="monospace",
-				fontsize=FONT_SIZE, fontweight=fontWeights[text.Style], fontstyle=fontStyles[text.Style], color="black",
-				parse_math=False
+				horizontalalignment=alignments[text.Anchor], verticalalignment="baseline",
+				family=fontFamilies[text.FontFamily], fontsize=text.FontSize, fontweight=fontWeights[text.Style],
+				fontstyle=fontStyles[text.Style], color="black", parse_math=False
 			)
 
 		buffer = BytesIO()

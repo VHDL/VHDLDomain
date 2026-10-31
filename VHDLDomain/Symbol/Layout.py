@@ -36,9 +36,10 @@ primitives build on :mod:`pyTooling.Cartesian2D`: a point is a :class:`~pyToolin
 :class:`~pyTooling.Cartesian2D.LineSegment2D` and a rectangle a :class:`~pyTooling.Cartesian2D.Shapes.Rectangle`, each
 with a style.
 
-Coordinates are points (1/72 inch), the origin is the top left corner and *y* grows downwards. All text is set in a
-monospace font of :data:`FONT_SIZE`, so the width of a text is its number of characters times :data:`CHARACTER_WIDTH`.
-A text's position is a point on its baseline; its anchor says, whether the text starts, is centered or ends there.
+Coordinates are points (1/72 inch), the origin is the top left corner and *y* grows downwards. The layout sets all text
+in a monospace font of :data:`FONT_SIZE`, so the width of a text is its number of characters times
+:data:`CHARACTER_WIDTH`. A text's position is a point on its baseline; its anchor says, whether the text starts, is
+centered or ends there. A text carries its font size and font family, which the renderers apply, and its bounding box.
 
 .. rubric:: Drawing
 
@@ -71,16 +72,20 @@ __all__ = [
 ]
 
 FONT_SIZE = 10.0
-"""Font size of all texts in points."""
+"""Font size of the layout's texts in points; the default of a :class:`Text`."""
 
 CHARACTER_WIDTH = 6.0
-"""Width of a character in points: 0.6 of the font size, the advance width of monospace fonts like DejaVu Sans Mono."""
+"""
+Width of a character in points at :data:`FONT_SIZE`.
+
+It is 0.6 of the font size, the advance width of monospace fonts like DejaVu Sans Mono.
+"""
 
 BASELINE_OFFSET = 3.5
 """Distance in points from a text line's vertical center down to its baseline."""
 
 LINE_HEIGHT = 14.0
-"""Height of a text line in points: the title, a group header or a parameter."""
+"""Height of a text line in points at :data:`FONT_SIZE`: the title, a group header or a parameter."""
 
 PIN_PITCH = 20.0
 """Height of a pin row in points; it holds the pin's name and, above its stub, the pin's type label."""
@@ -138,6 +143,19 @@ class TextStyle(Enum):
 
 
 @export
+class FontFamily(Enum):
+	"""
+	The generic font family of a text.
+
+	Each renderer maps it to its format's equivalent, e.g. ``monospace`` in SVG or ``\\ttfamily`` in TikZ.
+	"""
+
+	Monospace = 0  #: A font, whose characters have the same width.
+	SansSerif = 1  #: A proportional font without serifs.
+	Serif =     2  #: A proportional font with serifs.
+
+
+@export
 class LineStyle(Enum):
 	"""The style of a line or an outline."""
 
@@ -148,26 +166,45 @@ class LineStyle(Enum):
 
 @export
 class Text(metaclass=ExtendedType, slots=True):
-	"""A single line of text in the monospace font."""
+	"""
+	A single line of text with its font size and font family.
 
-	_position: Point2D[float]  #: Point on the baseline, where the text starts, is centered or ends.
-	_content:  str             #: The text.
-	_anchor:   TextAnchor      #: The text's horizontal position relative to :attr:`_position`.
-	_style:    TextStyle       #: The text's style.
+	Its bounding box follows from the monospace metrics :data:`CHARACTER_WIDTH` and :data:`LINE_HEIGHT`, scaled to the
+	text's font size.
+	"""
 
-	def __init__(self, position: Point2D[float], content: str, anchor: TextAnchor, style: TextStyle) -> None:
+	_position:   Point2D[float]  #: Point on the baseline, where the text starts, is centered or ends.
+	_content:    str             #: The text.
+	_anchor:     TextAnchor      #: The text's horizontal position relative to :attr:`_position`.
+	_style:      TextStyle       #: The text's style.
+	_fontSize:   float           #: Font size in points.
+	_fontFamily: FontFamily      #: Generic font family.
+
+	def __init__(
+		self,
+		position:   Point2D[float],
+		content:    str,
+		anchor:     TextAnchor,
+		style:      TextStyle,
+		fontSize:   float = FONT_SIZE,
+		fontFamily: FontFamily = FontFamily.Monospace
+	) -> None:
 		"""
 		Initializes a text.
 
-		:param position: Point on the baseline, where the text starts, is centered or ends.
-		:param content:  The text.
-		:param anchor:   The text's horizontal position relative to ``position``.
-		:param style:    The text's style.
+		:param position:   Point on the baseline, where the text starts, is centered or ends.
+		:param content:    The text.
+		:param anchor:     The text's horizontal position relative to ``position``.
+		:param style:      The text's style.
+		:param fontSize:   Optional, font size in points. Default: :data:`FONT_SIZE`.
+		:param fontFamily: Optional, generic font family. Default: :attr:`FontFamily.Monospace`.
 		"""
-		self._position = position
-		self._content =  content
-		self._anchor =   anchor
-		self._style =    style
+		self._position =   position
+		self._content =    content
+		self._anchor =     anchor
+		self._style =      style
+		self._fontSize =   fontSize
+		self._fontFamily = fontFamily
 
 	@readonly
 	def Position(self) -> Point2D[float]:
@@ -204,6 +241,38 @@ class Text(metaclass=ExtendedType, slots=True):
 		:returns: The text's style.
 		"""
 		return self._style
+
+	@readonly
+	def FontSize(self) -> float:
+		"""
+		Read-only property to access the font size (:attr:`_fontSize`).
+
+		:returns: Font size in points.
+		"""
+		return self._fontSize
+
+	@readonly
+	def FontFamily(self) -> FontFamily:
+		"""
+		Read-only property to access the generic font family (:attr:`_fontFamily`).
+
+		:returns: The text's font family.
+		"""
+		return self._fontFamily
+
+	@readonly
+	def BoundingBox(self) -> Size2D[float]:
+		"""
+		Read-only property to return the size of the text's bounding box.
+
+		The width is the number of characters times :data:`CHARACTER_WIDTH`, the height is :data:`LINE_HEIGHT`, both
+		scaled from :data:`FONT_SIZE` to the text's font size (:attr:`_fontSize`). It's exact for a monospace font with
+		the advance width of :data:`CHARACTER_WIDTH`, an estimate for other fonts.
+
+		:returns: Width and height in points.
+		"""
+		scale = self._fontSize / FONT_SIZE
+		return Size2D(len(self._content) * CHARACTER_WIDTH * scale, LINE_HEIGHT * scale)
 
 
 @export
