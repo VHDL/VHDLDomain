@@ -5,7 +5,8 @@ Directives
 
 A directive describes an object of a design read into the domain (see :ref:`CONFIG`): a design, a library, or a
 design unit - entity, package, context, configuration. ``vhdl:design`` and ``vhdl:library`` also set the design and
-library, which the following directives and references of the document are in, until the next one.
+library, which the following directives and references of the document are in, until the next one. ``vhdl:symbol``
+draws an entity's or a component's interface symbol.
 
 .. contents:: Table of Contents
    :local:
@@ -152,3 +153,75 @@ vhdl:configuration
    .. code-block:: rst
 
       .. vhdl:configuration:: lib_StopWatch.seg7_Display_cfg
+
+
+.. _DIR/symbol:
+
+vhdl:symbol
+***********
+
+.. rst:directive:: .. vhdl:symbol:: [library.]name
+
+   Draw an entity's or a component's interface symbol: a box named as the unit, its generics as parameters in a box on
+   top, and its ports as pins on the left and right edge.
+
+   The argument names an entity as ``[library.]entity``, a component declared in a package as
+   ``[library.]package.component``, or a component declared in an architecture as
+   ``[library.]entity.architecture.component``. The name is looked up in the current library and - if its first part
+   names a library - in that library; a name matching no unit or several units is warned about (warning type
+   ``vhdl.symbol``). The symbol describes no object of the domain: it has no target and no index entry.
+
+   .. rst:directive:option:: design: name
+
+      The design the unit is in. Default: the current design.
+
+   .. code-block:: rst
+
+      .. vhdl:symbol:: lib_Utilities.Counter
+
+      .. vhdl:symbol:: lib_StopWatch.StopWatch_pkg.seg7_Display
+
+
+Parameters and pins
+===================
+
+Each identifier of a generic or port declaration becomes a parameter or pin of its own: ``a, b : in bit`` gives two
+pins. A generic constant's parameter shows its subtype and default value, written as VHDL by pyVHDLModel's writer
+(warning type ``vhdl.writer`` for what it can't write yet); a generic type, package, function or procedure shows its
+VHDL keyword. A pin shows the port's subtype, or ``view`` and the name of the port's mode view. A pin's properties
+follow from the port:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Property
+     - Rule
+   * - Side
+     - Mode ``in`` - or no mode - on the left edge; ``out``, ``inout``, ``buffer``, ``linkage`` and a mode view on the
+       right edge.
+   * - Clock
+     - The name is ``clk`` or ``clock``.
+   * - Reset
+     - The name is ``rst``, ``reset`` or ``reset_n``.
+   * - Inverted (low-active)
+     - The name ends in ``_n``.
+   * - Bus
+     - A constrained array or record subtype - as ``unsigned(BITS - 1 downto 0)`` -, a type mark of an array type of
+       the libraries ``std`` and ``ieee`` - as ``std_logic_vector`` -, or a mode view.
+
+Names are compared case-insensitively. The entity ``Counter`` of the StopWatch example gets the parameters ``MODULO``
+and ``BITS``, the pins ``Clock`` (a clock), ``Reset`` (a reset) and ``Enable`` on the left edge, and ``Value`` (a bus)
+and ``WrapAround`` on the right edge.
+
+
+Output formats
+==============
+
+HTML
+   An inline SVG picture.
+
+LaTeX
+   A TikZ picture; the LaTeX package ``tikz`` and the TikZ libraries the picture needs are loaded in the preamble.
+
+Other builders, e.g. text
+   A listing of the symbol: its name, a line per parameter and a line per pin with its side.

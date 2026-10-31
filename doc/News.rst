@@ -15,6 +15,7 @@ Version 0.3.0 (2026)
 
    * New package ``VHDLDomain.Symbol``: a format-independent interface symbol (parameters, pin groups, clock/reset
      pins, buses, low-active pins) with renderers for SVG, TikZ and - with the new extra ``diagram`` (matplotlib) - PNG.
+   * New directive ``vhdl:symbol``: an entity's or a component's interface symbol, as SVG in HTML and TikZ in LaTeX.
 
 
 Version 0.2.0 (2026)
