@@ -39,7 +39,7 @@ The model knows nothing about VHDL: :mod:`VHDLDomain` fills it from an entity or
 from __future__            import annotations
 
 from enum                  import Enum
-from typing                import Optional as Nullable
+from typing                import ClassVar, Generic, Optional as Nullable, TypeVar
 
 from pyTooling.Common      import getFullyQualifiedName
 from pyTooling.Decorators  import export, readonly
@@ -65,6 +65,10 @@ class PinKind(Enum):
 	Signal = 0  #: An ordinary pin.
 	Clock =  1  #: A clock input.
 	Reset =  2  #: A reset input.
+
+
+ParentType = TypeVar("ParentType", bound="InterfaceSymbol | ParameterGroup | PinGroup")
+"""The type of an element's parent: the symbol or a group."""
 
 
 @export
@@ -129,11 +133,54 @@ class InterfaceSymbol(metaclass=ExtendedType, slots=True):
 
 
 @export
-class ParameterGroup(metaclass=ExtendedType, slots=True):
+class Element(Generic[ParentType], metaclass=ExtendedType, slots=True):
+	"""
+	Base-class of every element below the symbol: a reference to the symbol or group containing it.
+
+	A derived class names the accepted parent types in :attr:`_PARENT_TYPE` and appends itself to the parent's
+	collection, after setting its fields.
+	"""
+
+	_PARENT_TYPE: ClassVar[tuple[type, ...]]  #: The types a parent may have; assigned by each derived class.
+
+	_parent: ParentType  #: The symbol or group containing this element.
+
+	def __init__(self, *, parent: ParentType) -> None:
+		"""
+		Initializes an element with its parent.
+
+		:param parent:      The symbol or group containing this element.
+		:raises ValueError: If parameter 'parent' is None.
+		:raises TypeError:  If parameter 'parent' is not of a type this class declares in :attr:`_PARENT_TYPE`.
+		"""
+		if parent is None:
+			raise ValueError("Parameter 'parent' is None.")
+		elif not isinstance(parent, self._PARENT_TYPE):
+			typeNames = " or ".join(f"'{parentType.__name__}'" for parentType in self._PARENT_TYPE)
+			ex = TypeError(f"Parameter 'parent' is not of type {typeNames}.")
+			ex.add_note(f"Got type '{getFullyQualifiedName(parent)}'.")
+			raise ex
+
+		self._parent = parent
+
+	@readonly
+	def Parent(self) -> ParentType:
+		"""
+		Read-only property to access the symbol or group containing this element (:attr:`_parent`).
+
+		:returns: The parent.
+		"""
+		return self._parent
+
+
+@export
+class ParameterGroup(Element[InterfaceSymbol]):
 	"""
 	A section of the parameter box, optionally named.
 	"""
-	_parent:     InterfaceSymbol   #: The symbol this group belongs to.
+
+	_PARENT_TYPE: ClassVar[tuple[type, ...]] = (InterfaceSymbol, )  #: A parameter group is in a symbol.
+
 	_name:       Nullable[str]     #: Name of the group, or ``None`` for an unnamed group.
 	_parameters: list[Parameter]   #: Parameters, in declaration order.
 
@@ -147,31 +194,16 @@ class ParameterGroup(metaclass=ExtendedType, slots=True):
 		:raises ValueError: If parameter 'parent' is None.
 		:raises TypeError:  If parameter 'parent' is not of type :class:`InterfaceSymbol`.
 		"""
+		super().__init__(parent=parent)
+
 		if name is not None and not isinstance(name, str):
 			ex = TypeError("Parameter 'name' is not of type 'str'.")
 			ex.add_note(f"Got type '{getFullyQualifiedName(name)}'.")
 			raise ex
 
-		if parent is None:
-			raise ValueError("Parameter 'parent' is None.")
-		elif not isinstance(parent, InterfaceSymbol):
-			ex = TypeError("Parameter 'parent' is not of type 'InterfaceSymbol'.")
-			ex.add_note(f"Got type '{getFullyQualifiedName(parent)}'.")
-			raise ex
-
-		self._parent =     parent
 		self._name =       name
 		self._parameters = []
 		parent._parameterGroups.append(self)
-
-	@readonly
-	def Parent(self) -> InterfaceSymbol:
-		"""
-		Read-only property to access the symbol this group belongs to (:attr:`_parent`).
-
-		:returns: The symbol.
-		"""
-		return self._parent
 
 	@readonly
 	def Name(self) -> Nullable[str]:
@@ -193,13 +225,15 @@ class ParameterGroup(metaclass=ExtendedType, slots=True):
 
 
 @export
-class Parameter(metaclass=ExtendedType, slots=True):
+class Parameter(Element[ParameterGroup]):
 	"""
 	A parameter of the symbol: a name, a type label and an optional default value.
 
 	A VHDL generic becomes a parameter.
 	"""
-	_parent:       ParameterGroup  #: The group this parameter belongs to.
+
+	_PARENT_TYPE: ClassVar[tuple[type, ...]] = (ParameterGroup, )  #: A parameter is in a parameter group.
+
 	_name:         str             #: Name of the parameter.
 	_typeLabel:    str             #: Type as written, e.g. ``positive``.
 	_defaultValue: Nullable[str]   #: Default value as written, or ``None``.
@@ -221,6 +255,8 @@ class Parameter(metaclass=ExtendedType, slots=True):
 		:raises ValueError:  If parameter 'parent' is None.
 		:raises TypeError:   If parameter 'parent' is not of type :class:`ParameterGroup`.
 		"""
+		super().__init__(parent=parent)
+
 		if name is None:
 			raise ValueError("Parameter 'name' is None.")
 		elif not isinstance(name, str):
@@ -242,27 +278,10 @@ class Parameter(metaclass=ExtendedType, slots=True):
 			ex.add_note(f"Got type '{getFullyQualifiedName(defaultValue)}'.")
 			raise ex
 
-		if parent is None:
-			raise ValueError("Parameter 'parent' is None.")
-		elif not isinstance(parent, ParameterGroup):
-			ex = TypeError("Parameter 'parent' is not of type 'ParameterGroup'.")
-			ex.add_note(f"Got type '{getFullyQualifiedName(parent)}'.")
-			raise ex
-
-		self._parent =       parent
 		self._name =         name
 		self._typeLabel =    typeLabel
 		self._defaultValue = defaultValue
 		parent._parameters.append(self)
-
-	@readonly
-	def Parent(self) -> ParameterGroup:
-		"""
-		Read-only property to access the group this parameter belongs to (:attr:`_parent`).
-
-		:returns: The parameter group.
-		"""
-		return self._parent
 
 	@readonly
 	def Name(self) -> str:
@@ -293,13 +312,15 @@ class Parameter(metaclass=ExtendedType, slots=True):
 
 
 @export
-class PinGroup(metaclass=ExtendedType, slots=True):
+class PinGroup(Element[InterfaceSymbol]):
 	"""
 	A horizontal section of the symbol's box, optionally named; its pins sit on the left and right edge.
 	"""
-	_parent: InterfaceSymbol  #: The symbol this group belongs to.
-	_name:   Nullable[str]  #: Name of the group, or ``None`` for an unnamed group.
-	_pins:   list[Pin]      #: Pins, in declaration order.
+
+	_PARENT_TYPE: ClassVar[tuple[type, ...]] = (InterfaceSymbol, )  #: A pin group is in a symbol.
+
+	_name: Nullable[str]  #: Name of the group, or ``None`` for an unnamed group.
+	_pins: list[Pin]      #: Pins, in declaration order.
 
 	def __init__(self, name: Nullable[str] = None, *, parent: InterfaceSymbol) -> None:
 		"""
@@ -311,31 +332,16 @@ class PinGroup(metaclass=ExtendedType, slots=True):
 		:raises ValueError: If parameter 'parent' is None.
 		:raises TypeError:  If parameter 'parent' is not of type :class:`InterfaceSymbol`.
 		"""
+		super().__init__(parent=parent)
+
 		if name is not None and not isinstance(name, str):
 			ex = TypeError("Parameter 'name' is not of type 'str'.")
 			ex.add_note(f"Got type '{getFullyQualifiedName(name)}'.")
 			raise ex
 
-		if parent is None:
-			raise ValueError("Parameter 'parent' is None.")
-		elif not isinstance(parent, InterfaceSymbol):
-			ex = TypeError("Parameter 'parent' is not of type 'InterfaceSymbol'.")
-			ex.add_note(f"Got type '{getFullyQualifiedName(parent)}'.")
-			raise ex
-
-		self._parent = parent
-		self._name =   name
-		self._pins =   []
+		self._name = name
+		self._pins = []
 		parent._pinGroups.append(self)
-
-	@readonly
-	def Parent(self) -> InterfaceSymbol:
-		"""
-		Read-only property to access the symbol this group belongs to (:attr:`_parent`).
-
-		:returns: The symbol.
-		"""
-		return self._parent
 
 	@readonly
 	def Name(self) -> Nullable[str]:
@@ -357,7 +363,7 @@ class PinGroup(metaclass=ExtendedType, slots=True):
 
 
 @export
-class Pin(metaclass=ExtendedType, slots=True):
+class Pin(Element[PinGroup]):
 	"""
 	A pin of the symbol: a name and a type label on one edge of the box.
 
@@ -365,7 +371,9 @@ class Pin(metaclass=ExtendedType, slots=True):
 	A bus pin (:attr:`IsBus`) is drawn as a thick line; an inverted pin (:attr:`IsInverted`, low-active) with an inversion
 	circle at the box edge.
 	"""
-	_parent:     PinGroup  #: The group this pin belongs to.
+
+	_PARENT_TYPE: ClassVar[tuple[type, ...]] = (PinGroup, )  #: A pin is in a pin group.
+
 	_name:       str       #: Name of the pin.
 	_typeLabel:  str       #: Type as written, e.g. ``std_logic_vector(7 downto 0)``.
 	_side:       PinSide   #: The edge of the box the pin is drawn on.
@@ -410,6 +418,8 @@ class Pin(metaclass=ExtendedType, slots=True):
 		:raises ValueError: If parameter 'parent' is None.
 		:raises TypeError:  If parameter 'parent' is not of type :class:`PinGroup`.
 		"""
+		super().__init__(parent=parent)
+
 		if name is None:
 			raise ValueError("Parameter 'name' is None.")
 		elif not isinstance(name, str):
@@ -451,14 +461,6 @@ class Pin(metaclass=ExtendedType, slots=True):
 				ex.add_note(f"Got type '{getFullyQualifiedName(flag)}'.")
 				raise ex
 
-		if parent is None:
-			raise ValueError("Parameter 'parent' is None.")
-		elif not isinstance(parent, PinGroup):
-			ex = TypeError("Parameter 'parent' is not of type 'PinGroup'.")
-			ex.add_note(f"Got type '{getFullyQualifiedName(parent)}'.")
-			raise ex
-
-		self._parent =     parent
 		self._name =       name
 		self._typeLabel =  typeLabel
 		self._side =       side
@@ -466,15 +468,6 @@ class Pin(metaclass=ExtendedType, slots=True):
 		self._isBus =      isBus
 		self._isInverted = isInverted
 		parent._pins.append(self)
-
-	@readonly
-	def Parent(self) -> PinGroup:
-		"""
-		Read-only property to access the group this pin belongs to (:attr:`_parent`).
-
-		:returns: The pin group.
-		"""
-		return self._parent
 
 	@readonly
 	def Name(self) -> str:
