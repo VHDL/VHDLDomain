@@ -118,31 +118,32 @@ class TikZRenderer(metaclass=ExtendedType, slots=True):
 		]
 		for rectangle in layout.Rectangles:
 			position = rectangle.Position
+			size =     rectangle.Size
 			output.append(
-				f"\\draw{lineStyles[rectangle.Style]} ({position.X:g},{height - position.Y:g}) "
-				f"rectangle ({position.X + rectangle.Width:g},{height - position.Y - rectangle.Height:g});"
+				f"\\draw{lineStyles[rectangle.Style]} ({position.x:g},{height - position.y:g}) "
+				f"rectangle ({position.x + size.width:g},{height - position.y - size.height:g});"
 			)
 
 		for line in layout.Lines:
-			start = line.Start
-			end =   line.End
+			start = line.start
+			end =   line.end
 			output.append(
-				f"\\draw{lineStyles[line.Style]} ({start.X:g},{height - start.Y:g}) -- ({end.X:g},{height - end.Y:g});"
+				f"\\draw{lineStyles[line.Style]} ({start.x:g},{height - start.y:g}) -- ({end.x:g},{height - end.y:g});"
 			)
 
 		for circle in layout.Circles:
-			center = circle.Center
-			output.append(f"\\draw ({center.X:g},{height - center.Y:g}) circle[radius={circle.Radius:g}];")
+			center = circle.center
+			output.append(f"\\draw ({center.x:g},{height - center.y:g}) circle[radius={circle.radius:g}];")
 
 		for polygon in layout.Polygons:
-			points = " -- ".join(f"({point.X:g},{height - point.Y:g})" for point in polygon.Points)
+			points = " -- ".join(f"({point.x:g},{height - point.y:g})" for point in polygon.points)
 			output.append(f"\\draw {points} -- cycle;")
 
 		for text in layout.Texts:
 			position = text.Position
 			content =  text.Content.translate(self._SPECIAL_CHARACTERS)
 			output.append(
-				f"\\node[anchor={anchors[text.Anchor]}, inner sep=0pt] at ({position.X:g},{height - position.Y:g}) "
+				f"\\node[anchor={anchors[text.Anchor]}, inner sep=0pt] at ({position.x:g},{height - position.y:g}) "
 				f"{{{textStyles[text.Style]}{content}}};"
 			)
 
