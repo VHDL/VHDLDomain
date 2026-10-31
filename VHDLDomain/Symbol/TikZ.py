@@ -31,7 +31,8 @@
 Render an interface symbol as a TikZ picture.
 
 The output is a complete ``tikzpicture`` environment; a LaTeX document needs only ``\\usepackage{tikz}``. Texts are set
-in ``\\ttfamily`` at the layout's font size, special characters of LaTeX are escaped.
+in their font size and the LaTeX equivalent of their font family, e.g. ``\\ttfamily``; special characters of LaTeX are
+escaped.
 
 .. code-block:: python
 
@@ -48,8 +49,8 @@ from pyTooling.Decorators     import export
 from pyTooling.MetaClasses    import ExtendedType
 
 from VHDLDomain.Symbol        import InterfaceSymbol
-from VHDLDomain.Symbol.Layout import BUS_LINE_WIDTH, DASH_PATTERN, FONT_SIZE, LINE_HEIGHT, LINE_WIDTH, LineStyle, \
-                                     SymbolLayout, TextAnchor, TextStyle
+from VHDLDomain.Symbol.Layout import BUS_LINE_WIDTH, DASH_PATTERN, LINE_WIDTH, FontFamily, LineStyle, SymbolLayout, \
+                                     TextAnchor, TextStyle
 
 
 @export
@@ -110,10 +111,14 @@ class TikZRenderer(metaclass=ExtendedType, slots=True):
 			TextStyle.Bold:    r"\bfseries ",
 			TextStyle.Italic:  r"\itshape "
 		}
+		fontFamilies = {
+			FontFamily.Monospace: r"\ttfamily",
+			FontFamily.SansSerif: r"\sffamily",
+			FontFamily.Serif:     r"\rmfamily"
+		}
 
 		output = [
-			f"\\begin{{tikzpicture}}[x=1pt, y=1pt, line width={LINE_WIDTH:g}pt, "
-			f"font=\\fontsize{{{FONT_SIZE:g}}}{{{LINE_HEIGHT:g}}}\\selectfont\\ttfamily]",
+			f"\\begin{{tikzpicture}}[x=1pt, y=1pt, line width={LINE_WIDTH:g}pt]",
 			f"\\useasboundingbox (0,0) rectangle ({layout.Width:g},{height:g});"
 		]
 		for rectangle in layout.Rectangles:
@@ -142,9 +147,11 @@ class TikZRenderer(metaclass=ExtendedType, slots=True):
 		for text in layout.Texts:
 			position = text.Position
 			content =  text.Content.translate(self._SPECIAL_CHARACTERS)
+			family =   fontFamilies[text.FontFamily]
+			font =     f"\\fontsize{{{text.FontSize:g}}}{{{text.BoundingBox.height:g}}}\\selectfont{family}"
 			output.append(
-				f"\\node[anchor={anchors[text.Anchor]}, inner sep=0pt] at ({position.x:g},{height - position.y:g}) "
-				f"{{{textStyles[text.Style]}{content}}};"
+				f"\\node[anchor={anchors[text.Anchor]}, inner sep=0pt, font={font}] "
+				f"at ({position.x:g},{height - position.y:g}) {{{textStyles[text.Style]}{content}}};"
 			)
 
 		output.append("\\end{tikzpicture}")

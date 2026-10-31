@@ -33,8 +33,8 @@ from pyTooling.Cartesian2D    import LineSegment2D, Point2D, Shapes, Size2D
 from pyTooling.Testing        import Testcase
 
 from VHDLDomain.Symbol        import InterfaceSymbol, Parameter, ParameterGroup, Pin, PinGroup, PinKind, PinSide
-from VHDLDomain.Symbol.Layout import CHARACTER_WIDTH, MARGIN, PADDING, Circle, Line, LineStyle, Polygon, Rectangle, \
-                                     SymbolLayout, TextAnchor, TextStyle
+from VHDLDomain.Symbol.Layout import CHARACTER_WIDTH, FONT_SIZE, LINE_HEIGHT, MARGIN, PADDING, Circle, FontFamily, \
+                                     Line, LineStyle, Polygon, Rectangle, SymbolLayout, Text, TextAnchor, TextStyle
 
 
 if __name__ == "__main__":  # pragma: no cover
@@ -246,6 +246,30 @@ class Glyphs(Testcase):
 
 
 class Primitives(Testcase):
+	def test_Text(self) -> None:
+		text = Text(Point2D(88.0, 14.5), "inv", TextAnchor.Middle, TextStyle.Bold)
+
+		self.assertEqual("inv", text.Content)
+		self.assertEqual(FONT_SIZE, text.FontSize)
+		self.assertIs(FontFamily.Monospace, text.FontFamily)
+		self.assertEqual((3 * CHARACTER_WIDTH, LINE_HEIGHT), text.BoundingBox.ToTuple())
+
+	def test_Text_FontSize(self) -> None:
+		"""The bounding box scales with the font size."""
+		text = Text(Point2D(88.0, 14.5), "inv", TextAnchor.Middle, TextStyle.Bold, 20.0, FontFamily.Serif)
+
+		self.assertEqual(20.0, text.FontSize)
+		self.assertIs(FontFamily.Serif, text.FontFamily)
+		self.assertEqual((6 * CHARACTER_WIDTH, 2 * LINE_HEIGHT), text.BoundingBox.ToTuple())
+
+	def test_Texts(self) -> None:
+		"""The layout sets all texts in the monospace font of the layout's font size."""
+		layout = SymbolLayout(Fifo())
+
+		for text in layout.Texts:
+			self.assertEqual(FONT_SIZE, text.FontSize)
+			self.assertIs(FontFamily.Monospace, text.FontFamily)
+
 	def test_Line(self) -> None:
 		start = Point2D(4.0, 54.0)
 		line =  Line(start, Point2D(34.0, 54.0), LineStyle.Thick)
