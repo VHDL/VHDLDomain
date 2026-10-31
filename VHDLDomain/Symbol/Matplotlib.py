@@ -177,33 +177,34 @@ class MatplotlibRenderer(metaclass=ExtendedType, slots=True):
 
 		for rectangle in layout.Rectangles:
 			position = rectangle.Position
+			size =     rectangle.Size
 			axes.add_patch(Rectangle(
-				(position.X, position.Y), rectangle.Width, rectangle.Height, fill=False, edgecolor="black",
+				(position.x, position.y), size.width, size.height, fill=False, edgecolor="black",
 				linewidth=lineWidths[rectangle.Style], linestyle=lineStyles[rectangle.Style], capstyle="butt"
 			))
 
 		for line in layout.Lines:
-			start = line.Start
-			end =   line.End
+			start = line.start
+			end =   line.end
 			axes.add_line(Line2D(
-				(start.X, end.X), (start.Y, end.Y), color="black", linewidth=lineWidths[line.Style],
+				(start.x, end.x), (start.y, end.y), color="black", linewidth=lineWidths[line.Style],
 				linestyle=lineStyles[line.Style], solid_capstyle="butt"
 			))
 
 		for circle in layout.Circles:
-			center = circle.Center
-			axes.add_patch(Circle((center.X, center.Y), circle.Radius, fill=False, edgecolor="black", linewidth=LINE_WIDTH))
+			center = circle.center
+			axes.add_patch(Circle((center.x, center.y), circle.radius, fill=False, edgecolor="black", linewidth=LINE_WIDTH))
 
 		for polygon in layout.Polygons:
 			axes.add_patch(Polygon(
-				[(point.X, point.Y) for point in polygon.Points],
+				[(point.x, point.y) for point in polygon.points],
 				closed=True, fill=False, edgecolor="black", linewidth=LINE_WIDTH
 			))
 
 		for text in layout.Texts:
 			position = text.Position
 			axes.text(
-				position.X, position.Y, text.Content,
+				position.x, position.y, text.Content,
 				horizontalalignment=alignments[text.Anchor], verticalalignment="baseline", family="monospace",
 				fontsize=FONT_SIZE, fontweight=fontWeights[text.Style], fontstyle=fontStyles[text.Style], color="black",
 				parse_math=False

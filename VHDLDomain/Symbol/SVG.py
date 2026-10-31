@@ -105,24 +105,25 @@ class SVGRenderer(metaclass=ExtendedType, slots=True):
 		]
 		for rectangle in layout.Rectangles:
 			position = rectangle.Position
+			size =     rectangle.Size
 			output.append(
-				f"<rect x=\"{position.X:g}\" y=\"{position.Y:g}\" width=\"{rectangle.Width:g}\" "
-				f"height=\"{rectangle.Height:g}\"{lineStyles[rectangle.Style]}/>"
+				f"<rect x=\"{position.x:g}\" y=\"{position.y:g}\" width=\"{size.width:g}\" "
+				f"height=\"{size.height:g}\"{lineStyles[rectangle.Style]}/>"
 			)
 
 		for line in layout.Lines:
-			start = line.Start
-			end =   line.End
+			start = line.start
+			end =   line.end
 			output.append(
-				f"<line x1=\"{start.X:g}\" y1=\"{start.Y:g}\" x2=\"{end.X:g}\" y2=\"{end.Y:g}\"{lineStyles[line.Style]}/>"
+				f"<line x1=\"{start.x:g}\" y1=\"{start.y:g}\" x2=\"{end.x:g}\" y2=\"{end.y:g}\"{lineStyles[line.Style]}/>"
 			)
 
 		for circle in layout.Circles:
-			center = circle.Center
-			output.append(f"<circle cx=\"{center.X:g}\" cy=\"{center.Y:g}\" r=\"{circle.Radius:g}\"/>")
+			center = circle.center
+			output.append(f"<circle cx=\"{center.x:g}\" cy=\"{center.y:g}\" r=\"{circle.radius:g}\"/>")
 
 		for polygon in layout.Polygons:
-			points = " ".join(f"{point.X:g},{point.Y:g}" for point in polygon.Points)
+			points = " ".join(f"{point.x:g},{point.y:g}" for point in polygon.points)
 			output.append(f"<polygon points=\"{points}\"/>")
 
 		output.append("</g>")
@@ -130,7 +131,7 @@ class SVGRenderer(metaclass=ExtendedType, slots=True):
 		for text in layout.Texts:
 			position = text.Position
 			output.append(
-				f"<text x=\"{position.X:g}\" y=\"{position.Y:g}\" text-anchor=\"{anchors[text.Anchor]}\""
+				f"<text x=\"{position.x:g}\" y=\"{position.y:g}\" text-anchor=\"{anchors[text.Anchor]}\""
 				f"{textStyles[text.Style]}>{escape(text.Content)}</text>"
 			)
 
