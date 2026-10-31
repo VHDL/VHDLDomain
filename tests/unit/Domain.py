@@ -131,12 +131,19 @@ class Project(Testcase):
 	def tearDown(self) -> None:
 		self._directory.cleanup()
 
-	def _build(self, documents: dict[str, str], parallel: int = 0, **config: Any) -> SphinxTestApp:
+	def _build(
+		self,
+		documents: dict[str, str],
+		parallel:  int = 0,
+		builder:   str = "html",
+		**config:  Any
+	) -> SphinxTestApp:
 		"""
-		Write the documents and build the project as HTML.
+		Write the documents and build the project, as HTML unless another builder is given.
 
 		:param documents: Content of the documents, by name; ``index`` has a toctree of the others.
 		:param parallel:  Optional, number of processes reading the documents. Default: ``0``.
+		:param builder:   Optional, name of the builder. Default: ``"html"``.
 		:param config:    Configuration values overriding the defaults.
 		:returns:         The Sphinx application after the build.
 		"""
@@ -151,7 +158,7 @@ class Project(Testcase):
 
 		self._warnings = StringIO()
 		app = SphinxTestApp(
-			"html", source, self._path / "build", freshenv=True, confoverrides=config, status=StringIO(),
+			builder, source, self._path / "build", freshenv=True, confoverrides=config, status=StringIO(),
 			warning=self._warnings, parallel=parallel
 		)
 		try:
