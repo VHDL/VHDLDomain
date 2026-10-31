@@ -43,6 +43,10 @@ packageName =            "VHDLDomain"
 packageDirectory =       packageName
 packageInformationFile = Path(f"{packageDirectory}/__init__.py")
 
+additionalRequirements = {
+	"diagram": ["matplotlib >= 3.10"],
+}
+
 with WarningCollector() as warnings:
 	setup(
 		**DescribePythonPackageHostedOnGitHub(
@@ -51,6 +55,7 @@ with WarningCollector() as warnings:
 			gitHubNamespace=gitHubNamespace,
 			keywords=["Python3", "VHDL", "Sphinx", "Sphinx Extension", "Sphinx Domain", "Documentation"],
 			unittestRequirementsFile=Path("tests/requirements.txt"),
+			additionalRequirements=additionalRequirements,
 			sourceFileWithVersion=packageInformationFile,
 			classifiers=list(DEFAULT_CLASSIFIERS) + [
 				"Framework :: Sphinx :: Domain",
