@@ -293,7 +293,7 @@ class Visitors(SymbolProject):
 		self._symbols(".. vhdl:symbol:: Counter\n")
 
 		html = self._html("page")
-		self.assertIn('<div class="vhdl vhdl-symbol">\n<svg>Counter</svg>\n</div>', html)
+		self.assertIn('<div class="vhdl vhdl-symbol" style="overflow-x: auto;">\n<svg>Counter</svg>\n</div>', html)
 		self.assertNotIn("parameter MODULO", html)
 
 	def test_LaTeX(self) -> None:
@@ -306,7 +306,11 @@ class Visitors(SymbolProject):
 		tex = texFiles[0].read_text(encoding="utf-8")
 		self.assertIn("\\usepackage{tikz}", tex)
 		self.assertIn("\\usetikzlibrary{positioning,arrows.meta}", tex)
-		self.assertIn("\n\n\\begin{tikzpicture}Counter\\end{tikzpicture}\n\n", tex)
+		self.assertIn(
+			"\n\n\\resizebox{\\ifdim\\width>\\linewidth\\linewidth\\else\\width\\fi}{!}{%\n"
+			"\\begin{tikzpicture}Counter\\end{tikzpicture}%\n}\n\n",
+			tex
+		)
 		self.assertNotIn("parameter MODULO", tex)
 
 	def test_LaTeX_NoLibraries(self) -> None:

@@ -75,6 +75,8 @@ def html_visit_SymbolNode(translator: HTML5Translator, node: SymbolNode) -> None
 	Write an interface symbol in HTML, completely: the inline SVG of :class:`~VHDLDomain.Symbol.SVG.SVGRenderer` in a
 	``div`` of the classes ``vhdl`` and ``vhdl-symbol``.
 
+	A symbol wider than the page's content scrolls horizontally instead of overflowing it.
+
 	:param translator: The HTML translator writing the document.
 	:param node:       The symbol's node.
 	:raises SkipNode:  Always, so the node's text isn't written.
@@ -82,7 +84,7 @@ def html_visit_SymbolNode(translator: HTML5Translator, node: SymbolNode) -> None
 	from VHDLDomain.Symbol.SVG import SVGRenderer
 
 	svg = SVGRenderer().Render(node["symbol"])
-	translator.body.append(f"<div class=\"vhdl vhdl-symbol\">\n{svg}\n</div>\n")
+	translator.body.append(f"<div class=\"vhdl vhdl-symbol\" style=\"overflow-x: auto;\">\n{svg}\n</div>\n")
 
 	raise nodes.SkipNode
 
@@ -93,6 +95,8 @@ def latex_visit_SymbolNode(translator: LaTeXTranslator, node: SymbolNode) -> Non
 	Write an interface symbol in LaTeX, completely: the ``tikzpicture`` of :class:`~VHDLDomain.Symbol.TikZ.TikZRenderer`
 	as a paragraph of its own.
 
+	A symbol wider than the line is scaled down to the line width; a narrower one keeps its size.
+
 	:param translator: The LaTeX translator writing the document.
 	:param node:       The symbol's node.
 	:raises SkipNode:  Always, so the node's text isn't written.
@@ -100,7 +104,8 @@ def latex_visit_SymbolNode(translator: LaTeXTranslator, node: SymbolNode) -> Non
 	from VHDLDomain.Symbol.TikZ import TikZRenderer
 
 	tikz = TikZRenderer().Render(node["symbol"])
-	translator.body.append(f"\n\n{tikz}\n\n")
+	width = "\\ifdim\\width>\\linewidth\\linewidth\\else\\width\\fi"
+	translator.body.append(f"\n\n\\resizebox{{{width}}}{{!}}{{%\n{tikz}%\n}}\n\n")
 
 	raise nodes.SkipNode
 
