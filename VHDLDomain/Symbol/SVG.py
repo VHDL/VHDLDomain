@@ -43,8 +43,6 @@ gives the same text.
 """
 from __future__               import annotations
 
-from xml.sax.saxutils         import escape
-
 from pyTooling.Common         import getFullyQualifiedName
 from pyTooling.Decorators     import export
 from pyTooling.MetaClasses    import ExtendedType
@@ -106,7 +104,7 @@ class SVGRenderer(metaclass=ExtendedType, slots=True):
 		output = [
 			f"<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"{width}pt\" height=\"{height}pt\" "
 			f"viewBox=\"0 0 {width} {height}\">",
-			f"<title>{escape(symbol.Name)}</title>",
+			f"<title>{self._Escape(symbol.Name)}</title>",
 			f"<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"{LINE_WIDTH:g}\">"
 		]
 		for rectangle in layout.Rectangles:
@@ -139,10 +137,23 @@ class SVGRenderer(metaclass=ExtendedType, slots=True):
 			output.append(
 				f"<text x=\"{position.x:g}\" y=\"{position.y:g}\" text-anchor=\"{anchors[text.Anchor]}\" "
 				f"font-family=\"{fontFamilies[text.FontFamily]}\" font-size=\"{text.FontSize:g}\"{textStyles[text.Style]}>"
-				f"{escape(text.Content)}</text>"
+				f"{self._Escape(text.Content)}</text>"
 			)
 
 		output.append("</g>")
 		output.append("</svg>")
 
 		return "\n".join(output) + "\n"
+
+	@staticmethod
+	def _Escape(text: str) -> str:
+		"""
+		Escape a text for the content of an XML element.
+
+		The renderer escapes the symbol's name in ``<title>`` and each text in ``<text>``; attribute values are numbers or
+		fixed keywords.
+
+		:param text: The text.
+		:returns:    The text with ``&``, ``<`` and ``>`` escaped.
+		"""
+		return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
