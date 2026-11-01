@@ -1,0 +1,316 @@
+# ==================================================================================================================== #
+# __     ___   _ ____  _     ____                        _                                                             #
+# \ \   / / | | |  _ \| |   |  _ \  ___  _ __ ___   __ _(_)_ __                                                        #
+#  \ \ / /| |_| | | | | |   | | | |/ _ \| '_ ` _ \ / _` | | '_ \                                                       #
+#   \ V / |  _  | |_| | |___| |_| | (_) | | | | | | (_| | | | | |                                                      #
+#    \_/  |_| |_|____/|_____|____/ \___/|_| |_| |_|\__,_|_|_| |_|                                                      #
+#                                                                                                                      #
+# ==================================================================================================================== #
+# Authors:                                                                                                             #
+#   Patrick Lehmann                                                                                                    #
+#                                                                                                                      #
+# License:                                                                                                             #
+# ==================================================================================================================== #
+# Copyright 2026-2026 Patrick Lehmann - Boetzingen, Germany                                                            #
+#                                                                                                                      #
+# Licensed under the Apache License, Version 2.0 (the "License");                                                      #
+# you may not use this file except in compliance with the License.                                                     #
+# You may obtain a copy of the License at                                                                              #
+#                                                                                                                      #
+#   http://www.apache.org/licenses/LICENSE-2.0                                                                         #
+#                                                                                                                      #
+# Unless required by applicable law or agreed to in writing, software                                                  #
+# distributed under the License is distributed on an "AS IS" BASIS,                                                    #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.                                             #
+# See the License for the specific language governing permissions and                                                  #
+# limitations under the License.                                                                                       #
+#                                                                                                                      #
+# SPDX-License-Identifier: Apache-2.0                                                                                  #
+# ==================================================================================================================== #
+#
+"""Unit tests for the renderers of an interface symbol: SVG, TikZ and matplotlib."""
+from textwrap                     import dedent
+from unittest                     import skipUnless
+from unittest.mock                import patch
+from xml.etree.ElementTree        import fromstring
+
+from pyTooling.Exceptions         import MissingDependencyError
+from pyTooling.Testing            import Testcase
+
+from VHDLDomain.Symbol            import InterfaceSymbol, Pin, PinGroup, PinSide
+from VHDLDomain.Symbol.Matplotlib import MatplotlibRenderer
+from VHDLDomain.Symbol.SVG        import SVGRenderer
+from VHDLDomain.Symbol.TikZ       import TikZRenderer
+
+from tests.unit.SymbolLayout      import Fifo, Inverter
+
+try:
+	import matplotlib  # noqa: F401
+	matplotlibIsInstalled = True
+except ImportError:
+	matplotlibIsInstalled = False
+
+
+if __name__ == "__main__":  # pragma: no cover
+	print("ERROR: you called a testcase declaration file as an executable module.")
+	print("Use: 'python -m unitest <testcase module>'")
+	exit(1)
+
+
+SVG_NAMESPACE = "{http://www.w3.org/2000/svg}"
+"""Namespace of SVG elements, as :mod:`xml.etree.ElementTree` writes it in a tag."""
+
+
+def Escaping() -> InterfaceSymbol:
+	"""
+	Build a symbol, whose name and type label contain special characters of XML and LaTeX.
+
+	:returns: The symbol ``a<b&c>_x``.
+	"""
+	symbol = InterfaceSymbol("a<b&c>_x")
+	Pin("d", "\\{}_#%&$~^", PinSide.Left, parent=PinGroup(parent=symbol))
+
+	return symbol
+
+
+class SVG(Testcase):
+	def test_Inverter(self) -> None:
+		expected = dedent("""\
+			<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="182pt" height="72pt" viewBox="0 0 182 72">
+			<title>inv</title>
+			<g fill="none" stroke="currentColor" stroke-width="1">
+			<rect x="34" y="18" width="108" height="22" stroke-dasharray="4 2"/>
+			<rect x="34" y="40" width="108" height="28"/>
+			<line x1="4" y1="54" x2="34" y2="54"/>
+			<line x1="178" y1="54" x2="148" y2="54"/>
+			<circle cx="145" cy="54" r="3"/>
+			</g>
+			<g fill="currentColor" xml:space="preserve">
+			<text x="88" y="14.5" text-anchor="middle" font-family="monospace" font-size="10" font-weight="bold">inv</text>
+			<text x="40" y="32.5" text-anchor="start" font-family="monospace" font-size="10">WIDTH</text>
+			<text x="76" y="32.5" text-anchor="start" font-family="monospace" font-size="10">: positive</text>
+			<text x="46" y="57.5" text-anchor="start" font-family="monospace" font-size="10">a</text>
+			<text x="28" y="49" text-anchor="end" font-family="monospace" font-size="10">bit</text>
+			<text x="130" y="57.5" text-anchor="end" font-family="monospace" font-size="10">y_n</text>
+			<text x="154" y="49" text-anchor="start" font-family="monospace" font-size="10">bit</text>
+			</g>
+			</svg>
+			""")
+
+		self.assertEqual(expected, SVGRenderer().Render(Inverter()))
+
+	def test_Fifo(self) -> None:
+		"""The larger symbol is well-formed SVG with an element per primitive and no external resources."""
+		svg =  SVGRenderer().Render(Fifo())
+		root = fromstring(svg)
+
+		self.assertEqual(f"{SVG_NAMESPACE}svg", root.tag)
+		self.assertEqual("0 0 680 258", root.get("viewBox"))
+		self.assertEqual(2, len(root.findall(f".//{SVG_NAMESPACE}rect")))
+		self.assertEqual(12, len(root.findall(f".//{SVG_NAMESPACE}line")))
+		self.assertEqual(1, len(root.findall(f".//{SVG_NAMESPACE}circle")))
+		self.assertEqual(1, len(root.findall(f".//{SVG_NAMESPACE}polygon")))
+		self.assertEqual(27, len(root.findall(f".//{SVG_NAMESPACE}text")))
+		self.assertNotIn("href", svg)
+		self.assertNotIn("<style", svg)
+		self.assertEqual(svg, SVGRenderer().Render(Fifo()))
+
+	def test_Bus(self) -> None:
+		svg = SVGRenderer().Render(Fifo())
+
+		self.assertEqual(2, svg.count(" stroke-width=\"3\"/>"))
+
+	def test_Clock(self) -> None:
+		svg = SVGRenderer().Render(Fifo())
+
+		self.assertIn("<polygon points=\"256,64 262,68 256,72\"/>", svg)
+
+	def test_Inverted(self) -> None:
+		svg = SVGRenderer().Render(Fifo())
+
+		self.assertIn("<circle cx=\"427\" cy=\"178\" r=\"3\"/>", svg)
+
+	def test_Escaping(self) -> None:
+		svg = SVGRenderer().Render(Escaping())
+
+		self.assertIn("<title>a&lt;b&amp;c&gt;_x</title>", svg)
+		self.assertIn(">a&lt;b&amp;c&gt;_x</text>", svg)
+		self.assertIn(">\\{}_#%&amp;$~^</text>", svg)
+
+	def test_Symbol_None(self) -> None:
+		with self.assertRaises(ValueError) as context:
+			SVGRenderer().Render(None)
+
+		self.assertEqual("Parameter 'symbol' is None.", str(context.exception))
+
+	def test_Symbol_WrongType(self) -> None:
+		with self.assertRaises(TypeError) as context:
+			SVGRenderer().Render("inv")
+
+		self.assertEqual("Parameter 'symbol' is not of type 'InterfaceSymbol'.", str(context.exception))
+		self.assertEqual(["Got type 'str'."], context.exception.__notes__)
+
+
+class TikZ(Testcase):
+	def test_Inverter(self) -> None:
+		expected = dedent("""\
+			\\begin{tikzpicture}[x=1pt, y=1pt, line width=1pt]
+			\\useasboundingbox (0,0) rectangle (182,72);
+			\\draw[dash pattern=on 4pt off 2pt] (34,54) rectangle (142,32);
+			\\draw (34,32) rectangle (142,4);
+			\\draw (4,18) -- (34,18);
+			\\draw (178,18) -- (148,18);
+			\\draw (145,18) circle[radius=3];
+			\\node[anchor=base, inner sep=0pt, font=\\fontsize{10}{14}\\selectfont\\ttfamily] at (88,57.5) {\\bfseries inv};
+			\\node[anchor=base west, inner sep=0pt, font=\\fontsize{10}{14}\\selectfont\\ttfamily] at (40,39.5) {WIDTH};
+			\\node[anchor=base west, inner sep=0pt, font=\\fontsize{10}{14}\\selectfont\\ttfamily] at (76,39.5) {: positive};
+			\\node[anchor=base west, inner sep=0pt, font=\\fontsize{10}{14}\\selectfont\\ttfamily] at (46,14.5) {a};
+			\\node[anchor=base east, inner sep=0pt, font=\\fontsize{10}{14}\\selectfont\\ttfamily] at (28,23) {bit};
+			\\node[anchor=base east, inner sep=0pt, font=\\fontsize{10}{14}\\selectfont\\ttfamily] at (130,14.5) {y\\_n};
+			\\node[anchor=base west, inner sep=0pt, font=\\fontsize{10}{14}\\selectfont\\ttfamily] at (154,23) {bit};
+			\\end{tikzpicture}
+			""")
+
+		self.assertEqual(expected, TikZRenderer().Render(Inverter()))
+
+	def test_Fifo(self) -> None:
+		"""The larger symbol is one environment with a command per primitive and balanced braces."""
+		tikz =  TikZRenderer().Render(Fifo())
+		lines = tikz.splitlines()
+
+		self.assertTrue(lines[0].startswith("\\begin{tikzpicture}["))
+		self.assertEqual("\\useasboundingbox (0,0) rectangle (680,258);", lines[1])
+		self.assertEqual("\\end{tikzpicture}", lines[-1])
+		self.assertEqual(2, len([line for line in lines if line.startswith("\\draw") and " rectangle " in line]))
+		self.assertEqual(27, tikz.count("\\node["))
+		self.assertEqual(tikz.count("{"), tikz.count("}"))
+		self.assertEqual((), TikZRenderer.TIKZ_LIBRARIES)
+
+	def test_Bus(self) -> None:
+		tikz = TikZRenderer().Render(Fifo())
+
+		self.assertEqual(2, tikz.count("\\draw[line width=3pt] "))
+
+	def test_Clock(self) -> None:
+		tikz = TikZRenderer().Render(Fifo())
+
+		self.assertIn("\\draw (256,194) -- (262,190) -- (256,186) -- cycle;", tikz)
+
+	def test_Inverted(self) -> None:
+		tikz = TikZRenderer().Render(Fifo())
+
+		self.assertIn("\\draw (427,80) circle[radius=3];", tikz)
+
+	def test_Escaping(self) -> None:
+		tikz = TikZRenderer().Render(Escaping())
+
+		self.assertIn("{\\bfseries a<b\\&c>\\_x};", tikz)
+		self.assertIn(
+			"{\\textbackslash{}\\{\\}\\_\\#\\%\\&\\$\\textasciitilde{}\\textasciicircum{}};",
+			tikz
+		)
+
+	def test_Symbol_None(self) -> None:
+		with self.assertRaises(ValueError) as context:
+			TikZRenderer().Render(None)
+
+		self.assertEqual("Parameter 'symbol' is None.", str(context.exception))
+
+	def test_Symbol_WrongType(self) -> None:
+		with self.assertRaises(TypeError) as context:
+			TikZRenderer().Render("inv")
+
+		self.assertEqual("Parameter 'symbol' is not of type 'InterfaceSymbol'.", str(context.exception))
+		self.assertEqual(["Got type 'str'."], context.exception.__notes__)
+
+
+class Matplotlib(Testcase):
+	@skipUnless(matplotlibIsInstalled, "matplotlib isn't installed.")
+	def test_PNG(self) -> None:
+		png = MatplotlibRenderer().Render(Fifo())
+
+		self.assertTrue(png.startswith(b"\x89PNG\r\n\x1a\n"))
+		self.assertGreater(len(png), 0)
+
+	@skipUnless(matplotlibIsInstalled, "matplotlib isn't installed.")
+	def test_SVG(self) -> None:
+		"""Texts stay text in an SVG image."""
+		svg = MatplotlibRenderer().Render(Fifo(), "svg")
+
+		self.assertIn(b"<svg", svg)
+		self.assertIn(b">std_logic_vector(DATA_BITS - 1 downto 0)</text>", svg)
+
+	@skipUnless(matplotlibIsInstalled, "matplotlib isn't installed.")
+	def test_PDF(self) -> None:
+		pdf = MatplotlibRenderer().Render(Fifo(), "pdf")
+
+		self.assertTrue(pdf.startswith(b"%PDF-"))
+
+	@skipUnless(matplotlibIsInstalled, "matplotlib isn't installed.")
+	def test_DPI(self) -> None:
+		"""The size of a PNG image is the layout's size in points at the resolution."""
+		png = MatplotlibRenderer(dpi=72).Render(Inverter())
+
+		self.assertEqual(72, MatplotlibRenderer(dpi=72).DPI)
+		self.assertEqual(182, int.from_bytes(png[16:20], "big"))
+		self.assertEqual(72, int.from_bytes(png[20:24], "big"))
+
+	def test_MissingDependency(self) -> None:
+		with patch.dict("sys.modules", {"matplotlib": None}):
+			with self.assertRaises(MissingDependencyError) as context:
+				MatplotlibRenderer().Render(Inverter())
+
+		self.assertEqual("Optional dependency 'matplotlib' not installed.", str(context.exception))
+
+	def test_DPI_None(self) -> None:
+		with self.assertRaises(ValueError) as context:
+			MatplotlibRenderer(dpi=None)
+
+		self.assertEqual("Parameter 'dpi' is None.", str(context.exception))
+
+	def test_DPI_WrongType(self) -> None:
+		with self.assertRaises(TypeError) as context:
+			MatplotlibRenderer(dpi=72.0)
+
+		self.assertEqual("Parameter 'dpi' is not of type 'int'.", str(context.exception))
+		self.assertEqual(["Got type 'float'."], context.exception.__notes__)
+
+	def test_DPI_NotPositive(self) -> None:
+		with self.assertRaises(ValueError) as context:
+			MatplotlibRenderer(dpi=0)
+
+		self.assertEqual("Parameter 'dpi' isn't positive.", str(context.exception))
+		self.assertEqual(["Got value '0'."], context.exception.__notes__)
+
+	def test_Symbol_None(self) -> None:
+		with self.assertRaises(ValueError) as context:
+			MatplotlibRenderer().Render(None)
+
+		self.assertEqual("Parameter 'symbol' is None.", str(context.exception))
+
+	def test_Symbol_WrongType(self) -> None:
+		with self.assertRaises(TypeError) as context:
+			MatplotlibRenderer().Render("inv")
+
+		self.assertEqual("Parameter 'symbol' is not of type 'InterfaceSymbol'.", str(context.exception))
+		self.assertEqual(["Got type 'str'."], context.exception.__notes__)
+
+	def test_Format_None(self) -> None:
+		with self.assertRaises(ValueError) as context:
+			MatplotlibRenderer().Render(Inverter(), None)
+
+		self.assertEqual("Parameter 'format' is None.", str(context.exception))
+
+	def test_Format_WrongType(self) -> None:
+		with self.assertRaises(TypeError) as context:
+			MatplotlibRenderer().Render(Inverter(), 5)
+
+		self.assertEqual("Parameter 'format' is not of type 'str'.", str(context.exception))
+		self.assertEqual(["Got type 'int'."], context.exception.__notes__)
+
+	def test_Format_Unknown(self) -> None:
+		with self.assertRaises(ValueError) as context:
+			MatplotlibRenderer().Render(Inverter(), "jpeg")
+
+		self.assertEqual("Parameter 'format' is not a supported image format.", str(context.exception))
+		self.assertEqual(["Got value 'jpeg'.", "Supported formats: png, svg, pdf"], context.exception.__notes__)
