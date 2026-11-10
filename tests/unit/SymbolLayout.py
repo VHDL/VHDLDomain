@@ -29,18 +29,26 @@
 # ==================================================================================================================== #
 #
 """Unit tests for the geometry of an interface symbol."""
-from pyTooling.Cartesian2D    import LineSegment2D, Point2D, Shapes, Size2D
-from pyTooling.Testing        import Testcase
+from typing                        import TypeVar
 
-from VHDLDomain.Symbol        import InterfaceSymbol, Parameter, ParameterGroup, Pin, PinGroup, PinKind, PinSide
-from VHDLDomain.Symbol.Layout import CHARACTER_WIDTH, FONT_SIZE, LINE_HEIGHT, MARGIN, PADDING, Circle, FontFamily, \
-                                     Line, LineStyle, Polygon, Rectangle, SymbolLayout, Text, TextAnchor, TextStyle
+from pyTooling.Cartesian2D.Drawing import Circle, FontStyle, LineSegment2D, LineStyle, Polygon, Rectangle, RGBAColor, \
+                                          Text, TextAlignment
+from pyTooling.Cartesian2D.Groups  import YAxisDirection
+from pyTooling.Testing             import Testcase
+
+from VHDLDomain.Symbol             import InterfaceSymbol, Parameter, ParameterGroup, Pin, PinGroup, PinKind, PinSide
+from VHDLDomain.Symbol.Layout      import BUS_LINE_WIDTH, CHARACTER_WIDTH, FONT_SIZE, LINE_HEIGHT, LINE_WIDTH, MARGIN, \
+                                          PADDING, CurrentColor, SymbolLayout
 
 
 if __name__ == "__main__":  # pragma: no cover
 	print("ERROR: you called a testcase declaration file as an executable module.")
 	print("Use: 'python -m unitest <testcase module>'")
 	exit(1)
+
+
+Element = TypeVar("Element")
+"""Type of a canvas' element, as selected by :func:`ElementsOf`."""
 
 
 def Inverter() -> InterfaceSymbol:
@@ -86,6 +94,17 @@ def Fifo() -> InterfaceSymbol:
 	return symbol
 
 
+def ElementsOf(layout: SymbolLayout, kind: type[Element]) -> list[Element]:
+	"""
+	Select the elements of one kind from a layout's canvas.
+
+	:param layout: The layout.
+	:param kind:   The class of the elements.
+	:returns:      The elements of that class, in drawing order.
+	"""
+	return [element for element in layout.Canvas.Children if isinstance(element, kind)]
+
+
 class Construction(Testcase):
 	def test_Symbol(self) -> None:
 		symbol = Inverter()
@@ -107,40 +126,72 @@ class Construction(Testcase):
 		self.assertEqual(["Got type 'str'."], context.exception.__notes__)
 
 
+class Canvas(Testcase):
+	def test_Canvas(self) -> None:
+		"""The canvas' y-axis points down, its size is the drawing's size."""
+		canvas = SymbolLayout(Inverter()).Canvas
+
+		self.assertIs(YAxisDirection.Down, canvas.Direction)
+		self.assertEqual((182.0, 72.0), canvas.Size.ToTuple())
+
+	def test_DrawingOrder(self) -> None:
+		"""The children are grouped by kind: rectangles, line segments, circles, polygons, then texts."""
+		kinds =   [Rectangle, LineSegment2D, Circle, Polygon, Text]
+		indices = [kinds.index(type(element)) for element in SymbolLayout(Fifo()).Canvas.Children]
+
+		self.assertEqual(43, len(indices))
+		self.assertEqual(sorted(indices), indices)
+
+	def test_Rectangles(self) -> None:
+		layout = SymbolLayout(Fifo())
+
+		self.assertEqual(2, len(ElementsOf(layout, Rectangle)))
+
+	def test_LineSegments(self) -> None:
+		layout = SymbolLayout(Fifo())
+
+		self.assertEqual(12, len(ElementsOf(layout, LineSegment2D)))
+
+	def test_Circles(self) -> None:
+		layout = SymbolLayout(Fifo())
+
+		self.assertEqual(1, len(ElementsOf(layout, Circle)))
+
+	def test_Polygons(self) -> None:
+		layout = SymbolLayout(Fifo())
+
+		self.assertEqual(1, len(ElementsOf(layout, Polygon)))
+
+	def test_Texts(self) -> None:
+		layout = SymbolLayout(Fifo())
+
+		self.assertEqual(27, len(ElementsOf(layout, Text)))
+
+
 class Geometry(Testcase):
 	def test_Inverter(self) -> None:
-		layout = SymbolLayout(Inverter())
+		layout =     SymbolLayout(Inverter())
+		rectangles = ElementsOf(layout, Rectangle)
 
-		self.assertEqual(182.0, layout.Width)
-		self.assertEqual(72.0, layout.Height)
-
-		parameterBox = layout.Rectangles[0]
-		pinBox =       layout.Rectangles[1]
-		self.assertEqual(2, len(layout.Rectangles))
-		self.assertIs(LineStyle.Dashed, parameterBox.Style)
-		self.assertIs(LineStyle.Normal, pinBox.Style)
-		self.assertEqual(34.0, parameterBox.Position.x)
-		self.assertEqual(18.0, parameterBox.Position.y)
-		self.assertEqual(108.0, parameterBox.Size.width)
-		self.assertEqual(22.0, parameterBox.Size.height)
-		self.assertEqual(34.0, pinBox.Position.x)
-		self.assertEqual(40.0, pinBox.Position.y)
-		self.assertEqual(108.0, pinBox.Size.width)
-		self.assertEqual(28.0, pinBox.Size.height)
+		self.assertEqual(2, len(rectangles))
+		self.assertIs(LineStyle.Dashed, rectangles[0].Stroke.LineStyle)
+		self.assertIs(LineStyle.Solid, rectangles[1].Stroke.LineStyle)
+		self.assertEqual((34.0, 18.0, 142.0, 40.0), rectangles[0].BoundingBox.ToTuple())
+		self.assertEqual((34.0, 40.0, 142.0, 68.0), rectangles[1].BoundingBox.ToTuple())
 
 	def test_Title(self) -> None:
 		layout = SymbolLayout(Inverter())
-		title =  layout.Texts[0]
+		title =  ElementsOf(layout, Text)[0]
 
 		self.assertEqual("inv", title.Content)
-		self.assertIs(TextAnchor.Middle, title.Anchor)
-		self.assertIs(TextStyle.Bold, title.Style)
-		self.assertEqual(88.0, title.Position.x)
+		self.assertIs(TextAlignment.Center, title.Alignment)
+		self.assertTrue(title.Font.Bold)
+		self.assertEqual(88.0, title.Position.X)
 
 	def test_ParameterColumns(self) -> None:
 		"""Name, type and default value of all parameters start in one column each."""
 		layout =   SymbolLayout(Fifo())
-		contents = {text.Content: text.Position.x for text in layout.Texts}
+		contents = {text.Content: text.Position.X for text in ElementsOf(layout, Text)}
 
 		self.assertEqual(contents["DEPTH"], contents["DATA_BITS"])
 		self.assertEqual(contents["DEPTH"] + 10 * CHARACTER_WIDTH, contents[": positive"])
@@ -150,78 +201,81 @@ class Geometry(Testcase):
 	def test_PinEnds(self) -> None:
 		"""The stubs of a side end in one column, far enough out for the longest type label."""
 		layout =    SymbolLayout(Fifo())
-		pinBox =    layout.Rectangles[1]
-		boxLeft =   pinBox.Position.x
-		boxRight =  boxLeft + pinBox.Size.width
-		leftEnds =  {line.start.x for line in layout.Lines if line.start.x < boxLeft}
-		rightEnds = {line.start.x for line in layout.Lines if line.start.x > boxRight}
+		pinBox =    ElementsOf(layout, Rectangle)[1].BoundingBox
+		lines =     ElementsOf(layout, LineSegment2D)
+		leftEnds =  {line.Start.X for line in lines if line.Start.X < pinBox.MinX}
+		rightEnds = {line.Start.X for line in lines if line.Start.X > pinBox.MaxX}
 
 		self.assertEqual({MARGIN}, leftEnds)
-		self.assertEqual({layout.Width - MARGIN}, rightEnds)
-		self.assertEqual(40 * CHARACTER_WIDTH + 2 * PADDING, boxLeft - MARGIN)
+		self.assertEqual({layout.Canvas.Size.Width - MARGIN}, rightEnds)
+		self.assertEqual(40 * CHARACTER_WIDTH + 2 * PADDING, pinBox.MinX - MARGIN)
 
 	def test_GroupSeparators(self) -> None:
 		"""A line separates two groups; the first group of a box has none."""
-		layout =     SymbolLayout(Fifo())
-		pinBox =     layout.Rectangles[1]
-		separators = [line for line in layout.Lines if line.start.x == pinBox.Position.x and line.start.y == line.end.y]
+		layout = SymbolLayout(Fifo())
+		pinBox = ElementsOf(layout, Rectangle)[1].BoundingBox
+		separators = [
+			line for line in ElementsOf(layout, LineSegment2D) if line.Start.X == pinBox.MinX and line.Start.Y == line.End.Y
+		]
 
 		self.assertEqual(3, len(separators))
 		for separator in separators:
-			self.assertEqual(pinBox.Position.x + pinBox.Size.width, separator.end.x)
+			self.assertEqual(pinBox.MaxX, separator.End.X)
 
 	def test_GroupHeaders(self) -> None:
 		layout =  SymbolLayout(Fifo())
-		headers = [text.Content for text in layout.Texts if text.Style is TextStyle.Italic]
+		headers = [text.Content for text in ElementsOf(layout, Text) if text.Font.FontStyle is FontStyle.Italic]
 
 		self.assertEqual(["In", "Out"], headers)
 
 	def test_Rows(self) -> None:
 		"""Left and right pins of a group fill rows from the top, independently."""
 		layout = SymbolLayout(Fifo())
-		names =  {text.Content: text for text in layout.Texts}
+		names =  {text.Content: text for text in ElementsOf(layout, Text)}
 
-		self.assertEqual(names["In_Valid"].Position.y, names["In_Ack"].Position.y)
-		self.assertEqual(names["Out_Ack"].Position.y, names["Out_Valid"].Position.y)
-		self.assertIs(TextAnchor.Start, names["In_Valid"].Anchor)
-		self.assertIs(TextAnchor.End, names["In_Ack"].Anchor)
+		self.assertEqual(names["In_Valid"].Position.Y, names["In_Ack"].Position.Y)
+		self.assertEqual(names["Out_Ack"].Position.Y, names["Out_Valid"].Position.Y)
+		self.assertIs(TextAlignment.Left, names["In_Valid"].Alignment)
+		self.assertIs(TextAlignment.Right, names["In_Ack"].Alignment)
 
 	def test_WithoutParameters(self) -> None:
-		symbol = InterfaceSymbol("buf")
+		symbol =     InterfaceSymbol("buf")
 		Pin("a", "bit", PinSide.Left, parent=PinGroup(parent=symbol))
-		layout = SymbolLayout(symbol)
+		rectangles = ElementsOf(SymbolLayout(symbol), Rectangle)
 
-		self.assertEqual(1, len(layout.Rectangles))
-		self.assertIs(LineStyle.Normal, layout.Rectangles[0].Style)
+		self.assertEqual(1, len(rectangles))
+		self.assertIs(LineStyle.Solid, rectangles[0].Stroke.LineStyle)
 
 	def test_WithoutPins(self) -> None:
-		symbol = InterfaceSymbol("constants")
+		symbol =     InterfaceSymbol("constants")
 		Parameter("WIDTH", "positive", "8", parent=ParameterGroup("Sizes", parent=symbol))
-		layout = SymbolLayout(symbol)
+		layout =     SymbolLayout(symbol)
+		rectangles = ElementsOf(layout, Rectangle)
 
-		self.assertEqual(1, len(layout.Rectangles))
-		self.assertIs(LineStyle.Dashed, layout.Rectangles[0].Style)
-		self.assertEqual(0, len(layout.Lines))
+		self.assertEqual(1, len(rectangles))
+		self.assertIs(LineStyle.Dashed, rectangles[0].Stroke.LineStyle)
+		self.assertEqual(0, len(ElementsOf(layout, LineSegment2D)))
 
 
 class Glyphs(Testcase):
 	def test_Bus(self) -> None:
 		layout = SymbolLayout(Fifo())
-		buses =  [line for line in layout.Lines if line.Style is LineStyle.Thick]
+		buses =  [line for line in ElementsOf(layout, LineSegment2D) if line.Stroke.Width == BUS_LINE_WIDTH]
 
 		self.assertEqual(2, len(buses))
 
 	def test_Clock(self) -> None:
 		"""A clock pin has a triangle pointing into the box, at the box edge."""
-		layout =  SymbolLayout(Fifo())
-		boxLeft = layout.Rectangles[1].Position.x
+		layout =   SymbolLayout(Fifo())
+		boxLeft =  ElementsOf(layout, Rectangle)[1].BoundingBox.MinX
+		polygons = ElementsOf(layout, Polygon)
 
-		self.assertEqual(1, len(layout.Polygons))
-		points = layout.Polygons[0].points
+		self.assertEqual(1, len(polygons))
+		points = polygons[0].Points
 		self.assertEqual(3, len(points))
-		self.assertEqual(boxLeft, points[0].x)
-		self.assertLess(boxLeft, points[1].x)
-		self.assertEqual(boxLeft, points[2].x)
+		self.assertEqual(boxLeft, points[0].X)
+		self.assertLess(boxLeft, points[1].X)
+		self.assertEqual(boxLeft, points[2].X)
 
 	def test_Reset(self) -> None:
 		"""A reset pin has no glyph."""
@@ -229,140 +283,73 @@ class Glyphs(Testcase):
 		Pin("reset", "std_logic", PinSide.Left, PinKind.Reset, parent=PinGroup(parent=symbol))
 		layout = SymbolLayout(symbol)
 
-		self.assertEqual(0, len(layout.Polygons))
-		self.assertEqual(0, len(layout.Circles))
+		self.assertEqual(0, len(ElementsOf(layout, Polygon)))
+		self.assertEqual(0, len(ElementsOf(layout, Circle)))
 
 	def test_Inverted(self) -> None:
 		"""An inverted pin has a circle between box edge and stub."""
 		layout =   SymbolLayout(Inverter())
-		boxRight = layout.Rectangles[1].Position.x + layout.Rectangles[1].Size.width
-		circle =   layout.Circles[0]
-		stub =     layout.Lines[1]
+		boxRight = ElementsOf(layout, Rectangle)[1].BoundingBox.MaxX
+		circles =  ElementsOf(layout, Circle)
+		stub =     ElementsOf(layout, LineSegment2D)[1]
 
-		self.assertEqual(1, len(layout.Circles))
-		self.assertEqual(boxRight + circle.radius, circle.center.x)
-		self.assertEqual(boxRight + 2 * circle.radius, stub.end.x)
-		self.assertEqual(circle.center.y, stub.end.y)
+		self.assertEqual(1, len(circles))
+		self.assertEqual(boxRight + circles[0].Radius, circles[0].Center.X)
+		self.assertEqual(boxRight + 2 * circles[0].Radius, stub.End.X)
+		self.assertEqual(circles[0].Center.Y, stub.End.Y)
 
 
-class Primitives(Testcase):
-	def test_Text(self) -> None:
-		text = Text(Point2D(88.0, 14.5), "inv", TextAnchor.Middle, TextStyle.Bold)
+class Styles(Testcase):
+	def test_CurrentColor(self) -> None:
+		"""There is one current color; it converts to opaque black."""
+		self.assertIs(CurrentColor(), CurrentColor())
+		self.assertEqual(RGBAColor(0, 0, 0), CurrentColor().ToRGBA())
 
-		self.assertEqual("inv", text.Content)
-		self.assertEqual(FONT_SIZE, text.FontSize)
-		self.assertIs(FontFamily.Monospace, text.FontFamily)
-		self.assertEqual((3 * CHARACTER_WIDTH, LINE_HEIGHT), text.BoundingBox.ToTuple())
-
-	def test_Text_FontSize(self) -> None:
-		"""The bounding box scales with the font size."""
-		text = Text(Point2D(88.0, 14.5), "inv", TextAnchor.Middle, TextStyle.Bold, 20.0, FontFamily.Serif)
-
-		self.assertEqual(20.0, text.FontSize)
-		self.assertIs(FontFamily.Serif, text.FontFamily)
-		self.assertEqual((6 * CHARACTER_WIDTH, 2 * LINE_HEIGHT), text.BoundingBox.ToTuple())
-
-	def test_Texts(self) -> None:
-		"""The layout sets all texts in the monospace font of the layout's font size."""
+	def test_Rectangles(self) -> None:
 		layout = SymbolLayout(Fifo())
 
-		for text in layout.Texts:
-			self.assertEqual(FONT_SIZE, text.FontSize)
-			self.assertIs(FontFamily.Monospace, text.FontFamily)
+		for rectangle in ElementsOf(layout, Rectangle):
+			self.assertEqual(LINE_WIDTH, rectangle.Stroke.Width)
+			self.assertIs(CurrentColor(), rectangle.Stroke.Color)
+			self.assertIsNone(rectangle.Fill)
 
-	def test_Line(self) -> None:
-		start = Point2D(4.0, 54.0)
-		line =  Line(start, Point2D(34.0, 54.0), LineStyle.Thick)
+	def test_LineSegments(self) -> None:
+		layout = SymbolLayout(Fifo())
 
-		self.assertIsInstance(line, LineSegment2D)
-		self.assertEqual((4.0, 54.0), line.start.ToTuple())
-		self.assertEqual((34.0, 54.0), line.end.ToTuple())
-		self.assertIsNot(start, line.start)
-		self.assertIs(LineStyle.Thick, line.Style)
+		for line in ElementsOf(layout, LineSegment2D):
+			self.assertIs(LineStyle.Solid, line.Stroke.LineStyle)
+			self.assertIs(CurrentColor(), line.Stroke.Color)
 
-	def test_Rectangle(self) -> None:
-		rectangle = Rectangle(Point2D(34.0, 18.0), Size2D(108.0, 22.0), LineStyle.Dashed)
+	def test_Circles(self) -> None:
+		layout = SymbolLayout(Fifo())
 
-		self.assertIsInstance(rectangle, Shapes.Rectangle)
-		self.assertEqual((34.0, 18.0), rectangle.Position.ToTuple())
-		self.assertEqual((108.0, 22.0), rectangle.Size.ToTuple())
-		self.assertEqual((142.0, 40.0), rectangle.points[2].ToTuple())
-		self.assertIs(LineStyle.Dashed, rectangle.Style)
+		for circle in ElementsOf(layout, Circle):
+			self.assertEqual(LINE_WIDTH, circle.Stroke.Width)
+			self.assertIs(CurrentColor(), circle.Stroke.Color)
+			self.assertIsNone(circle.Fill)
 
-	def test_Circle(self) -> None:
-		center = Point2D(145.0, 54.0)
-		circle = Circle(center, 3.0)
+	def test_Polygons(self) -> None:
+		layout = SymbolLayout(Fifo())
 
-		self.assertIsInstance(circle, Shapes.Shape)
-		self.assertEqual((145.0, 54.0), circle.center.ToTuple())
-		self.assertIsNot(center, circle.center)
-		self.assertEqual(3.0, circle.radius)
+		for polygon in ElementsOf(layout, Polygon):
+			self.assertEqual(LINE_WIDTH, polygon.Stroke.Width)
+			self.assertIs(CurrentColor(), polygon.Stroke.Color)
+			self.assertIsNone(polygon.Fill)
 
-	def test_Circle_Center_None(self) -> None:
-		with self.assertRaises(ValueError) as context:
-			Circle(None, 3.0)
+	def test_Texts(self) -> None:
+		"""The layout sets all texts in the monospace font of the layout's font size, a line being LINE_HEIGHT high."""
+		layout = SymbolLayout(Fifo())
 
-		self.assertEqual("Parameter 'center' is None.", str(context.exception))
+		for text in ElementsOf(layout, Text):
+			self.assertEqual("monospace", text.Font.Family)
+			self.assertEqual(FONT_SIZE, text.Font.Size)
+			self.assertAlmostEqual(LINE_HEIGHT, text.LineHeight * text.Font.Size)
+			self.assertIs(CurrentColor(), text.Fill.Color)
+			self.assertIsNone(text.Stroke)
 
-	def test_Circle_Center_WrongType(self) -> None:
-		with self.assertRaises(TypeError) as context:
-			Circle((145.0, 54.0), 3.0)
+	def test_TextWidth(self) -> None:
+		"""The estimated width of a text is the layout's width: its number of characters times CHARACTER_WIDTH."""
+		layout = SymbolLayout(Fifo())
 
-		self.assertEqual("Parameter 'center' is not of type 'Point2D'.", str(context.exception))
-		self.assertEqual(["Got type 'tuple'."], context.exception.__notes__)
-
-	def test_Circle_Radius_None(self) -> None:
-		with self.assertRaises(ValueError) as context:
-			Circle(Point2D(145.0, 54.0), None)
-
-		self.assertEqual("Parameter 'radius' is None.", str(context.exception))
-
-	def test_Circle_Radius_WrongType(self) -> None:
-		with self.assertRaises(TypeError) as context:
-			Circle(Point2D(145.0, 54.0), "3")
-
-		self.assertEqual("Parameter 'radius' is not of type 'float' or 'int'.", str(context.exception))
-		self.assertEqual(["Got type 'str'."], context.exception.__notes__)
-
-	def test_Circle_Radius_NotPositive(self) -> None:
-		with self.assertRaises(ValueError) as context:
-			Circle(Point2D(145.0, 54.0), 0)
-
-		self.assertEqual("Parameter 'radius' isn't positive.", str(context.exception))
-		self.assertEqual(["Got value '0'."], context.exception.__notes__)
-
-	def test_Polygon(self) -> None:
-		corners = [Point2D(256.0, 64.0), Point2D(262.0, 68.0), Point2D(256.0, 72.0)]
-		polygon = Polygon(corners)
-
-		self.assertIsInstance(polygon, Shapes.Shape)
-		self.assertIsInstance(polygon.points, tuple)
-		self.assertEqual([(256.0, 64.0), (262.0, 68.0), (256.0, 72.0)], [point.ToTuple() for point in polygon.points])
-		self.assertIsNot(corners[0], polygon.points[0])
-
-	def test_Polygon_Points_None(self) -> None:
-		with self.assertRaises(ValueError) as context:
-			Polygon(None)
-
-		self.assertEqual("Parameter 'points' is None.", str(context.exception))
-
-	def test_Polygon_Points_WrongType(self) -> None:
-		with self.assertRaises(TypeError) as context:
-			Polygon(3)
-
-		self.assertEqual("Parameter 'points' is not iterable.", str(context.exception))
-		self.assertEqual(["Got type 'int'."], context.exception.__notes__)
-
-	def test_Polygon_Points_WrongElementType(self) -> None:
-		with self.assertRaises(TypeError) as context:
-			Polygon((Point2D(256.0, 64.0), (262.0, 68.0), Point2D(256.0, 72.0)))
-
-		self.assertEqual("An element of parameter 'points' is not of type 'Point2D'.", str(context.exception))
-		self.assertEqual(["Got type 'tuple'."], context.exception.__notes__)
-
-	def test_Polygon_Points_TooFew(self) -> None:
-		with self.assertRaises(ValueError) as context:
-			Polygon((Point2D(256.0, 64.0), Point2D(262.0, 68.0)))
-
-		self.assertEqual("Parameter 'points' has fewer than 3 points.", str(context.exception))
-		self.assertEqual(["Got 2 points."], context.exception.__notes__)
+		for text in ElementsOf(layout, Text):
+			self.assertEqual(len(text.Content) * CHARACTER_WIDTH, text.BoundingBox.Width)

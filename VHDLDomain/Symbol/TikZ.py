@@ -40,17 +40,18 @@ escaped.
 
    tikz = TikZRenderer().Render(symbol)
 """
-from __future__               import annotations
+from __future__                    import annotations
 
-from typing                   import ClassVar
+from typing                        import ClassVar
 
-from pyTooling.Common         import getFullyQualifiedName
-from pyTooling.Decorators     import export
-from pyTooling.MetaClasses    import ExtendedType
+from pyTooling.Cartesian2D.Drawing import Circle, FontStyle, LineSegment2D, LineStyle, Polygon, Rectangle, Stroke, \
+                                          Text, TextAlignment
+from pyTooling.Common              import getFullyQualifiedName
+from pyTooling.Decorators          import export
+from pyTooling.MetaClasses         import ExtendedType
 
-from VHDLDomain.Symbol        import InterfaceSymbol
-from VHDLDomain.Symbol.Layout import BUS_LINE_WIDTH, DASH_PATTERN, LINE_WIDTH, FontFamily, LineStyle, SymbolLayout, \
-                                     TextAnchor, TextStyle
+from VHDLDomain.Symbol             import InterfaceSymbol
+from VHDLDomain.Symbol.Layout      import DASH_PATTERN, LINE_WIDTH, SymbolLayout
 
 
 @export
@@ -94,65 +95,81 @@ class TikZRenderer(metaclass=ExtendedType, slots=True):
 			ex.add_note(f"Got type '{getFullyQualifiedName(symbol)}'.")
 			raise ex
 
-		layout =     SymbolLayout(symbol)
-		height =     layout.Height
+		canvas = SymbolLayout(symbol).Canvas
+		height = canvas.Size.Height
 		lineStyles = {
-			LineStyle.Normal: "",
-			LineStyle.Thick:  f"[line width={BUS_LINE_WIDTH:g}pt]",
-			LineStyle.Dashed: f"[dash pattern=on {DASH_PATTERN[0]:g}pt off {DASH_PATTERN[1]:g}pt]"
+			LineStyle.Dashed: f"dash pattern=on {DASH_PATTERN[0]:g}pt off {DASH_PATTERN[1]:g}pt"
 		}
 		anchors = {
-			TextAnchor.Start:  "base west",
-			TextAnchor.Middle: "base",
-			TextAnchor.End:    "base east"
+			TextAlignment.Left:   "base west",
+			TextAlignment.Center: "base",
+			TextAlignment.Right:  "base east"
 		}
-		textStyles = {
-			TextStyle.Regular: "",
-			TextStyle.Bold:    r"\bfseries ",
-			TextStyle.Italic:  r"\itshape "
+		fontStyles = {
+			FontStyle.Upright: "",
+			FontStyle.Italic:  r"\itshape ",
+			FontStyle.Slanted: r"\slshape "
 		}
 		fontFamilies = {
-			FontFamily.Monospace: r"\ttfamily",
-			FontFamily.SansSerif: r"\sffamily",
-			FontFamily.Serif:     r"\rmfamily"
+			"monospace":  r"\ttfamily",
+			"sans-serif": r"\sffamily",
+			"serif":      r"\rmfamily"
 		}
+
+		def strokeOptions(stroke: Stroke) -> str:
+			"""
+			Nested function writing the options of a stroke: its width, if it differs from the picture's, and its dashes.
+
+			:param stroke: The stroke of an outline or a line.
+			:returns:      The options in brackets, or an empty string if there are none.
+			"""
+			options = []
+			if stroke.Width != LINE_WIDTH:
+				options.append(f"line width={stroke.Width:g}pt")
+
+			if stroke.LineStyle is not LineStyle.Solid:
+				options.append(lineStyles[stroke.LineStyle])
+
+			return f"[{', '.join(options)}]" if len(options) > 0 else ""
 
 		output = [
 			f"\\begin{{tikzpicture}}[x=1pt, y=1pt, line width={LINE_WIDTH:g}pt]",
-			f"\\useasboundingbox (0,0) rectangle ({layout.Width:g},{height:g});"
+			f"\\useasboundingbox (0,0) rectangle ({canvas.Size.Width:g},{height:g});"
 		]
-		for rectangle in layout.Rectangles:
-			position = rectangle.Position
-			size =     rectangle.Size
-			output.append(
-				f"\\draw{lineStyles[rectangle.Style]} ({position.x:g},{height - position.y:g}) "
-				f"rectangle ({position.x + size.width:g},{height - position.y - size.height:g});"
-			)
-
-		for line in layout.Lines:
-			start = line.start
-			end =   line.end
-			output.append(
-				f"\\draw{lineStyles[line.Style]} ({start.x:g},{height - start.y:g}) -- ({end.x:g},{height - end.y:g});"
-			)
-
-		for circle in layout.Circles:
-			center = circle.center
-			output.append(f"\\draw ({center.x:g},{height - center.y:g}) circle[radius={circle.radius:g}];")
-
-		for polygon in layout.Polygons:
-			points = " -- ".join(f"({point.x:g},{height - point.y:g})" for point in polygon.points)
-			output.append(f"\\draw {points} -- cycle;")
-
-		for text in layout.Texts:
-			position = text.Position
-			content =  text.Content.translate(self._SPECIAL_CHARACTERS)
-			family =   fontFamilies[text.FontFamily]
-			font =     f"\\fontsize{{{text.FontSize:g}}}{{{text.BoundingBox.height:g}}}\\selectfont{family}"
-			output.append(
-				f"\\node[anchor={anchors[text.Anchor]}, inner sep=0pt, font={font}] "
-				f"at ({position.x:g},{height - position.y:g}) {{{textStyles[text.Style]}{content}}};"
-			)
+		for element in canvas.Children:
+			if isinstance(element, Rectangle):
+				box = element.BoundingBox
+				output.append(
+					f"\\draw{strokeOptions(element.Stroke)} ({box.MinX:g},{height - box.MinY:g}) "
+					f"rectangle ({box.MaxX:g},{height - box.MaxY:g});"
+				)
+			elif isinstance(element, LineSegment2D):
+				start = element.Start
+				end =   element.End
+				output.append(
+					f"\\draw{strokeOptions(element.Stroke)} ({start.X:g},{height - start.Y:g}) -- ({end.X:g},{height - end.Y:g});"
+				)
+			elif isinstance(element, Circle):
+				center = element.Center
+				output.append(
+					f"\\draw{strokeOptions(element.Stroke)} ({center.X:g},{height - center.Y:g}) "
+					f"circle[radius={element.Radius:g}];"
+				)
+			elif isinstance(element, Polygon):
+				points = " -- ".join(f"({point.X:g},{height - point.Y:g})" for point in element.Points)
+				output.append(f"\\draw{strokeOptions(element.Stroke)} {points} -- cycle;")
+			elif isinstance(element, Text):
+				position = element.Position
+				font =     element.Font
+				content =  element.Content.translate(self._SPECIAL_CHARACTERS)
+				fontSize = f"\\fontsize{{{font.Size:g}}}{{{font.Size * element.LineHeight:g}}}"
+				series =   r"\bfseries " if font.Bold else ""
+				shape =    r"\scshape " if font.SmallCaps else ""
+				output.append(
+					f"\\node[anchor={anchors[element.Alignment]}, inner sep=0pt, "
+					f"font={fontSize}\\selectfont{fontFamilies[font.Family]}] at ({position.X:g},{height - position.Y:g}) "
+					f"{{{series}{fontStyles[font.FontStyle]}{shape}{content}}};"
+				)
 
 		output.append("\\end{tikzpicture}")
 

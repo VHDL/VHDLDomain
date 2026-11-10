@@ -41,15 +41,16 @@ gives the same text.
 
    svg = SVGRenderer().Render(symbol)
 """
-from __future__               import annotations
+from __future__                    import annotations
 
-from pyTooling.Common         import getFullyQualifiedName
-from pyTooling.Decorators     import export
-from pyTooling.MetaClasses    import ExtendedType
+from pyTooling.Cartesian2D.Drawing import Circle, FontStyle, LineSegment2D, LineStyle, Polygon, Rectangle, Stroke, \
+                                          Text, TextAlignment
+from pyTooling.Common              import getFullyQualifiedName
+from pyTooling.Decorators          import export
+from pyTooling.MetaClasses         import ExtendedType
 
-from VHDLDomain.Symbol        import InterfaceSymbol
-from VHDLDomain.Symbol.Layout import BUS_LINE_WIDTH, DASH_PATTERN, LINE_WIDTH, FontFamily, LineStyle, SymbolLayout, \
-                                     TextAnchor, TextStyle
+from VHDLDomain.Symbol             import InterfaceSymbol
+from VHDLDomain.Symbol.Layout      import DASH_PATTERN, LINE_WIDTH, SymbolLayout
 
 
 @export
@@ -58,7 +59,7 @@ class SVGRenderer(metaclass=ExtendedType, slots=True):
 	Renders an interface symbol as SVG 1.1 text.
 
 	The layout's points are the image's user units; ``width`` and ``height`` state the size in points, a ``viewBox``
-	lets the image scale.
+	lets the image scale. Outlines and texts are drawn in ``currentColor``, a font's family is written as is.
 	"""
 
 	def Render(self, symbol: InterfaceSymbol) -> str:
@@ -77,69 +78,78 @@ class SVGRenderer(metaclass=ExtendedType, slots=True):
 			ex.add_note(f"Got type '{getFullyQualifiedName(symbol)}'.")
 			raise ex
 
-		layout =     SymbolLayout(symbol)
+		canvas = SymbolLayout(symbol).Canvas
 		lineStyles = {
-			LineStyle.Normal: "",
-			LineStyle.Thick:  f" stroke-width=\"{BUS_LINE_WIDTH:g}\"",
+			LineStyle.Solid:  "",
 			LineStyle.Dashed: f" stroke-dasharray=\"{DASH_PATTERN[0]:g} {DASH_PATTERN[1]:g}\""
 		}
 		anchors = {
-			TextAnchor.Start:  "start",
-			TextAnchor.Middle: "middle",
-			TextAnchor.End:    "end"
+			TextAlignment.Left:   "start",
+			TextAlignment.Center: "middle",
+			TextAlignment.Right:  "end"
 		}
-		textStyles = {
-			TextStyle.Regular: "",
-			TextStyle.Bold:    " font-weight=\"bold\"",
-			TextStyle.Italic:  " font-style=\"italic\""
-		}
-		fontFamilies = {
-			FontFamily.Monospace: "monospace",
-			FontFamily.SansSerif: "sans-serif",
-			FontFamily.Serif:     "serif"
+		fontStyles = {
+			FontStyle.Upright: "",
+			FontStyle.Italic:  " font-style=\"italic\"",
+			FontStyle.Slanted: " font-style=\"oblique\""
 		}
 
-		width =  f"{layout.Width:g}"
-		height = f"{layout.Height:g}"
+		def strokeAttributes(stroke: Stroke) -> str:
+			"""
+			Nested function writing the attributes of a stroke: its width, if it differs from the group's, and its dashes.
+
+			:param stroke: The stroke of an outline or a line.
+			:returns:      The attributes, each with a leading space.
+			"""
+			width = "" if stroke.Width == LINE_WIDTH else f" stroke-width=\"{stroke.Width:g}\""
+			return f"{width}{lineStyles[stroke.LineStyle]}"
+
+		width =  f"{canvas.Size.Width:g}"
+		height = f"{canvas.Size.Height:g}"
 		output = [
 			f"<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"{width}pt\" height=\"{height}pt\" "
 			f"viewBox=\"0 0 {width} {height}\">",
 			f"<title>{self._Escape(symbol.Name)}</title>",
 			f"<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"{LINE_WIDTH:g}\">"
 		]
-		for rectangle in layout.Rectangles:
-			position = rectangle.Position
-			size =     rectangle.Size
-			output.append(
-				f"<rect x=\"{position.x:g}\" y=\"{position.y:g}\" width=\"{size.width:g}\" "
-				f"height=\"{size.height:g}\"{lineStyles[rectangle.Style]}/>"
-			)
-
-		for line in layout.Lines:
-			start = line.start
-			end =   line.end
-			output.append(
-				f"<line x1=\"{start.x:g}\" y1=\"{start.y:g}\" x2=\"{end.x:g}\" y2=\"{end.y:g}\"{lineStyles[line.Style]}/>"
-			)
-
-		for circle in layout.Circles:
-			center = circle.center
-			output.append(f"<circle cx=\"{center.x:g}\" cy=\"{center.y:g}\" r=\"{circle.radius:g}\"/>")
-
-		for polygon in layout.Polygons:
-			points = " ".join(f"{point.x:g},{point.y:g}" for point in polygon.points)
-			output.append(f"<polygon points=\"{points}\"/>")
+		texts = []
+		for element in canvas.Children:
+			if isinstance(element, Rectangle):
+				box = element.BoundingBox
+				output.append(
+					f"<rect x=\"{box.MinX:g}\" y=\"{box.MinY:g}\" width=\"{box.Width:g}\" height=\"{box.Height:g}\""
+					f"{strokeAttributes(element.Stroke)}/>"
+				)
+			elif isinstance(element, LineSegment2D):
+				start = element.Start
+				end =   element.End
+				output.append(
+					f"<line x1=\"{start.X:g}\" y1=\"{start.Y:g}\" x2=\"{end.X:g}\" y2=\"{end.Y:g}\""
+					f"{strokeAttributes(element.Stroke)}/>"
+				)
+			elif isinstance(element, Circle):
+				center = element.Center
+				output.append(
+					f"<circle cx=\"{center.X:g}\" cy=\"{center.Y:g}\" r=\"{element.Radius:g}\""
+					f"{strokeAttributes(element.Stroke)}/>"
+				)
+			elif isinstance(element, Polygon):
+				points = " ".join(f"{point.X:g},{point.Y:g}" for point in element.Points)
+				output.append(f"<polygon points=\"{points}\"{strokeAttributes(element.Stroke)}/>")
+			elif isinstance(element, Text):
+				position = element.Position
+				font =     element.Font
+				weight =   " font-weight=\"bold\"" if font.Bold else ""
+				variant =  " font-variant=\"small-caps\"" if font.SmallCaps else ""
+				texts.append(
+					f"<text x=\"{position.X:g}\" y=\"{position.Y:g}\" text-anchor=\"{anchors[element.Alignment]}\" "
+					f"font-family=\"{font.Family}\" font-size=\"{font.Size:g}\"{weight}{fontStyles[font.FontStyle]}{variant}>"
+					f"{self._Escape(element.Content)}</text>"
+				)
 
 		output.append("</g>")
 		output.append("<g fill=\"currentColor\" xml:space=\"preserve\">")
-		for text in layout.Texts:
-			position = text.Position
-			output.append(
-				f"<text x=\"{position.x:g}\" y=\"{position.y:g}\" text-anchor=\"{anchors[text.Anchor]}\" "
-				f"font-family=\"{fontFamilies[text.FontFamily]}\" font-size=\"{text.FontSize:g}\"{textStyles[text.Style]}>"
-				f"{self._Escape(text.Content)}</text>"
-			)
-
+		output.extend(texts)
 		output.append("</g>")
 		output.append("</svg>")
 

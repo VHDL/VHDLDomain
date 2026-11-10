@@ -40,19 +40,20 @@ so this module imports without it.
    png = MatplotlibRenderer().Render(symbol)
    svg = MatplotlibRenderer().Render(symbol, "svg")
 """
-from __future__               import annotations
+from __future__                    import annotations
 
-from io                       import BytesIO
-from typing                   import ClassVar
+from io                            import BytesIO
+from typing                        import ClassVar
 
-from pyTooling.Common         import getFullyQualifiedName
-from pyTooling.Decorators     import export, readonly
-from pyTooling.Exceptions     import MissingDependencyError
-from pyTooling.MetaClasses    import ExtendedType
+from pyTooling.Cartesian2D.Drawing import Circle, FontStyle, LineSegment2D, LineStyle, Polygon, Rectangle, Text, \
+                                          TextAlignment
+from pyTooling.Common              import getFullyQualifiedName
+from pyTooling.Decorators          import export, readonly
+from pyTooling.Exceptions          import MissingDependencyError
+from pyTooling.MetaClasses         import ExtendedType
 
-from VHDLDomain.Symbol        import InterfaceSymbol
-from VHDLDomain.Symbol.Layout import BUS_LINE_WIDTH, DASH_PATTERN, LINE_WIDTH, FontFamily, LineStyle, SymbolLayout, \
-                                     TextAnchor, TextStyle
+from VHDLDomain.Symbol             import InterfaceSymbol
+from VHDLDomain.Symbol.Layout      import DASH_PATTERN, SymbolLayout
 
 
 @export
@@ -61,8 +62,8 @@ class MatplotlibRenderer(metaclass=ExtendedType, slots=True):
 	Renders an interface symbol with :term:`matplotlib` as PNG, SVG or PDF.
 
 	The figure is as large as the layout: one point of the layout is one point (1/72 inch) of the figure. Lines and
-	texts are black on a white background. Texts use their font size and matplotlib's generic family of their font
-	family, e.g. ``monospace``; in an SVG file they stay text.
+	texts are black on a white background. Texts use their font's size and family, e.g. ``monospace``; in an SVG file
+	they stay text.
 
 	matplotlib's object API is used, so no global :mod:`~matplotlib.pyplot` state is touched and no display is needed.
 	"""
@@ -139,82 +140,71 @@ class MatplotlibRenderer(metaclass=ExtendedType, slots=True):
 			from matplotlib         import rc_context
 			from matplotlib.figure  import Figure
 			from matplotlib.lines   import Line2D
-			from matplotlib.patches import Circle, Polygon, Rectangle
+			from matplotlib.patches import Circle as CirclePatch, Polygon as PolygonPatch, Rectangle as RectanglePatch
 		except ImportError as ex:
 			raise MissingDependencyError(dependency="matplotlib") from ex
 
-		layout =     SymbolLayout(symbol)
-		lineWidths = {
-			LineStyle.Normal: LINE_WIDTH,
-			LineStyle.Thick:  BUS_LINE_WIDTH,
-			LineStyle.Dashed: LINE_WIDTH
-		}
+		canvas = SymbolLayout(symbol).Canvas
+		size =   canvas.Size
 		lineStyles = {
-			LineStyle.Normal: "solid",
-			LineStyle.Thick:  "solid",
+			LineStyle.Solid:  "solid",
 			LineStyle.Dashed: (0.0, DASH_PATTERN)
 		}
 		alignments = {
-			TextAnchor.Start:  "left",
-			TextAnchor.Middle: "center",
-			TextAnchor.End:    "right"
-		}
-		fontWeights = {
-			TextStyle.Regular: "normal",
-			TextStyle.Bold:    "bold",
-			TextStyle.Italic:  "normal"
+			TextAlignment.Left:   "left",
+			TextAlignment.Center: "center",
+			TextAlignment.Right:  "right"
 		}
 		fontStyles = {
-			TextStyle.Regular: "normal",
-			TextStyle.Bold:    "normal",
-			TextStyle.Italic:  "italic"
-		}
-		fontFamilies = {
-			FontFamily.Monospace: "monospace",
-			FontFamily.SansSerif: "sans-serif",
-			FontFamily.Serif:     "serif"
+			FontStyle.Upright: "normal",
+			FontStyle.Italic:  "italic",
+			FontStyle.Slanted: "oblique"
 		}
 
-		figure = Figure(figsize=(layout.Width / 72, layout.Height / 72), facecolor="white")
+		figure = Figure(figsize=(size.Width / 72, size.Height / 72), facecolor="white")
 		axes =   figure.add_axes((0.0, 0.0, 1.0, 1.0))
-		axes.set_xlim(0.0, layout.Width)
-		axes.set_ylim(layout.Height, 0.0)
+		axes.set_xlim(0.0, size.Width)
+		axes.set_ylim(size.Height, 0.0)
 		axes.set_axis_off()
 
-		for rectangle in layout.Rectangles:
-			position = rectangle.Position
-			size =     rectangle.Size
-			axes.add_patch(Rectangle(
-				(position.x, position.y), size.width, size.height, fill=False, edgecolor="black",
-				linewidth=lineWidths[rectangle.Style], linestyle=lineStyles[rectangle.Style], capstyle="butt"
-			))
-
-		for line in layout.Lines:
-			start = line.start
-			end =   line.end
-			axes.add_line(Line2D(
-				(start.x, end.x), (start.y, end.y), color="black", linewidth=lineWidths[line.Style],
-				linestyle=lineStyles[line.Style], solid_capstyle="butt"
-			))
-
-		for circle in layout.Circles:
-			center = circle.center
-			axes.add_patch(Circle((center.x, center.y), circle.radius, fill=False, edgecolor="black", linewidth=LINE_WIDTH))
-
-		for polygon in layout.Polygons:
-			axes.add_patch(Polygon(
-				[(point.x, point.y) for point in polygon.points],
-				closed=True, fill=False, edgecolor="black", linewidth=LINE_WIDTH
-			))
-
-		for text in layout.Texts:
-			position = text.Position
-			axes.text(
-				position.x, position.y, text.Content,
-				horizontalalignment=alignments[text.Anchor], verticalalignment="baseline",
-				family=fontFamilies[text.FontFamily], fontsize=text.FontSize, fontweight=fontWeights[text.Style],
-				fontstyle=fontStyles[text.Style], color="black", parse_math=False
-			)
+		for element in canvas.Children:
+			if isinstance(element, Rectangle):
+				box =    element.BoundingBox
+				stroke = element.Stroke
+				axes.add_patch(RectanglePatch(
+					(box.MinX, box.MinY), box.Width, box.Height, fill=False, edgecolor="black", linewidth=stroke.Width,
+					linestyle=lineStyles[stroke.LineStyle], capstyle="butt"
+				))
+			elif isinstance(element, LineSegment2D):
+				start =  element.Start
+				end =    element.End
+				stroke = element.Stroke
+				axes.add_line(Line2D(
+					(start.X, end.X), (start.Y, end.Y), color="black", linewidth=stroke.Width,
+					linestyle=lineStyles[stroke.LineStyle], solid_capstyle="butt"
+				))
+			elif isinstance(element, Circle):
+				center = element.Center
+				stroke = element.Stroke
+				axes.add_patch(CirclePatch(
+					(center.X, center.Y), element.Radius, fill=False, edgecolor="black", linewidth=stroke.Width,
+					linestyle=lineStyles[stroke.LineStyle]
+				))
+			elif isinstance(element, Polygon):
+				stroke = element.Stroke
+				axes.add_patch(PolygonPatch(
+					[point.ToTuple() for point in element.Points], closed=True, fill=False, edgecolor="black",
+					linewidth=stroke.Width, linestyle=lineStyles[stroke.LineStyle]
+				))
+			elif isinstance(element, Text):
+				position = element.Position
+				font =     element.Font
+				axes.text(
+					position.X, position.Y, element.Content,
+					horizontalalignment=alignments[element.Alignment], verticalalignment="baseline", family=font.Family,
+					fontsize=font.Size, fontweight="bold" if font.Bold else "normal", fontstyle=fontStyles[font.FontStyle],
+					fontvariant="small-caps" if font.SmallCaps else "normal", color="black", parse_math=False
+				)
 
 		buffer = BytesIO()
 		with rc_context({"svg.fonttype": "none", "text.hinting": "none"}):

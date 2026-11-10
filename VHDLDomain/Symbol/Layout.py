@@ -30,16 +30,15 @@
 """
 The geometry of an interface symbol, shared by the renderers.
 
-A :class:`SymbolLayout` places the symbol's name, its parameter box and its pin box, and returns the drawing as
-primitives: rectangles, lines, circles, polygons and texts. A renderer only translates them into its format. The
-primitives build on :mod:`pyTooling.Cartesian2D`: a point is a :class:`~pyTooling.Cartesian2D.Point2D`, a line a
-:class:`~pyTooling.Cartesian2D.LineSegment2D` and a rectangle a :class:`~pyTooling.Cartesian2D.Shapes.Rectangle`, each
-with a style.
+A :class:`SymbolLayout` places the symbol's name, its parameter box and its pin box on a
+:class:`~pyTooling.Cartesian2D.Groups.Canvas2D` of drawable elements from :mod:`pyTooling.Cartesian2D.Drawing`:
+rectangles, line segments, circles, polygons and texts, each with its stroke or font. A renderer only translates them
+into its format.
 
 Coordinates are points (1/72 inch), the origin is the top left corner and *y* grows downwards. The layout sets all text
 in a monospace font of :data:`FONT_SIZE`, so the width of a text is its number of characters times
-:data:`CHARACTER_WIDTH`. A text's position is a point on its baseline; its anchor says, whether the text starts, is
-centered or ends there. A text carries its font size and font family, which the renderers apply, and its bounding box.
+:data:`CHARACTER_WIDTH`. A text's position is a point on its baseline; its alignment says, whether the text starts, is
+centered or ends there. Lines and texts are drawn in the :class:`CurrentColor`.
 
 .. rubric:: Drawing
 
@@ -52,17 +51,17 @@ centered or ends there. A text carries its font size and font family, which the 
   the box. The pins of a side end in one column. A bus pin's stub is thick, a clock pin has a triangle at the inner box
   edge, an inverted pin a circle between box edge and stub.
 """
-from __future__            import annotations
+from __future__                    import annotations
 
-from enum                  import Enum
-from typing                import Iterable
+from pyTooling.Cartesian2D         import Point2D, Size2D
+from pyTooling.Cartesian2D.Drawing import Circle, Color, Fill, Font, FontStyle, LineSegment2D, LineStyle, Polygon, \
+                                          Rectangle, RGBAColor, Stroke, Text, TextAlignment
+from pyTooling.Cartesian2D.Groups  import Canvas2D, YAxisDirection
+from pyTooling.Common              import getFullyQualifiedName
+from pyTooling.Decorators          import export, readonly
+from pyTooling.MetaClasses         import ExtendedType
 
-from pyTooling.Cartesian2D import LineSegment2D, Point2D, Shapes, Size2D
-from pyTooling.Common      import getFullyQualifiedName
-from pyTooling.Decorators  import export, readonly
-from pyTooling.MetaClasses import ExtendedType
-
-from VHDLDomain.Symbol     import InterfaceSymbol, Pin, PinKind, PinSide
+from VHDLDomain.Symbol             import InterfaceSymbol, Pin, PinKind, PinSide
 
 
 __all__ = [
@@ -72,13 +71,14 @@ __all__ = [
 ]
 
 FONT_SIZE = 10.0
-"""Font size of the layout's texts in points; the default of a :class:`Text`."""
+"""Font size of the layout's texts in points."""
 
 CHARACTER_WIDTH = 6.0
 """
 Width of a character in points at :data:`FONT_SIZE`.
 
-It is 0.6 of the font size, the advance width of monospace fonts like DejaVu Sans Mono.
+It is 0.6 of the font size, the advance width of monospace fonts like DejaVu Sans Mono and the default
+:attr:`~pyTooling.Cartesian2D.Drawing.Font.CharacterWidth` of a font.
 """
 
 BASELINE_OFFSET = 3.5
@@ -125,348 +125,35 @@ INVERSION_RADIUS = 3.0
 
 
 @export
-class TextAnchor(Enum):
-	"""The horizontal position of a text relative to its position."""
-
-	Start =  0  #: The text starts at its position.
-	Middle = 1  #: The text is centered on its position.
-	End =    2  #: The text ends at its position.
-
-
-@export
-class TextStyle(Enum):
-	"""The style of a text."""
-
-	Regular = 0  #: Regular text.
-	Bold =    1  #: Bold text, e.g. the symbol's name.
-	Italic =  2  #: Italic text, e.g. a group's header.
-
-
-@export
-class FontFamily(Enum):
+class CurrentColor(Color, singleton=True):
 	"""
-	The generic font family of a text.
+	The foreground color of the medium a drawing is rendered to, like ``currentColor`` in CSS and SVG.
 
-	Each renderer maps it to its format's equivalent, e.g. ``monospace`` in SVG or ``\\ttfamily`` in TikZ.
+	A renderer draws it in its medium's foreground color: ``currentColor`` in SVG, the current color in TikZ, black in
+	matplotlib. There is only one current color: every instantiation returns the same object.
 	"""
 
-	Monospace = 0  #: A font, whose characters have the same width.
-	SansSerif = 1  #: A proportional font without serifs.
-	Serif =     2  #: A proportional font with serifs.
-
-
-@export
-class LineStyle(Enum):
-	"""The style of a line or an outline."""
-
-	Normal = 0  #: A solid line of :data:`LINE_WIDTH`.
-	Thick =  1  #: A solid line of :data:`BUS_LINE_WIDTH`, e.g. a bus pin's stub.
-	Dashed = 2  #: A dashed line of :data:`LINE_WIDTH` with :data:`DASH_PATTERN`.
-
-
-@export
-class Text(metaclass=ExtendedType, slots=True):
-	"""
-	A single line of text with its font size and font family.
-
-	Its bounding box follows from the monospace metrics :data:`CHARACTER_WIDTH` and :data:`LINE_HEIGHT`, scaled to the
-	text's font size.
-	"""
-
-	_position:   Point2D[float]  #: Point on the baseline, where the text starts, is centered or ends.
-	_content:    str             #: The text.
-	_anchor:     TextAnchor      #: The text's horizontal position relative to :attr:`_position`.
-	_style:      TextStyle       #: The text's style.
-	_fontSize:   float           #: Font size in points.
-	_fontFamily: FontFamily      #: Generic font family.
-
-	def __init__(
-		self,
-		position:   Point2D[float],
-		content:    str,
-		anchor:     TextAnchor,
-		style:      TextStyle,
-		fontSize:   float = FONT_SIZE,
-		fontFamily: FontFamily = FontFamily.Monospace
-	) -> None:
+	def ToRGBA(self) -> RGBAColor:
 		"""
-		Initializes a text.
+		Convert the color to red, green and blue components and an opacity.
 
-		:param position:   Point on the baseline, where the text starts, is centered or ends.
-		:param content:    The text.
-		:param anchor:     The text's horizontal position relative to ``position``.
-		:param style:      The text's style.
-		:param fontSize:   Optional, font size in points. Default: :data:`FONT_SIZE`.
-		:param fontFamily: Optional, generic font family. Default: :attr:`FontFamily.Monospace`.
+		:returns: Opaque black, the foreground color of a medium without a color of its own.
 		"""
-		self._position =   position
-		self._content =    content
-		self._anchor =     anchor
-		self._style =      style
-		self._fontSize =   fontSize
-		self._fontFamily = fontFamily
-
-	@readonly
-	def Position(self) -> Point2D[float]:
-		"""
-		Read-only property to access the text's position on its baseline (:attr:`_position`).
-
-		:returns: Point on the baseline.
-		"""
-		return self._position
-
-	@readonly
-	def Content(self) -> str:
-		"""
-		Read-only property to access the text (:attr:`_content`).
-
-		:returns: The text.
-		"""
-		return self._content
-
-	@readonly
-	def Anchor(self) -> TextAnchor:
-		"""
-		Read-only property to access the text's horizontal position relative to its position (:attr:`_anchor`).
-
-		:returns: The text's anchor.
-		"""
-		return self._anchor
-
-	@readonly
-	def Style(self) -> TextStyle:
-		"""
-		Read-only property to access the text's style (:attr:`_style`).
-
-		:returns: The text's style.
-		"""
-		return self._style
-
-	@readonly
-	def FontSize(self) -> float:
-		"""
-		Read-only property to access the font size (:attr:`_fontSize`).
-
-		:returns: Font size in points.
-		"""
-		return self._fontSize
-
-	@readonly
-	def FontFamily(self) -> FontFamily:
-		"""
-		Read-only property to access the generic font family (:attr:`_fontFamily`).
-
-		:returns: The text's font family.
-		"""
-		return self._fontFamily
-
-	@readonly
-	def BoundingBox(self) -> Size2D[float]:
-		"""
-		Read-only property to return the size of the text's bounding box.
-
-		The width is the number of characters times :data:`CHARACTER_WIDTH`, the height is :data:`LINE_HEIGHT`, both
-		scaled from :data:`FONT_SIZE` to the text's font size (:attr:`_fontSize`). It's exact for a monospace font with
-		the advance width of :data:`CHARACTER_WIDTH`, an estimate for other fonts.
-
-		:returns: Width and height in points.
-		"""
-		scale = self._fontSize / FONT_SIZE
-		return Size2D(len(self._content) * CHARACTER_WIDTH * scale, LINE_HEIGHT * scale)
-
-
-@export
-class Line(LineSegment2D[float]):
-	"""A straight line with a style: a line segment from :attr:`start` to :attr:`end`."""
-
-	_style: LineStyle  #: The line's style.
-
-	def __init__(self, start: Point2D[float], end: Point2D[float], style: LineStyle) -> None:
-		"""
-		Initializes a line.
-
-		:param start:      Start point.
-		:param end:        End point.
-		:param style:      The line's style.
-		:raises TypeError: If parameter 'start' is not of type :class:`~pyTooling.Cartesian2D.Point2D`.
-		:raises TypeError: If parameter 'end' is not of type :class:`~pyTooling.Cartesian2D.Point2D`.
-		"""
-		super().__init__(start, end)
-
-		self._style = style
-
-	@readonly
-	def Style(self) -> LineStyle:
-		"""
-		Read-only property to access the line's style (:attr:`_style`).
-
-		:returns: The line's style.
-		"""
-		return self._style
-
-
-@export
-class Rectangle(Shapes.Rectangle[float], metaclass=ExtendedType):
-	"""
-	The outline of an axis-parallel box with a style.
-
-	The corners in :attr:`points` are the top left, top right, bottom right and bottom left corner.
-	"""
-
-	_style: LineStyle  #: The outline's style.
-
-	def __init__(self, position: Point2D[float], size: Size2D[float], style: LineStyle) -> None:
-		"""
-		Initializes a rectangle.
-
-		:param position:    Top left corner.
-		:param size:        Width and height in points.
-		:param style:       The outline's style.
-		:raises ValueError: If the width or height is 0.
-		"""
-		right =  position.x + size.width
-		bottom = position.y + size.height
-		super().__init__(position, Point2D(right, position.y), Point2D(right, bottom), Point2D(position.x, bottom))
-
-		self._style = style
-
-	@readonly
-	def Position(self) -> Point2D[float]:
-		"""
-		Read-only property to return the top left corner (the first point of :attr:`points`).
-
-		:returns: Top left corner.
-		"""
-		return self.points[0]
-
-	@readonly
-	def Size(self) -> Size2D[float]:
-		"""
-		Read-only property to return the width and height, computed from the top left and bottom right corner.
-
-		:returns: Width and height in points.
-		"""
-		topLeft =     self.points[0]
-		bottomRight = self.points[2]
-		return Size2D(bottomRight.x - topLeft.x, bottomRight.y - topLeft.y)
-
-	@readonly
-	def Style(self) -> LineStyle:
-		"""
-		Read-only property to access the outline's style (:attr:`_style`).
-
-		:returns: The outline's style.
-		"""
-		return self._style
-
-
-@export
-class Circle(Shapes.Shape[float], metaclass=ExtendedType):
-	"""
-	The outline of a circle.
-
-	An inverted pin is marked with a circle. The fields follow the planned ``pyTooling.Cartesian2D.Shapes.Circle``, which
-	becomes the base-class once a pyTooling release has it.
-	"""
-
-	center: Point2D[float]  #: Center.
-	radius: float           #: Radius in points.
-
-	def __init__(self, center: Point2D[float], radius: float) -> None:
-		"""
-		Initializes a circle.
-
-		:param center:      Center; the circle keeps a copy.
-		:param radius:      Radius in points.
-		:raises ValueError: If parameter 'center' is None.
-		:raises TypeError:  If parameter 'center' is not of type :class:`~pyTooling.Cartesian2D.Point2D`.
-		:raises ValueError: If parameter 'radius' is None.
-		:raises TypeError:  If parameter 'radius' is not of type :class:`float` or :class:`int`.
-		:raises ValueError: If parameter 'radius' isn't positive.
-		"""
-		if center is None:
-			raise ValueError("Parameter 'center' is None.")
-		elif not isinstance(center, Point2D):
-			ex = TypeError("Parameter 'center' is not of type 'Point2D'.")
-			ex.add_note(f"Got type '{getFullyQualifiedName(center)}'.")
-			raise ex
-
-		if radius is None:
-			raise ValueError("Parameter 'radius' is None.")
-		elif not isinstance(radius, (float, int)):
-			ex = TypeError("Parameter 'radius' is not of type 'float' or 'int'.")
-			ex.add_note(f"Got type '{getFullyQualifiedName(radius)}'.")
-			raise ex
-		elif radius <= 0:
-			ex = ValueError("Parameter 'radius' isn't positive.")
-			ex.add_note(f"Got value '{radius}'.")
-			raise ex
-
-		self.center = center.Copy()
-		self.radius = radius
-
-
-@export
-class Polygon(Shapes.Shape[float], metaclass=ExtendedType):
-	"""
-	The closed outline through a sequence of points.
-
-	A clock pin is marked with a triangle. The fields follow the planned ``pyTooling.Cartesian2D.Shapes.Polygon``,
-	which becomes the base-class once a pyTooling release has it.
-	"""
-
-	points: tuple[Point2D[float], ...]  #: Corners, in drawing order.
-
-	def __init__(self, points: Iterable[Point2D[float]]) -> None:
-		"""
-		Initializes a polygon.
-
-		:param points:      Corners, in drawing order; the polygon keeps copies.
-		:raises ValueError: If parameter 'points' is None.
-		:raises TypeError:  If parameter 'points' is not iterable.
-		:raises TypeError:  If an element of parameter 'points' is not of type :class:`~pyTooling.Cartesian2D.Point2D`.
-		:raises ValueError: If parameter 'points' has fewer than 3 points.
-		"""
-		if points is None:
-			raise ValueError("Parameter 'points' is None.")
-		elif not isinstance(points, Iterable):
-			ex = TypeError("Parameter 'points' is not iterable.")
-			ex.add_note(f"Got type '{getFullyQualifiedName(points)}'.")
-			raise ex
-
-		corners = []
-		for point in points:
-			if not isinstance(point, Point2D):
-				ex = TypeError("An element of parameter 'points' is not of type 'Point2D'.")
-				ex.add_note(f"Got type '{getFullyQualifiedName(point)}'.")
-				raise ex
-
-			corners.append(point.Copy())
-
-		if len(corners) < 3:
-			ex = ValueError("Parameter 'points' has fewer than 3 points.")
-			ex.add_note(f"Got {len(corners)} points.")
-			raise ex
-
-		self.points = tuple(corners)
+		return RGBAColor(0, 0, 0)
 
 
 @export
 class SymbolLayout(metaclass=ExtendedType, slots=True):
 	"""
-	The geometry of an interface symbol: its size and the primitives drawing it.
+	The geometry of an interface symbol: a canvas holding the elements drawing it.
 
-	The primitives are listed per kind in drawing order: boxes first, the parameter box before the pin box.
+	The canvas' y-axis points down and its size is the size of the drawing. Its children are in drawing order, grouped
+	by kind: the rectangles of the parameter box and the pin box, the line segments, the circles, the polygons, then the
+	texts.
 	"""
 
-	_symbol:     InterfaceSymbol  #: The symbol laid out.
-	_width:      float            #: Width of the drawing in points.
-	_height:     float            #: Height of the drawing in points.
-	_rectangles: list[Rectangle]  #: Outlines of the parameter box and the pin box.
-	_lines:      list[Line]       #: Group separators and pin stubs.
-	_circles:    list[Circle]     #: Circles of inverted pins.
-	_polygons:   list[Polygon]    #: Triangles of clock pins.
-	_texts:      list[Text]       #: Title, group headers, parameters, pin names and type labels.
+	_symbol: InterfaceSymbol  #: The symbol laid out.
+	_canvas: Canvas2D[float]  #: The drawing: boxes, group separators, pin stubs, pin glyphs and texts.
 
 	def __init__(self, symbol: InterfaceSymbol) -> None:
 		"""
@@ -483,12 +170,34 @@ class SymbolLayout(metaclass=ExtendedType, slots=True):
 			ex.add_note(f"Got type '{getFullyQualifiedName(symbol)}'.")
 			raise ex
 
-		self._symbol =     symbol
-		self._rectangles = rectangles = []
-		self._lines =      lines =      []
-		self._circles =    circles =    []
-		self._polygons =   polygons =   []
-		self._texts =      texts =      []
+		self._symbol = symbol
+		rectangles =   []
+		lines =        []
+		circles =      []
+		polygons =     []
+		texts =        []
+
+		color =        CurrentColor()
+		stroke =       Stroke(LINE_WIDTH, color)
+		busStroke =    Stroke(BUS_LINE_WIDTH, color)
+		dashedStroke = Stroke(LINE_WIDTH, color, LineStyle.Dashed)
+		textFill =     Fill(color)
+		font =         Font("monospace", FONT_SIZE)
+		titleFont =    Font("monospace", FONT_SIZE, bold=True)
+		headerFont =   Font("monospace", FONT_SIZE, fontStyle=FontStyle.Italic)
+
+		def addText(position: Point2D[float], content: str, alignment: TextAlignment, textFont: Font) -> None:
+			"""
+			Nested function adding a single line of text in the current color, its baseline at the position.
+
+			:param position:  Point on the baseline, where the text starts, is centered or ends.
+			:param content:   The text.
+			:param alignment: The text's horizontal alignment at ``position``.
+			:param textFont:  The text's font.
+			"""
+			texts.append(Text(
+				position, content, font=textFont, alignment=alignment, lineHeight=LINE_HEIGHT / FONT_SIZE, fill=textFill
+			))
 
 		pins =       [pin for group in symbol.PinGroups for pin in group.Pins]
 		leftPins =   [pin for pin in pins if pin.Side is PinSide.Left]
@@ -522,9 +231,7 @@ class SymbolLayout(metaclass=ExtendedType, slots=True):
 		boxCenter =   boxLeft + boxWidth / 2
 
 		y = MARGIN
-		texts.append(
-			Text(Point2D(boxCenter, y + LINE_HEIGHT / 2 + BASELINE_OFFSET), symbol.Name, TextAnchor.Middle, TextStyle.Bold)
-		)
+		addText(Point2D(boxCenter, y + LINE_HEIGHT / 2 + BASELINE_OFFSET), symbol.Name, TextAlignment.Center, titleFont)
 		y += LINE_HEIGHT
 
 		if len(symbol.ParameterGroups) > 0:
@@ -534,44 +241,45 @@ class SymbolLayout(metaclass=ExtendedType, slots=True):
 			top =      y
 			for index, parameterGroup in enumerate(symbol.ParameterGroups):
 				if index > 0:
-					lines.append(Line(Point2D(boxLeft, y), Point2D(boxRight, y), LineStyle.Normal))
+					lines.append(LineSegment2D(Point2D(boxLeft, y), Point2D(boxRight, y), stroke=stroke))
 
 				y += SECTION_PADDING
 				if parameterGroup.Name is not None:
 					baseline = y + LINE_HEIGHT / 2 + BASELINE_OFFSET
-					texts.append(Text(Point2D(boxCenter, baseline), parameterGroup.Name, TextAnchor.Middle, TextStyle.Italic))
+					addText(Point2D(boxCenter, baseline), parameterGroup.Name, TextAlignment.Center, headerFont)
 					y += LINE_HEIGHT
 
 				for parameter in parameterGroup.Parameters:
 					baseline = y + LINE_HEIGHT / 2 + BASELINE_OFFSET
-					texts.append(Text(Point2D(nameX, baseline), parameter.Name, TextAnchor.Start, TextStyle.Regular))
-					texts.append(Text(Point2D(typeX, baseline), f": {parameter.TypeLabel}", TextAnchor.Start, TextStyle.Regular))
+					addText(Point2D(nameX, baseline), parameter.Name, TextAlignment.Left, font)
+					addText(Point2D(typeX, baseline), f": {parameter.TypeLabel}", TextAlignment.Left, font)
 					if parameter.DefaultValue is not None:
-						defaultValue = f":= {parameter.DefaultValue}"
-						texts.append(Text(Point2D(defaultX, baseline), defaultValue, TextAnchor.Start, TextStyle.Regular))
+						addText(Point2D(defaultX, baseline), f":= {parameter.DefaultValue}", TextAlignment.Left, font)
 
 					y += LINE_HEIGHT
 
 				y += SECTION_PADDING
 
-			rectangles.append(Rectangle(Point2D(boxLeft, top), Size2D(boxWidth, y - top), LineStyle.Dashed))
+			rectangles.append(Rectangle(
+				Point2D(boxLeft, top), Point2D(boxRight, top), Point2D(boxRight, y), Point2D(boxLeft, y), stroke=dashedStroke
+			))
 
 		if len(symbol.PinGroups) > 0:
 			top = y
 			for index, pinGroup in enumerate(symbol.PinGroups):
 				if index > 0:
-					lines.append(Line(Point2D(boxLeft, y), Point2D(boxRight, y), LineStyle.Normal))
+					lines.append(LineSegment2D(Point2D(boxLeft, y), Point2D(boxRight, y), stroke=stroke))
 
 				y += SECTION_PADDING
 				if pinGroup.Name is not None:
 					baseline = y + LINE_HEIGHT / 2 + BASELINE_OFFSET
-					texts.append(Text(Point2D(boxCenter, baseline), pinGroup.Name, TextAnchor.Middle, TextStyle.Italic))
+					addText(Point2D(boxCenter, baseline), pinGroup.Name, TextAlignment.Center, headerFont)
 					y += LINE_HEIGHT
 
 				rowCount = 0
-				for side, edge, outwards, extent, nameAnchor, labelAnchor in (
-					(PinSide.Left,  boxLeft,  -1.0, leftExtent,  TextAnchor.Start, TextAnchor.End),
-					(PinSide.Right, boxRight,  1.0, rightExtent, TextAnchor.End,   TextAnchor.Start)
+				for side, edge, outwards, extent, nameAlignment, labelAlignment in (
+					(PinSide.Left,  boxLeft,  -1.0, leftExtent,  TextAlignment.Left,  TextAlignment.Right),
+					(PinSide.Right, boxRight,  1.0, rightExtent, TextAlignment.Right, TextAlignment.Left)
 				):
 					sidePins = [pin for pin in pinGroup.Pins if pin.Side is side]
 					rowCount = max(rowCount, len(sidePins))
@@ -579,30 +287,40 @@ class SymbolLayout(metaclass=ExtendedType, slots=True):
 						stubY =     y + (row + 0.5) * PIN_PITCH
 						end =       edge + outwards * extent
 						stubStart = edge + outwards * 2 * INVERSION_RADIUS if pin.IsInverted else edge
-						lineStyle = LineStyle.Thick if pin.IsBus else LineStyle.Normal
 
-						lines.append(Line(Point2D(end, stubY), Point2D(stubStart, stubY), lineStyle))
+						lines.append(
+							LineSegment2D(Point2D(end, stubY), Point2D(stubStart, stubY), stroke=busStroke if pin.IsBus else stroke)
+						)
 						if pin.IsInverted:
-							circles.append(Circle(Point2D(edge + outwards * INVERSION_RADIUS, stubY), INVERSION_RADIUS))
+							center = Point2D(edge + outwards * INVERSION_RADIUS, stubY)
+							circles.append(Circle(center, INVERSION_RADIUS, stroke=stroke))
 
 						if pin.Kind is PinKind.Clock:
-							polygons.append(Polygon((
-								Point2D(edge, stubY - CLOCK_HEIGHT / 2),
-								Point2D(edge - outwards * CLOCK_WIDTH, stubY),
-								Point2D(edge, stubY + CLOCK_HEIGHT / 2)
-							)))
+							polygons.append(Polygon(
+								(
+									Point2D(edge, stubY - CLOCK_HEIGHT / 2),
+									Point2D(edge - outwards * CLOCK_WIDTH, stubY),
+									Point2D(edge, stubY + CLOCK_HEIGHT / 2)
+								),
+								stroke=stroke
+							))
 
 						namePosition =  Point2D(edge - outwards * pinNameInset, stubY + BASELINE_OFFSET)
 						labelPosition = Point2D(stubStart + outwards * PADDING, stubY - LABEL_RISE)
-						texts.append(Text(namePosition, pin.Name, nameAnchor, TextStyle.Regular))
-						texts.append(Text(labelPosition, pin.TypeLabel, labelAnchor, TextStyle.Regular))
+						addText(namePosition, pin.Name, nameAlignment, font)
+						addText(labelPosition, pin.TypeLabel, labelAlignment, font)
 
 				y += rowCount * PIN_PITCH + SECTION_PADDING
 
-			rectangles.append(Rectangle(Point2D(boxLeft, top), Size2D(boxWidth, y - top), LineStyle.Normal))
+			rectangles.append(Rectangle(
+				Point2D(boxLeft, top), Point2D(boxRight, top), Point2D(boxRight, y), Point2D(boxLeft, y), stroke=stroke
+			))
 
-		self._width =  boxRight + rightExtent + MARGIN
-		self._height = y + MARGIN
+		self._canvas = Canvas2D(
+			YAxisDirection.Down,
+			Size2D(boxRight + rightExtent + MARGIN, y + MARGIN),
+			(*rectangles, *lines, *circles, *polygons, *texts)
+		)
 
 	@staticmethod
 	def _PinExtent(pins: list[Pin]) -> float:
@@ -634,64 +352,10 @@ class SymbolLayout(metaclass=ExtendedType, slots=True):
 		return self._symbol
 
 	@readonly
-	def Width(self) -> float:
+	def Canvas(self) -> Canvas2D[float]:
 		"""
-		Read-only property to access the width of the drawing (:attr:`_width`).
+		Read-only property to access the drawing (:attr:`_canvas`).
 
-		:returns: Width in points.
+		:returns: The canvas: y-axis pointing down, sized to the drawing, children in drawing order.
 		"""
-		return self._width
-
-	@readonly
-	def Height(self) -> float:
-		"""
-		Read-only property to access the height of the drawing (:attr:`_height`).
-
-		:returns: Height in points.
-		"""
-		return self._height
-
-	@readonly
-	def Rectangles(self) -> list[Rectangle]:
-		"""
-		Read-only property to access the outlines of the parameter box and the pin box (:attr:`_rectangles`).
-
-		:returns: List of rectangles, in drawing order.
-		"""
-		return self._rectangles
-
-	@readonly
-	def Lines(self) -> list[Line]:
-		"""
-		Read-only property to access the group separators and pin stubs (:attr:`_lines`).
-
-		:returns: List of lines, in drawing order.
-		"""
-		return self._lines
-
-	@readonly
-	def Circles(self) -> list[Circle]:
-		"""
-		Read-only property to access the circles of inverted pins (:attr:`_circles`).
-
-		:returns: List of circles, in drawing order.
-		"""
-		return self._circles
-
-	@readonly
-	def Polygons(self) -> list[Polygon]:
-		"""
-		Read-only property to access the triangles of clock pins (:attr:`_polygons`).
-
-		:returns: List of polygons, in drawing order.
-		"""
-		return self._polygons
-
-	@readonly
-	def Texts(self) -> list[Text]:
-		"""
-		Read-only property to access the title, group headers, parameters, pin names and type labels (:attr:`_texts`).
-
-		:returns: List of texts, in drawing order.
-		"""
-		return self._texts
+		return self._canvas
