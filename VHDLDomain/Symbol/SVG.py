@@ -70,6 +70,7 @@ class SVGRenderer(metaclass=ExtendedType, slots=True):
 		:returns:           The SVG document as text, without XML declaration.
 		:raises ValueError: If parameter 'symbol' is None.
 		:raises TypeError:  If parameter 'symbol' is not of type :class:`~VHDLDomain.Symbol.InterfaceSymbol`.
+		:raises TypeError:  If the layout's canvas holds an element of a kind the renderer can't draw.
 		"""
 		if symbol is None:
 			raise ValueError("Parameter 'symbol' is None.")
@@ -146,6 +147,10 @@ class SVGRenderer(metaclass=ExtendedType, slots=True):
 					f"font-family=\"{font.Family}\" font-size=\"{font.Size:g}\"{weight}{fontStyles[font.FontStyle]}{variant}>"
 					f"{self._Escape(element.Content)}</text>"
 				)
+			else:
+				ex = TypeError("Canvas element is not supported by 'SVGRenderer'.")
+				ex.add_note(f"Got type '{getFullyQualifiedName(element)}'.")
+				raise ex
 
 		output.append("</g>")
 		output.append("<g fill=\"currentColor\" xml:space=\"preserve\">")

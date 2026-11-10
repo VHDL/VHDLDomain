@@ -157,7 +157,7 @@ class Element(Generic[ParentType], metaclass=ExtendedType, slots=True):
 			raise ValueError("Parameter 'parent' is None.")
 		elif not isinstance(parent, self._PARENT_TYPE):
 			typeNames = " or ".join(f"'{parentType.__name__}'" for parentType in self._PARENT_TYPE)
-			ex = TypeError(f"Parameter 'parent' is not of type {typeNames}.")
+			ex =        TypeError(f"Parameter 'parent' is not of type {typeNames}.")
 			ex.add_note(f"Got type '{getFullyQualifiedName(parent)}'.")
 			raise ex
 

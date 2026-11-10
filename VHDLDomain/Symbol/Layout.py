@@ -206,8 +206,8 @@ class SymbolLayout(metaclass=ExtendedType, slots=True):
 		headers =    [group.Name for group in (*symbol.ParameterGroups, *symbol.PinGroups) if group.Name is not None]
 
 		# Parameter columns in characters: 'NAME', ': type' and ':= default', separated by a space.
-		nameColumn =    max((len(parameter.Name) for parameter in parameters), default=0)
-		typeColumn =    max((len(parameter.TypeLabel) + 2 for parameter in parameters), default=0)
+		nameColumn = max((len(parameter.Name) for parameter in parameters), default=0)
+		typeColumn = max((len(parameter.TypeLabel) + 2 for parameter in parameters), default=0)
 		defaultColumn = max(
 			(len(parameter.DefaultValue) + 3 for parameter in parameters if parameter.DefaultValue is not None),
 			default=0

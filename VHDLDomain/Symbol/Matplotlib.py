@@ -115,6 +115,7 @@ class MatplotlibRenderer(metaclass=ExtendedType, slots=True):
 		:raises ValueError:             If parameter 'format' is None.
 		:raises TypeError:              If parameter 'format' is not of type :class:`str`.
 		:raises ValueError:             If parameter 'format' is not a format of :attr:`FORMATS`.
+		:raises TypeError:              If the layout's canvas holds an element of a kind the renderer can't draw.
 		:raises MissingDependencyError: If matplotlib isn't installed.
 		"""
 		if symbol is None:
@@ -205,6 +206,10 @@ class MatplotlibRenderer(metaclass=ExtendedType, slots=True):
 					fontsize=font.Size, fontweight="bold" if font.Bold else "normal", fontstyle=fontStyles[font.FontStyle],
 					fontvariant="small-caps" if font.SmallCaps else "normal", color="black", parse_math=False
 				)
+			else:
+				ex = TypeError("Canvas element is not supported by 'MatplotlibRenderer'.")
+				ex.add_note(f"Got type '{getFullyQualifiedName(element)}'.")
+				raise ex
 
 		buffer = BytesIO()
 		with rc_context({"svg.fonttype": "none", "text.hinting": "none"}):

@@ -87,6 +87,7 @@ class TikZRenderer(metaclass=ExtendedType, slots=True):
 		:returns:           The ``tikzpicture`` environment as text.
 		:raises ValueError: If parameter 'symbol' is None.
 		:raises TypeError:  If parameter 'symbol' is not of type :class:`~VHDLDomain.Symbol.InterfaceSymbol`.
+		:raises TypeError:  If the layout's canvas holds an element of a kind the renderer can't draw.
 		"""
 		if symbol is None:
 			raise ValueError("Parameter 'symbol' is None.")
@@ -170,6 +171,10 @@ class TikZRenderer(metaclass=ExtendedType, slots=True):
 					f"font={fontSize}\\selectfont{fontFamilies[font.Family]}] at ({position.X:g},{height - position.Y:g}) "
 					f"{{{series}{fontStyles[font.FontStyle]}{shape}{content}}};"
 				)
+			else:
+				ex = TypeError("Canvas element is not supported by 'TikZRenderer'.")
+				ex.add_note(f"Got type '{getFullyQualifiedName(element)}'.")
+				raise ex
 
 		output.append("\\end{tikzpicture}")
 
