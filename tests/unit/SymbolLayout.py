@@ -353,3 +353,119 @@ class Styles(Testcase):
 
 		for text in ElementsOf(layout, Text):
 			self.assertEqual(len(text.Content) * CHARACTER_WIDTH, text.BoundingBox.Width)
+
+
+class Values(Testcase):
+	def test_Elements(self) -> None:
+		"""Every element has a value."""
+		layout = SymbolLayout(Fifo())
+
+		for rectangle in ElementsOf(layout, Rectangle):
+			self.assertIsNotNone(rectangle.Value)
+
+		for line in ElementsOf(layout, LineSegment2D):
+			self.assertIsNotNone(line.Value)
+
+		for circle in ElementsOf(layout, Circle):
+			self.assertIsNotNone(circle.Value)
+
+		for polygon in ElementsOf(layout, Polygon):
+			self.assertIsNotNone(polygon.Value)
+
+		for text in ElementsOf(layout, Text):
+			self.assertIsNotNone(text.Value)
+
+	def test_Symbol(self) -> None:
+		"""The symbol's name and both boxes have the symbol as value."""
+		symbol = Fifo()
+		layout = SymbolLayout(symbol)
+
+		self.assertIs(symbol, ElementsOf(layout, Text)[0].Value)
+		for rectangle in ElementsOf(layout, Rectangle):
+			self.assertIs(symbol, rectangle.Value)
+
+	def test_ParameterGroups(self) -> None:
+		"""A group's header and the separator line above it have the group as value; the first group has no separator."""
+		symbol = InterfaceSymbol("constants")
+		Parameter("WIDTH", "positive", "8", parent=ParameterGroup("Sizes", parent=symbol))
+		Parameter("DEPTH", "positive", "16", parent=ParameterGroup("Depths", parent=symbol))
+		layout = SymbolLayout(symbol)
+		lines =  ElementsOf(layout, LineSegment2D)
+		texts =  ElementsOf(layout, Text)
+		groups = symbol.ParameterGroups
+
+		self.assertEqual(0, len([line for line in lines if line.Value is groups[0]]))
+		for group in groups[1:]:
+			self.assertEqual(1, len([line for line in lines if line.Value is group]))
+
+		for group in groups:
+			self.assertEqual([group.Name], [text.Content for text in texts if text.Value is group])
+
+	def test_Parameters(self) -> None:
+		"""A parameter's name, type and default value have the parameter as value."""
+		symbol = Fifo()
+		texts =  ElementsOf(SymbolLayout(symbol), Text)
+
+		for parameter in symbol.ParameterGroups[0].Parameters:
+			contents = [text.Content for text in texts if text.Value is parameter]
+			self.assertEqual([parameter.Name, f": {parameter.TypeLabel}", f":= {parameter.DefaultValue}"], contents)
+
+	def test_Parameters_WithoutDefault(self) -> None:
+		symbol =    Inverter()
+		texts =     ElementsOf(SymbolLayout(symbol), Text)
+		parameter = symbol.ParameterGroups[0].Parameters[0]
+
+		self.assertEqual(["WIDTH", ": positive"], [text.Content for text in texts if text.Value is parameter])
+
+	def test_PinGroups(self) -> None:
+		"""A group's header and the separator line above it have the group as value; the first group has no separator."""
+		symbol = Fifo()
+		layout = SymbolLayout(symbol)
+		lines =  ElementsOf(layout, LineSegment2D)
+		texts =  ElementsOf(layout, Text)
+		groups = symbol.PinGroups
+
+		self.assertEqual(0, len([line for line in lines if line.Value is groups[0]]))
+		for group in groups[1:]:
+			self.assertEqual(1, len([line for line in lines if line.Value is group]))
+
+		for group in groups:
+			headers = [text.Content for text in texts if text.Value is group]
+			self.assertEqual([] if group.Name is None else [group.Name], headers)
+
+	def test_Pins(self) -> None:
+		"""A pin's stub, name and type label have the pin as value."""
+		symbol = Fifo()
+		layout = SymbolLayout(symbol)
+		lines =  ElementsOf(layout, LineSegment2D)
+		texts =  ElementsOf(layout, Text)
+		pins =   [pin for group in symbol.PinGroups for pin in group.Pins]
+
+		self.assertEqual(9, len(pins))
+		for pin in pins:
+			self.assertEqual(1, len([line for line in lines if line.Value is pin]))
+
+		for pin in pins:
+			self.assertEqual([pin.Name, pin.TypeLabel], [text.Content for text in texts if text.Value is pin])
+
+	def test_Clock(self) -> None:
+		"""A clock pin's triangle has the pin as value."""
+		symbol =   Fifo()
+		polygons = ElementsOf(SymbolLayout(symbol), Polygon)
+		clocks =   [pin for group in symbol.PinGroups for pin in group.Pins if pin.Kind is PinKind.Clock]
+
+		self.assertEqual(1, len(clocks))
+		self.assertEqual(len(clocks), len(polygons))
+		for pin in clocks:
+			self.assertEqual(1, len([polygon for polygon in polygons if polygon.Value is pin]))
+
+	def test_Inverted(self) -> None:
+		"""An inverted pin's circle has the pin as value."""
+		for symbol in (Inverter(), Fifo()):
+			circles =  ElementsOf(SymbolLayout(symbol), Circle)
+			inverted = [pin for group in symbol.PinGroups for pin in group.Pins if pin.IsInverted]
+
+			self.assertEqual(1, len(inverted))
+			self.assertEqual(len(inverted), len(circles))
+			for pin in inverted:
+				self.assertEqual(1, len([circle for circle in circles if circle.Value is pin]))

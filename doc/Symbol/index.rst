@@ -114,6 +114,11 @@ Layout
 texts. Coordinates are points (1/72 inch), and all texts are set in a monospace font, so the layout knows each text's
 width. Every renderer draws the same canvas, so the three formats show the same picture.
 
+Each drawn element's :attr:`~pyTooling.Cartesian2D.Element2D.Value` is the model object it represents: the symbol for
+its name and both boxes, a group for its header and separator line, a parameter for its texts, and a pin for its stub,
+glyph, name and type label. A renderer or another tool can map each element back to the model, for example to link a
+pin's name to the port's documentation.
+
 **Condensed definition of class** :class:`~VHDLDomain.Symbol.Layout.SymbolLayout`:
 
 .. condensed-class:: VHDLDomain.Symbol.Layout.SymbolLayout

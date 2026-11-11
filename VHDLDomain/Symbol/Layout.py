@@ -61,7 +61,7 @@ from pyTooling.Common              import getFullyQualifiedName
 from pyTooling.Decorators          import export, readonly
 from pyTooling.MetaClasses         import ExtendedType
 
-from VHDLDomain.Symbol             import InterfaceSymbol, Pin, PinKind, PinSide
+from VHDLDomain.Symbol             import Element, InterfaceSymbol, Pin, PinKind, PinSide
 
 
 __all__ = [
@@ -150,10 +150,14 @@ class SymbolLayout(metaclass=ExtendedType, slots=True):
 	The canvas' y-axis points down and its size is the size of the drawing. Its children are in drawing order, grouped
 	by kind: the rectangles of the parameter box and the pin box, the line segments, the circles, the polygons, then the
 	texts.
+
+	Each element's :attr:`~pyTooling.Cartesian2D.Element2D.Value` is the model object it draws: the symbol for its name
+	and both boxes, a group for its header and the separator line above it, a parameter for its texts, and a pin for its
+	stub, its glyph, its name and its type label.
 	"""
 
 	_symbol: InterfaceSymbol  #: The symbol laid out.
-	_canvas: Canvas2D[float]  #: The drawing: boxes, group separators, pin stubs, pin glyphs and texts.
+	_canvas: Canvas2D[float]  #: The drawing; each element's value is the model object it draws.
 
 	def __init__(self, symbol: InterfaceSymbol) -> None:
 		"""
@@ -186,7 +190,13 @@ class SymbolLayout(metaclass=ExtendedType, slots=True):
 		titleFont =    Font("monospace", FONT_SIZE, bold=True)
 		headerFont =   Font("monospace", FONT_SIZE, fontStyle=FontStyle.Italic)
 
-		def addText(position: Point2D[float], content: str, alignment: TextAlignment, textFont: Font) -> None:
+		def addText(
+			position:  Point2D[float],
+			content:   str,
+			alignment: TextAlignment,
+			textFont:  Font,
+			value:     InterfaceSymbol | Element
+		) -> None:
 			"""
 			Nested function adding a single line of text in the current color, its baseline at the position.
 
@@ -194,9 +204,16 @@ class SymbolLayout(metaclass=ExtendedType, slots=True):
 			:param content:   The text.
 			:param alignment: The text's horizontal alignment at ``position``.
 			:param textFont:  The text's font.
+			:param value:     The model object the text belongs to.
 			"""
 			texts.append(Text(
-				position, content, font=textFont, alignment=alignment, lineHeight=LINE_HEIGHT / FONT_SIZE, fill=textFill
+				position,
+				content,
+				font=textFont,
+				alignment=alignment,
+				lineHeight=LINE_HEIGHT / FONT_SIZE,
+				fill=textFill,
+				value=value
 			))
 
 		pins =       [pin for group in symbol.PinGroups for pin in group.Pins]
@@ -230,8 +247,9 @@ class SymbolLayout(metaclass=ExtendedType, slots=True):
 		boxRight =    boxLeft + boxWidth
 		boxCenter =   boxLeft + boxWidth / 2
 
-		y = MARGIN
-		addText(Point2D(boxCenter, y + LINE_HEIGHT / 2 + BASELINE_OFFSET), symbol.Name, TextAlignment.Center, titleFont)
+		y =        MARGIN
+		baseline = y + LINE_HEIGHT / 2 + BASELINE_OFFSET
+		addText(Point2D(boxCenter, baseline), symbol.Name, TextAlignment.Center, titleFont, symbol)
 		y += LINE_HEIGHT
 
 		if len(symbol.ParameterGroups) > 0:
@@ -241,39 +259,43 @@ class SymbolLayout(metaclass=ExtendedType, slots=True):
 			top =      y
 			for index, parameterGroup in enumerate(symbol.ParameterGroups):
 				if index > 0:
-					lines.append(LineSegment2D(Point2D(boxLeft, y), Point2D(boxRight, y), stroke=stroke))
+					lines.append(
+						LineSegment2D(Point2D(boxLeft, y), Point2D(boxRight, y), stroke=stroke, value=parameterGroup)
+					)
 
 				y += SECTION_PADDING
 				if parameterGroup.Name is not None:
 					baseline = y + LINE_HEIGHT / 2 + BASELINE_OFFSET
-					addText(Point2D(boxCenter, baseline), parameterGroup.Name, TextAlignment.Center, headerFont)
+					addText(Point2D(boxCenter, baseline), parameterGroup.Name, TextAlignment.Center, headerFont, parameterGroup)
 					y += LINE_HEIGHT
 
 				for parameter in parameterGroup.Parameters:
 					baseline = y + LINE_HEIGHT / 2 + BASELINE_OFFSET
-					addText(Point2D(nameX, baseline), parameter.Name, TextAlignment.Left, font)
-					addText(Point2D(typeX, baseline), f": {parameter.TypeLabel}", TextAlignment.Left, font)
+					addText(Point2D(nameX, baseline), parameter.Name, TextAlignment.Left, font, parameter)
+					addText(Point2D(typeX, baseline), f": {parameter.TypeLabel}", TextAlignment.Left, font, parameter)
 					if parameter.DefaultValue is not None:
-						addText(Point2D(defaultX, baseline), f":= {parameter.DefaultValue}", TextAlignment.Left, font)
+						addText(Point2D(defaultX, baseline), f":= {parameter.DefaultValue}", TextAlignment.Left, font, parameter)
 
 					y += LINE_HEIGHT
 
 				y += SECTION_PADDING
 
 			rectangles.append(Rectangle(
-				Point2D(boxLeft, top), Point2D(boxRight, top), Point2D(boxRight, y), Point2D(boxLeft, y), stroke=dashedStroke
+				Point2D(boxLeft, top), Point2D(boxRight, top), Point2D(boxRight, y), Point2D(boxLeft, y),
+				stroke=dashedStroke,
+				value=symbol
 			))
 
 		if len(symbol.PinGroups) > 0:
 			top = y
 			for index, pinGroup in enumerate(symbol.PinGroups):
 				if index > 0:
-					lines.append(LineSegment2D(Point2D(boxLeft, y), Point2D(boxRight, y), stroke=stroke))
+					lines.append(LineSegment2D(Point2D(boxLeft, y), Point2D(boxRight, y), stroke=stroke, value=pinGroup))
 
 				y += SECTION_PADDING
 				if pinGroup.Name is not None:
 					baseline = y + LINE_HEIGHT / 2 + BASELINE_OFFSET
-					addText(Point2D(boxCenter, baseline), pinGroup.Name, TextAlignment.Center, headerFont)
+					addText(Point2D(boxCenter, baseline), pinGroup.Name, TextAlignment.Center, headerFont, pinGroup)
 					y += LINE_HEIGHT
 
 				rowCount = 0
@@ -288,12 +310,12 @@ class SymbolLayout(metaclass=ExtendedType, slots=True):
 						end =       edge + outwards * extent
 						stubStart = edge + outwards * 2 * INVERSION_RADIUS if pin.IsInverted else edge
 
-						lines.append(
-							LineSegment2D(Point2D(end, stubY), Point2D(stubStart, stubY), stroke=busStroke if pin.IsBus else stroke)
-						)
+						lines.append(LineSegment2D(
+							Point2D(end, stubY), Point2D(stubStart, stubY), stroke=busStroke if pin.IsBus else stroke, value=pin
+						))
 						if pin.IsInverted:
 							center = Point2D(edge + outwards * INVERSION_RADIUS, stubY)
-							circles.append(Circle(center, INVERSION_RADIUS, stroke=stroke))
+							circles.append(Circle(center, INVERSION_RADIUS, stroke=stroke, value=pin))
 
 						if pin.Kind is PinKind.Clock:
 							polygons.append(Polygon(
@@ -302,18 +324,21 @@ class SymbolLayout(metaclass=ExtendedType, slots=True):
 									Point2D(edge - outwards * CLOCK_WIDTH, stubY),
 									Point2D(edge, stubY + CLOCK_HEIGHT / 2)
 								),
-								stroke=stroke
+								stroke=stroke,
+								value=pin
 							))
 
 						namePosition =  Point2D(edge - outwards * pinNameInset, stubY + BASELINE_OFFSET)
 						labelPosition = Point2D(stubStart + outwards * PADDING, stubY - LABEL_RISE)
-						addText(namePosition, pin.Name, nameAlignment, font)
-						addText(labelPosition, pin.TypeLabel, labelAlignment, font)
+						addText(namePosition, pin.Name, nameAlignment, font, pin)
+						addText(labelPosition, pin.TypeLabel, labelAlignment, font, pin)
 
 				y += rowCount * PIN_PITCH + SECTION_PADDING
 
 			rectangles.append(Rectangle(
-				Point2D(boxLeft, top), Point2D(boxRight, top), Point2D(boxRight, y), Point2D(boxLeft, y), stroke=stroke
+				Point2D(boxLeft, top), Point2D(boxRight, top), Point2D(boxRight, y), Point2D(boxLeft, y),
+				stroke=stroke,
+				value=symbol
 			))
 
 		self._canvas = Canvas2D(
@@ -356,6 +381,7 @@ class SymbolLayout(metaclass=ExtendedType, slots=True):
 		"""
 		Read-only property to access the drawing (:attr:`_canvas`).
 
-		:returns: The canvas: y-axis pointing down, sized to the drawing, children in drawing order.
+		:returns: The canvas: y-axis pointing down, sized to the drawing, children in drawing order, each child's value
+		          the model object it draws.
 		"""
 		return self._canvas
