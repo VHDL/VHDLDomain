@@ -8,5 +8,6 @@ context Utilities_ctx is
 	use     IEEE.std_logic_1164.all,
 	        IEEE.numeric_std.all;
 
-	use work.Utilities_pkg.all;
+	library lib_Utilities;
+	use     lib_Utilities.Utilities_pkg.all;
 end context;
