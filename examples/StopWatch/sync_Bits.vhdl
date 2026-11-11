@@ -17,7 +17,7 @@ entity sync_Bits is
 		Clock     : in  std_logic;
 
 		Input     : in  std_logic_vector(BITS - 1 downto 0);
-		output    : in  std_logic_vector(BITS - 1 downto 0)
+		Output    : out std_logic_vector(BITS - 1 downto 0)
 	);
 end entity;
 
