@@ -30,7 +30,7 @@ architecture rtl of Debouncer is
 	constant DEBOUNCE_COUNTER_MAX  : positive := DEBOUNCE_TIME / (CLOCK_PERIOD* ite(IS_SIMULATION, 20, 1));
 	constant DEBOUNCE_COUNTER_BITS : positive := log2(DEBOUNCE_COUNTER_MAX);
 
-	signal Input_sync : Input'subtype;
+	signal Input_synchronized : Input'subtype;
 begin
 	assert false report "CLOCK_PERIOD:         " & time'image(CLOCK_PERIOD);
 	assert false report "DEBOUNCE_TIME:        " & time'image(DEBOUNCE_TIME);
@@ -45,10 +45,10 @@ begin
 			port map (
 				Clock  => Clock,
 				Input  => Input,
-				Output => Input_sync
+				Output => Input_synchronized
 			);
 	else generate
-		Input_sync <= Input;
+		Input_synchronized <= Input;
 	end generate;
 
 	genBits: for i in Input'range generate
