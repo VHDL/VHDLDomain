@@ -406,10 +406,22 @@ def renderSymbols(app: Sphinx) -> None:
 	"""
 	Render the interface symbols of :file:`Symbol/StopWatch.py` into :file:`Symbol/Renderings`.
 
-	Each symbol is written as SVG, PNG and TikZ file, named as the symbol, e.g. :file:`Counter.svg`.
+	Each symbol is written as SVG, PNG and TikZ file, named as the symbol, e.g. :file:`Counter.svg`. A file is only
+	written, if its content changed.
 
 	:param app: The Sphinx application.
 	"""
+	def writeIfChanged(path: Path, content: bytes) -> None:
+		"""
+		Nested function writing the content into a file, unless the file has this content already.
+
+		:param path:    The file to write.
+		:param content: The file's new content.
+		"""
+		if not path.exists() or path.read_bytes() != content:
+			with path.open("wb") as file:
+				file.write(content)
+
 	examples =     run_path(str(symbolExamples))
 	svgRenderer =  SVGRenderer()
 	pngRenderer =  MatplotlibRenderer(dpi=192)
@@ -418,9 +430,9 @@ def renderSymbols(app: Sphinx) -> None:
 	symbolRenderings.mkdir(exist_ok=True)
 	for build in (examples["Counter"], examples["Seg7Display"], examples["TopLevel"]):
 		symbol = build()
-		(symbolRenderings / f"{symbol.Name}.svg").write_text(svgRenderer.Render(symbol), encoding="utf-8")
-		(symbolRenderings / f"{symbol.Name}.png").write_bytes(pngRenderer.Render(symbol, "png"))
-		(symbolRenderings / f"{symbol.Name}.tikz").write_text(tikzRenderer.Render(symbol), encoding="utf-8")
+		writeIfChanged(symbolRenderings / f"{symbol.Name}.svg", svgRenderer.Render(symbol).encode("utf-8"))
+		writeIfChanged(symbolRenderings / f"{symbol.Name}.png", pngRenderer.Render(symbol, "png"))
+		writeIfChanged(symbolRenderings / f"{symbol.Name}.tikz", tikzRenderer.Render(symbol).encode("utf-8"))
 
 
 # ==============================================================================
