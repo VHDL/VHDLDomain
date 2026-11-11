@@ -95,6 +95,7 @@ License
    Directives/index
    Roles/index
    Indices/index
+   Symbol/index
 
 .. raw:: latex
 

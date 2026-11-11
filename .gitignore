@@ -29,6 +29,7 @@ coverage.xml
 # Sphinx
 doc/_build/
 doc/VHDLDomain/**/*.*
+doc/Symbol/Renderings/
 
 # PyCharm project files
 /.idea/workspace.xml

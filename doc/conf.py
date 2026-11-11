@@ -1,16 +1,17 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-from sys                 import path as sys_path
-from os                  import environ
-from os.path             import abspath
-from pathlib             import Path
-from textwrap            import dedent
-from typing              import Any, Optional as Nullable
+from sys                          import path as sys_path
+from os                           import environ
+from os.path                      import abspath
+from pathlib                      import Path
+from runpy                        import run_path
+from textwrap                     import dedent
+from typing                       import Any, Optional as Nullable
 
-from sphinx.application  import Sphinx
+from sphinx.application           import Sphinx
 
-from pyTooling.Packaging import extractVersionInformation
+from pyTooling.Packaging          import extractVersionInformation
 
 # ==============================================================================
 # Project configuration
@@ -28,6 +29,10 @@ ROOT = Path(__file__).resolve().parent
 sys_path.insert(0, abspath("."))
 sys_path.insert(0, abspath(".."))
 sys_path.insert(0, abspath(f"../{directoryName}"))
+
+from VHDLDomain.Symbol.Matplotlib import MatplotlibRenderer
+from VHDLDomain.Symbol.SVG        import SVGRenderer
+from VHDLDomain.Symbol.TikZ       import TikZRenderer
 
 
 # ==============================================================================
@@ -130,6 +135,7 @@ modindex_common_prefix = [
 # ==============================================================================
 latex_engine = "lualatex"
 latex_use_xindy = False
+tikzLibraries = ",".join(TikZRenderer.TIKZ_LIBRARIES)
 latex_elements = {
 	"papersize":   "a4paper",      # The paper size ('letterpaper' or 'a4paper').
 	"pointsize":   "10pt",         # The font size ('10pt', '11pt' or '12pt').
@@ -146,6 +152,10 @@ latex_elements = {
 	"""),
 # "sphinxsetup": "verbatimvisiblespace=\\textvisiblespace"
 # "figure_align": "htbp",     # Latex figure (float) alignment
+	"preamble":   dedent(f"""\
+		\\usepackage{{tikz}}
+		\\usetikzlibrary{{{tikzLibraries}}}
+	"""),
 	"makeindex":  r"\usepackage[columns=1]{idxlayout}\makeindex",
 	"printindex": r"\def\twocolumn[#1]{#1}\printindex",
 }
@@ -386,6 +396,34 @@ for module in Path(f"../{project.replace('.', '/')}").iterdir():
 
 
 # ==============================================================================
+# Interface symbols - renderings of the examples
+# ==============================================================================
+symbolExamples =   ROOT / "Symbol" / "StopWatch.py"
+symbolRenderings = ROOT / "Symbol" / "Renderings"
+
+
+def renderSymbols(app: Sphinx) -> None:
+	"""
+	Render the interface symbols of :file:`Symbol/StopWatch.py` into :file:`Symbol/Renderings`.
+
+	Each symbol is written as SVG, PNG and TikZ file, named as the symbol, e.g. :file:`Counter.svg`.
+
+	:param app: The Sphinx application.
+	"""
+	examples =     run_path(str(symbolExamples))
+	svgRenderer =  SVGRenderer()
+	pngRenderer =  MatplotlibRenderer(dpi=192)
+	tikzRenderer = TikZRenderer()
+
+	symbolRenderings.mkdir(exist_ok=True)
+	for build in (examples["Counter"], examples["Seg7Display"], examples["TopLevel"]):
+		symbol = build()
+		(symbolRenderings / f"{symbol.Name}.svg").write_text(svgRenderer.Render(symbol), encoding="utf-8")
+		(symbolRenderings / f"{symbol.Name}.png").write_bytes(pngRenderer.Render(symbol, "png"))
+		(symbolRenderings / f"{symbol.Name}.tikz").write_text(tikzRenderer.Render(symbol), encoding="utf-8")
+
+
+# ==============================================================================
 # Sphinx.Ext.AutoDoc - skipped members
 # ==============================================================================
 def skipForeignMembers(
@@ -427,4 +465,5 @@ def setup(app: Sphinx) -> None:
 
 	:param app: The Sphinx application.
 	"""
+	app.connect("builder-inited", renderSymbols)
 	app.connect("autodoc-skip-member", skipForeignMembers)

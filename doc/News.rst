@@ -6,6 +6,17 @@ News
 See :gh:`VHDLDomain Release Pages <VHDL/VHDLDomain/releases>` for detail release notes on every release.
 
 
+Version 0.3.0 (2026)
+********************
+
+.. topic:: :gh:`v0.3.0 - unreleased <VHDL/VHDLDomain/releases/v0.3.0>`
+
+   .. rubric:: Changes
+
+   * New package ``VHDLDomain.Symbol``: a format-independent interface symbol (parameters, pin groups, clock/reset
+     pins, buses, low-active pins) with renderers for SVG, TikZ and - with the new extra ``diagram`` (matplotlib) - PNG.
+
+
 Version 0.2.0 (2026)
 ********************
 
