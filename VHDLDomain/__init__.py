@@ -47,12 +47,13 @@ design, a library or a design unit from the model, and a role refers to what a d
 .. rubric:: What it registers
 
 * Directives: ``vhdl:design``, ``vhdl:library``, ``vhdl:context``, ``vhdl:entity``, ``vhdl:package``,
-  ``vhdl:configuration``
+  ``vhdl:configuration``, ``vhdl:symbol``
 * Roles: ``:vhdl:design:``, ``:vhdl:lib:``, ``:vhdl:ctx:``, ``:vhdl:ent:``, ``:vhdl:arch:``, ``:vhdl:pack:``,
   ``:vhdl:config:``, ``:vhdl:type:``, ``:vhdl:const:``, ``:vhdl:func:``, ``:vhdl:proc:``, ``:vhdl:generic:``,
   ``:vhdl:port:``
 * Indices: ``vhdl-entities``, ``vhdl-packages``, ``vhdl-subprograms``, ``vhdl-types``
 * Configuration value ``vhdl_designs``
+* Node :class:`~VHDLDomain.Symbol.Directive.SymbolNode` with visitors for HTML and LaTeX, and LaTeX package ``tikz``
 * Generated pages per library and design unit, for a design declared with ``pages`` (see :mod:`VHDLDomain.Pages`)
 
 .. rubric:: Names
@@ -70,7 +71,7 @@ reference, otherwise it is warned about. VHDL identifiers are case-insensitive, 
    :copyright: Copyright 2016-2017 Patrick Lehmann - Dresden, Germany
    :license: Apache License, Version 2.0
 """
-from __future__            import annotations
+from __future__                  import annotations
 
 __author__ =    "Patrick Lehmann"
 __email__ =     "Paebbels@gmail.com"
@@ -78,31 +79,33 @@ __copyright__ = "2016-2026, Patrick Lehmann"
 __license__ =   "Apache License, Version 2.0"
 __version__ =   "0.2.0"
 
-from pathlib               import Path
-from typing                import Any, ClassVar, Iterable, Iterator, Optional as Nullable
+from pathlib                     import Path
+from typing                      import Any, ClassVar, Iterable, Iterator, Optional as Nullable
 
-from docutils              import nodes
-from docutils.nodes        import Element, Node
-from sphinx                import addnodes
-from sphinx.application    import Sphinx
-from sphinx.builders       import Builder
-from sphinx.domains        import Domain, Index, ObjType
-from sphinx.environment    import BuildEnvironment
-from sphinx.roles          import XRefRole
-from sphinx.util.logging   import getLogger
-from sphinx.util.nodes     import make_refnode
+from docutils                    import nodes
+from docutils.nodes              import Element, Node
+from sphinx                      import addnodes
+from sphinx.application          import Sphinx
+from sphinx.builders             import Builder
+from sphinx.domains              import Domain, Index, ObjType
+from sphinx.environment          import BuildEnvironment
+from sphinx.roles                import XRefRole
+from sphinx.util.logging         import getLogger
+from sphinx.util.nodes           import make_refnode
 
-from pyTooling.Common      import getFullyQualifiedName
-from pyTooling.Decorators  import export, readonly
-from pyTooling.Exceptions  import MissingDependencyError
+from pyTooling.Common            import getFullyQualifiedName
+from pyTooling.Decorators        import export, readonly
+from pyTooling.Exceptions        import MissingDependencyError
 
-from pyVHDLModel           import Design
+from pyVHDLModel                 import Design
 
-from VHDLDomain.DesignUnit import ConfigurationDirective, ContextDirective, EntityDirective, PackageDirective
-from VHDLDomain.Directive  import DesignDirective, LibraryDirective
-from VHDLDomain.Frontend   import DesignConfiguration, VHDLDomainException
-from VHDLDomain.Index      import EntityIndex, PackageIndex, SubprogramIndex, TypeIndex
-from VHDLDomain.Pages      import DesignPages
+from VHDLDomain.DesignUnit       import ConfigurationDirective, ContextDirective, EntityDirective, PackageDirective
+from VHDLDomain.Directive        import DesignDirective, LibraryDirective
+from VHDLDomain.Frontend         import DesignConfiguration, VHDLDomainException
+from VHDLDomain.Index            import EntityIndex, PackageIndex, SubprogramIndex, TypeIndex
+from VHDLDomain.Pages            import DesignPages
+from VHDLDomain.Symbol.Directive import SymbolDirective, SymbolNode, html_visit_SymbolNode, latex_visit_SymbolNode, \
+                                        loadTikZLibraries
 
 
 __all__ = ["OBJECT_TYPES", "ROLES"]
@@ -221,6 +224,7 @@ class VHDLDomain(Domain):
 		"entity":        EntityDirective,
 		"package":       PackageDirective,
 		"configuration": ConfigurationDirective,
+		"symbol":        SymbolDirective,
 	}  #: The directives, by name.
 
 	roles: ClassVar[dict[str, XRefRole]] = {  # type: ignore[assignment]
@@ -586,6 +590,10 @@ def setup(sphinx: Sphinx) -> dict[str, Any]:
 	sphinx.connect("builder-inited", readDesigns)
 	sphinx.connect("env-before-read-docs", DesignPages.GenerateAll)
 	sphinx.connect("html-page-context", DesignPages.HideSource)
+
+	sphinx.add_node(SymbolNode, html=(html_visit_SymbolNode, None), latex=(latex_visit_SymbolNode, None))
+	sphinx.add_latex_package("tikz")
+	sphinx.connect("builder-inited", loadTikZLibraries)
 
 	return {
 		"version":             __version__,
