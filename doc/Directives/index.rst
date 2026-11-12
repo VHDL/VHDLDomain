@@ -119,16 +119,35 @@ vhdl:package
 
 .. rst:directive:: .. vhdl:package:: [library.]name
 
-   Describe a package: its generics - the field *Generics*, as an entity's -, and - in declaration order - its types,
-   subtypes, constants (also deferred ones), functions and procedures.
+   Describe a package: its generics - the field *Generics*, as an entity's -, and - in declaration order - its
+   declarations, each a description of its own with its documentation comment:
+
+   .. list-table::
+      :header-rows: 1
+      :widths: 25 75
+
+      * - Declaration
+        - Description
+      * - Type, subtype
+        - The definition's first line, as pyVHDLModel's writer writes it, e.g. ``type T_BCD_Vector is array (natural
+          range <>) of T_BCD``. A record type has the field *Elements*, a physical type the field *Units*.
+      * - Constant, signal, shared variable
+        - A description per name: the subtype and the value - a constant's, a signal's default value. A deferred
+          constant has no value in the package.
+      * - Component
+        - The fields *Generics* and *Ports*, as an entity's.
+      * - Function, procedure
+        - The parameters - with their mode, if the declaration gives one, and their default values - and a function's
+          return type. If a parameter is documented, the field *Parameters*.
 
    .. code-block:: rst
 
       .. vhdl:package:: lib_Utilities.Utilities_pkg
 
-   Refer to its declarations by ``:vhdl:type:`Utilities_pkg.freq```, ``:vhdl:const:`IS_SIMULATION``` or
-   ``:vhdl:func:`to_index(natural, positive)```. A subprogram's qualified name ends in its signature, the type marks of
-   its parameters, so overloads are told apart.
+   Refer to its declarations by ``:vhdl:type:`Utilities_pkg.freq```, ``:vhdl:const:`IS_SIMULATION```,
+   ``:vhdl:comp:`Debouncer``` or ``:vhdl:func:`to_index(natural, positive)```. A subprogram's qualified name ends in its
+   signature, the type marks of its parameters, so overloads are told apart. A component's generics and ports are no
+   objects of the domain: ``:vhdl:port:`Debouncer.Clock``` refers to the entity's port.
 
 
 .. _DIR/context:
