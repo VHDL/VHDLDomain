@@ -55,10 +55,10 @@ from pyVHDLModel                 import Library
 from pyVHDLModel.Base            import identifiersOf
 from pyVHDLModel.DesignUnit      import Component, Configuration, Context, DesignUnit, Entity, Package
 from pyVHDLModel.Interface       import GenericConstantInterfaceItem, GenericFunctionInterfaceItem, \
-                                        GenericPackageInterfaceItem, GenericTypeInterfaceItem, \
-                                        InterfaceItemWithModeMixin, PortSignalInterfaceItem
+                                        GenericInterfaceItemMixin, GenericPackageInterfaceItem, \
+                                        GenericTypeInterfaceItem, InterfaceItemWithModeMixin, PortSignalInterfaceItem
 from pyVHDLModel.Object          import Constant, DeferredConstant, SharedVariable, Signal, WithDefaultExpressionMixin
-from pyVHDLModel.Subprogram      import Function, Procedure
+from pyVHDLModel.Subprogram      import Function, Procedure, Subprogram
 from pyVHDLModel.Type            import BaseType, PhysicalType, RecordType, Subtype
 
 from VHDLDomain.Directive        import VHDLDirective
@@ -269,7 +269,7 @@ class DesignUnitDirective(VHDLDirective):
 
 	def _Generics(
 		self,
-		unit:          Entity | Package | Component,
+		unit:          Entity | Package | Component | Subprogram,
 		qualifiedName: str,
 		*,
 		objects:       bool = True
@@ -278,7 +278,7 @@ class DesignUnitDirective(VHDLDirective):
 		Create the field of a unit's generics: per generic its name, its subtype - or the kind of a generic type, package
 		or subprogram -, its default value and its documentation.
 
-		:param unit:          The entity, package or component.
+		:param unit:          The entity, package, component or subprogram.
 		:param qualifiedName: The unit's qualified name.
 		:param objects:       Optional, whether the generics are objects of the domain. Default: ``True``.
 		:returns:             The field, or ``None`` if the unit has no generics.
@@ -302,9 +302,24 @@ class DesignUnitDirective(VHDLDirective):
 			else:
 				kind = "procedure"
 
-			entries.append((identifiersOf(item), kind, default, item.Documentation))
+			entries.append((self._Designators(item), kind, default, item.Documentation))
 
 		return self._InterfaceField("Generics", "generic" if objects else None, qualifiedName, entries)
+
+	@staticmethod
+	def _Designators(item: GenericInterfaceItemMixin) -> tuple[str, ...]:
+		"""
+		Return the designators a generic declares: its identifiers, or a generic function's operator symbol in quotes.
+
+		pyVHDLModel keeps an operator symbol without quotes, e.g. ``<`` for the generic function ``"<"``.
+
+		:param item: The generic.
+		:returns:    The designators.
+		"""
+		return tuple(
+			identifier if identifier[0].isalnum() or identifier[0] == "\\" else f'"{identifier}"'
+			for identifier in identifiersOf(item)
+		)
 
 	def _Ports(self, unit: Entity | Component, qualifiedName: str, *, objects: bool = True) -> Nullable[nodes.field]:
 		"""
@@ -637,8 +652,10 @@ class PackageDirective(DesignUnitDirective):
 		"""
 		Write a function or procedure with its parameter list - and a function's return type - as a declaration.
 
-		A parameter shows its mode, if the declaration gives one, its subtype and its default value. If a parameter is
-		documented, the description has the field *Parameters*, as an entity's *Ports*.
+		A generic subprogram's signature shows the names of its generics before the parameter list, as Sphinx writes a
+		Python function's type parameters; its description has the field *Generics*, as an entity's. A parameter shows
+		its mode, if the declaration gives one, its subtype and its default value. If a parameter is documented, the
+		description has the field *Parameters*, as an entity's *Ports*.
 
 		:param content:       The package's description content.
 		:param qualifiedName: The package's qualified name.
@@ -663,6 +680,14 @@ class PackageDirective(DesignUnitDirective):
 			entries.append((identifiersOf(item), declaration, default, item.Documentation))
 
 		suffix: list[Node] = [parameters]
+		if len(subprogram.GenericItems) > 0:
+			typeParameters = addnodes.desc_type_parameter_list()
+			for generic in subprogram.GenericItems:
+				for designator in self._Designators(generic):
+					typeParameters += addnodes.desc_type_parameter(designator, designator)
+
+			suffix.insert(0, typeParameters)
+
 		if isinstance(subprogram, Function):
 			objectType = "function"
 			keywords =   ["function"] if subprogram.IsPure else ["impure", "function"]
@@ -677,10 +702,15 @@ class PackageDirective(DesignUnitDirective):
 			content, objectType, qualifiedName, f"{subprogram.Identifier}({signature})", suffix, subprogram.Documentation,
 			package, keywords
 		)
+		fields = nodes.field_list(classes=["vhdl-interface"])
+		if (generics := self._Generics(subprogram, qualifiedName, objects=False)) is not None:
+			fields += generics
+
 		if any(documentation is not None for *_, documentation in entries):
-			subprogramContent += nodes.field_list(
-				"", self._InterfaceField("Parameters", None, qualifiedName, entries), classes=["vhdl-interface"]
-			)
+			fields += self._InterfaceField("Parameters", None, qualifiedName, entries)
+
+		if len(fields) > 0:
+			subprogramContent += fields
 
 
 @export
