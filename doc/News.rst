@@ -40,6 +40,7 @@ Version 0.3.0 (2026)
    * The StopWatch example is documented again, where pyGHDL is installed; the entity ``Counter``, the packages and
      the context ``Utilities_ctx`` show their VHDL source and the directive next to the output. Their documentation
      comments use reStructuredText markup, with cross-references to other units.
+   * New section *Examples*, holding the StopWatch example; the navigation lists the domain's index pages.
 
 
 Version 0.2.0 (2026)

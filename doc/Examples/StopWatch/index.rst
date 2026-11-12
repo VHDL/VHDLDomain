@@ -30,7 +30,7 @@ lib_Utilities
 
    .. tab-item:: VHDL source
 
-      .. literalinclude:: ../../examples/StopWatch/Utilities.pkg.vhdl
+      .. literalinclude:: ../../../examples/StopWatch/Utilities.pkg.vhdl
          :language: VHDL
          :tab-width: 2
          :start-at: -- Useful utility functions and types.
@@ -52,7 +52,7 @@ lib_Utilities
 
    .. tab-item:: VHDL source
 
-      .. literalinclude:: ../../examples/StopWatch/Utilities.ctx.vhdl
+      .. literalinclude:: ../../../examples/StopWatch/Utilities.ctx.vhdl
          :language: VHDL
          :tab-width: 2
          :start-at: -- A context for the users of ``lib_Utilities``.
@@ -74,7 +74,7 @@ lib_Utilities
 
    .. tab-item:: VHDL source
 
-      .. literalinclude:: ../../examples/StopWatch/Counter.vhdl
+      .. literalinclude:: ../../../examples/StopWatch/Counter.vhdl
          :language: VHDL
          :tab-width: 2
          :start-at: -- A generic implementation of an up-counting counter.
@@ -106,7 +106,7 @@ lib_StopWatch
 
    .. tab-item:: VHDL source
 
-      .. literalinclude:: ../../examples/StopWatch/StopWatch.pkg.vhdl
+      .. literalinclude:: ../../../examples/StopWatch/StopWatch.pkg.vhdl
          :language: VHDL
          :tab-width: 2
          :start-at: -- Package with stop watch specific types.
