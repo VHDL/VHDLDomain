@@ -9,6 +9,7 @@ use     IEEE.numeric_std.all;
 
 -- Package with stop watch specific types.
 package StopWatch_pkg is
+	-- A BCD digit: 0 to 9 in four bits.
 	subtype T_BCD is unsigned(3 downto 0);
 
 	-- A vector of BCD digits, e.g. the digits of a display.

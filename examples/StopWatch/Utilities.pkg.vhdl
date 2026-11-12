@@ -10,6 +10,7 @@ use     IEEE.numeric_std.all;
 
 -- Useful utility functions and types.
 package Utilities_pkg is
+	-- A frequency, from Hz to THz.
 	type freq is range integer'low to integer'high units
 		Hz;
 		kHz = 1000 Hz;
