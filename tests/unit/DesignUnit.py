@@ -797,3 +797,67 @@ class LibraryNames(DesignUnitProject):
 			html
 		)
 		self.assertIn('<span class="sig-name descname"><span class="pre">rtl</span></span>', html)
+
+
+class UndocumentedMembers(DesignUnitProject):
+	"""Package ``Utilities`` with an undocumented method ``Reset`` of the protected type ``T_COUNTER``."""
+
+	_CONF: ClassVar[str] = CONF.replace(
+		"""Function("Value", subtype("natural"), isPure=False, documentation="-- The counter's value."),""",
+		"""Function("Value", subtype("natural"), isPure=False, documentation="-- The counter's value."),
+						Procedure("Reset"),"""
+	)  #: The project's :file:`conf.py`.
+
+	_DOCUMENTED: ClassVar[set[tuple[str, str]]] = {
+		("package",   "demo.lib_a.utilities"),
+		("generic",   "demo.lib_a.utilities.size"),
+		("type",      "demo.lib_a.utilities.t_state"),
+		("constant",  "demo.lib_a.utilities.c_one"),
+		("constant",  "demo.lib_a.utilities.c_uno"),
+		("constant",  "demo.lib_a.utilities.c_late"),
+		("type",      "demo.lib_a.utilities.t_pair"),
+		("signal",    "demo.lib_a.utilities.s_ready"),
+		("component", "demo.lib_a.utilities.adder"),
+		("procedure", "demo.lib_a.utilities.swap(t_value,t_value)"),
+		("type",      "demo.lib_a.utilities.t_counter"),
+		("procedure", "demo.lib_a.utilities.t_counter.increment(positive)"),
+		("function",  "demo.lib_a.utilities.t_counter.value()"),
+	}  #: The package, its generic, and its documented declarations and methods.
+
+	def test_Default(self) -> None:
+		"""By default, every declaration is described, also one without documentation comment."""
+		domain = self._page(".. vhdl:package:: Utilities\n")
+
+		self.assertEqual([], self._warningLines())
+		self.assertLess(self._DOCUMENTED, set(domain.Objects))
+		self.assertIn(("subtype", "demo.lib_a.utilities.t_small"), domain.Objects)
+		self.assertIn(("procedure", "demo.lib_a.utilities.t_counter.reset()"), domain.Objects)
+
+	def test_Configuration(self) -> None:
+		"""Without ``vhdl_undoc_members``, only the documented declarations and methods are described."""
+		domain = self._page(".. vhdl:package:: Utilities\n", vhdl_undoc_members=False)
+
+		self.assertEqual([], self._warningLines())
+		self.assertEqual(self._DOCUMENTED, set(domain.Objects))
+		html = self._html("page")
+		self.assertNotIn("T_SMALL", html)
+		self.assertIn("<strong>Sum</strong> : <em>out std_logic</em>", html)
+
+	def test_Option(self) -> None:
+		"""``:undoc-members:`` overrides ``vhdl_undoc_members``, as Sphinx' autodoc does."""
+		domain = self._page(".. vhdl:package:: Utilities\n   :undoc-members:\n", vhdl_undoc_members=False)
+
+		self.assertEqual([], self._warningLines())
+		self.assertIn(("subtype", "demo.lib_a.utilities.t_small"), domain.Objects)
+
+	def test_NegatedOption(self) -> None:
+		"""``:no-undoc-members:`` overrides ``vhdl_undoc_members``; ``:undoc-members:`` wins over it."""
+		domain = self._page(
+			".. vhdl:package:: Utilities\n   :no-undoc-members:\n\n"
+			".. vhdl:package:: Second\n   :no-undoc-members:\n   :undoc-members:\n"
+		)
+
+		self.assertEqual([], self._warningLines())
+		self.assertNotIn(("subtype", "demo.lib_a.utilities.t_small"), domain.Objects)
+		self.assertNotIn(("procedure", "demo.lib_a.utilities.t_counter.reset()"), domain.Objects)
+		self.assertIn(("type", "demo.lib_a.second.t_state"), domain.Objects)
