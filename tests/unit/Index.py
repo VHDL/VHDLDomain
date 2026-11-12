@@ -64,6 +64,16 @@ class Indices(DesignUnitProject):
 		self.assertIn('href="vhdl-entities.html"', html)
 		self.assertIn('href="vhdl-subprograms.html"', html)
 
+	def test_TableOfContents(self) -> None:
+		"""An index page is a generated document, which a table of contents lists, as ``genindex``."""
+		index = "Index\n#####\n\n.. toctree::\n\n   Entities <vhdl-entities>\n   vhdl-types\n"
+		self._page(".. vhdl:entity:: Counter\n", {"index": index})
+
+		self.assertEqual([], self._warningLines())
+		html = self._html("index")
+		self.assertIn('<a class="reference internal" href="vhdl-entities.html">Entities</a>', html)
+		self.assertIn('<a class="reference internal" href="vhdl-types.html">Type Index</a>', html)
+
 	def test_Entries(self) -> None:
 		domain = self._page(".. vhdl:entity:: Counter\n\n.. vhdl:package:: Utilities\n")
 

@@ -125,4 +125,8 @@ License
    Glossary
    genindex
    Python Module Index <modindex>
+   VHDL Entity Index <vhdl-entities>
+   VHDL Package Index <vhdl-packages>
+   VHDL Subprogram Index <vhdl-subprograms>
+   VHDL Type Index <vhdl-types>
    TODO

@@ -89,6 +89,7 @@ from sphinx.application          import Sphinx
 from sphinx.builders             import Builder
 from sphinx.config               import Config
 from sphinx.domains              import Domain, Index, ObjType
+from sphinx.domains.std          import StandardDomain
 from sphinx.environment          import BuildEnvironment
 from sphinx.errors               import ConfigError
 from sphinx.roles                import XRefRole
@@ -640,12 +641,19 @@ def setup(sphinx: Sphinx) -> dict[str, Any]:
 	"""
 	Register the domain ``vhdl`` and its configuration values with Sphinx.
 
+	The domain's index pages, e.g. ``vhdl-entities``, are registered as generated documents, as Sphinx registers
+	``genindex``, so a table of contents can list them.
+
 	:param sphinx: The Sphinx application to register with.
 	:returns:      The extension's metadata.
 	"""
 	sphinx.add_domain(VHDLDomain)
 	for configName, (default, rebuild, types) in VHDLDomain.configValues.items():
 		sphinx.add_config_value(f"{VHDLDomain.name}_{configName}", default, rebuild, types)
+
+	for index in VHDLDomain.indices:
+		documentName =                                    f"{VHDLDomain.name}-{index.name}"
+		StandardDomain._virtual_doc_names[documentName] = (documentName, index.localname)
 
 	sphinx.connect("config-inited", readConfiguration)
 	sphinx.connect("builder-inited", DesignPages.Reset)
