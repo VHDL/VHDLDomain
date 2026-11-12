@@ -75,8 +75,9 @@ and its public interface. The interface's parts are objects of the domain too, w
 Types, default values and parameter subtypes are written as VHDL by pyVHDLModel's writer; an element the writer can't
 write yet is written by its name and warned about (warning type ``vhdl.writer``). A type mark - e.g. ``T_BCD`` of
 ``array (natural range <>) of T_BCD``, or ``unsigned`` of ``unsigned(BITS - 1 downto 0)`` - refers to the type's
-description, as :rst:role:`vhdl:type` does, in the unit's design and library. A type mark of an undescribed type, e.g.
-``std_logic``, or of several described types stays text, without a warning.
+description, as :rst:role:`vhdl:type` does, in the unit's design and library - in HTML with the type's declaration as
+popup (see :ref:`ROLE/popups`). A type mark of an undescribed type, e.g. ``std_logic``, or of several described types
+stays text, without a warning.
 
 Every design-unit directive takes these options:
 
@@ -302,7 +303,7 @@ type adds a class ``vhdl-<variant>``, so a theme can shade each kind of object:
 The other object types - ``entity``, ``architecture``, ``package``, ``context``, ``configuration``, ``subtype``,
 ``signal``, ``variable``, ``component`` - have no variants. The fields *Generics*, *Ports*, *Parameters*, *Elements* and
 *Units* are a field list with the class ``vhdl-interface``; a library's table of design units has the classes ``vhdl``
-and ``vhdl-library-units``.
+and ``vhdl-library-units``. The classes of a reference's popup: see :ref:`ROLE/popups`.
 
 This documentation adds the style sheet :file:`_static/css/vhdl.css` (``html_css_files`` in :file:`conf.py`) for the
 theme ``sphinx_rtd_theme``; the examples (see :ref:`EX`) show it:

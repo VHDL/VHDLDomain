@@ -99,3 +99,47 @@ Declarations
 .. rst:role:: vhdl:port
 
    Refer to a port, by the entity's name and the port's: ``Counter.Clock``.
+
+
+.. _ROLE/popups:
+
+Popups
+******
+
+In HTML, a reference to a declaration of a package - a type or subtype, a constant, signal or shared variable, a
+component, a subprogram or a protected type's method - shows the declaration in a popup, while the mouse is over the
+reference or the reference has the keyboard focus. This holds for a role's reference and for a type mark a directive
+writes, e.g. ``T_BCD`` of a port ``BCDValue : in T_BCD``. The popup shows:
+
+* the library and design unit declaring it - and the protected type, for a method -, e.g.
+  ``lib_StopWatch.StopWatch_pkg``,
+* its signature, as its description shows it, e.g. ``subtype T_BCD is unsigned(3 downto 0)``,
+* the first paragraph of its documentation comment,
+* a record's elements, an enumeration's literals or a physical type's units: the first 8, followed by ``...`` if there
+  are more.
+
+The examples (see :ref:`EX`) show it: hover over a type mark, e.g. ``T_BCD`` of the StopWatch example.
+
+The popup needs no JavaScript: the domain adds the style sheet :file:`VHDLDomain.css` to every HTML page, which shows
+the popup by CSS (``:hover``, ``:focus-within``). The popup is the reference's description for a screen reader
+(``role="tooltip"``, ``aria-describedby``), and isn't indexed by the search. Other builders - e.g. LaTeX, text - write
+the reference only. :ref:`CONFIG/reference-popups` switches the popups off; a reference's title (``title`` attribute)
+is the declaration's signature then.
+
+A popup is a ``span`` with the classes ``vhdl-popup`` and ``no-search``, after the link in a ``span`` with the class
+``vhdl-popup-anchor``; its parts are spans with the classes ``vhdl-popup-location``, ``vhdl-popup-signature``,
+``vhdl-popup-documentation`` and ``vhdl-popup-members`` (``vhdl-popup-label``, ``vhdl-popup-member``). Its colors and
+fonts follow the variables of the themes ``furo`` and ``pydata-sphinx-theme``, where they are defined, otherwise the
+look of ``sphinx_rtd_theme``; each can be set in a style sheet of the documentation:
+
+.. code-block:: CSS
+
+   :root {
+     --vhdl-popup-background: #ffffe0;  /* also: -foreground, -border, -muted, -font, -code-font */
+   }
+
+.. attention::
+
+   A popup opens below the reference, aligned to its left edge: it is clipped by a container which scrolls its content,
+   e.g. a table wider than the page, and by the page's right edge for a reference near it. It closes when the mouse
+   leaves the reference and the popup, or the reference loses the focus - not by :kbd:`Esc`.
