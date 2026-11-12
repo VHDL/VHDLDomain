@@ -18,12 +18,16 @@ package Utilities_pkg is
 		THz = 1000 GHz;
 	end units;
 
-	-- deferred constant
+	-- ``true`` in a simulation, ``false`` in a synthesis; the package body sets this deferred constant.
 	constant IS_SIMULATION : boolean;
 
+	-- An if-then-else expression: ``ThenValue``, if ``condition`` is true, else ``ElseValue``.
 	function ite(condition : boolean; ThenValue : integer; ElseValue : integer) return integer;
 
-	function log2(Value : positive) return positive;
+	-- The number of bits needed for the values 0 to ``Value - 1``: ``ceil(log2(Value))``.
+	function log2(
+		Value : positive  -- The number of values.
+	) return positive;
 
 	function bin2onehot(binary : std_logic_vector; bits : natural := 0) return std_logic_vector;
 	function bin2onehot(binary : unsigned;         bits : natural := 0) return std_logic_vector;
