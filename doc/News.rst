@@ -39,6 +39,8 @@ Version 0.3.0 (2026)
      ``genindex``.
    * New configuration value ``vhdl_style`` and option ``:style:`` of ``vhdl:entity`` and ``vhdl:package``: the style
      of the interface lists, ``auto``, ``list`` or - not supported yet, written as a list - ``table``.
+   * New configuration value ``vhdl_add_library_names``: a design unit's signature names its library, e.g.
+     ``entity lib_Utilities.Counter``, as Sphinx' ``add_module_names`` a Python class' module.
 
    .. rubric:: Documentation
 

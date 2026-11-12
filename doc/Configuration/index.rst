@@ -139,6 +139,20 @@ Another value ends the build with a configuration error.
    vhdl_style = "list"
 
 
+.. _CONFIG/add-library-names:
+
+vhdl_add_library_names
+**********************
+
+Whether a design unit's signature names its library, as Sphinx' ``add_module_names`` names a Python class' module:
+``False`` (default) - ``entity Counter`` - or ``True`` - ``entity lib_Utilities.Counter``. The declarations of a
+package and the architectures of an entity are named without library and unit, as a Python class' methods.
+
+.. code-block:: Python
+
+   vhdl_add_library_names = True
+
+
 .. _CONFIG/reference-popups:
 
 vhdl_reference_popups
