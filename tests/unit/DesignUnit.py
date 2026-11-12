@@ -33,7 +33,9 @@ Unit tests for the design-unit directives of the Sphinx domain ``vhdl``: ``vhdl:
 ``vhdl:context`` and ``vhdl:configuration``.
 """
 from textwrap          import dedent
-from typing            import ClassVar
+from typing            import Any, ClassVar, Optional as Nullable
+
+from sphinx.errors     import ConfigError
 
 from VHDLDomain        import VHDLDomain
 
@@ -105,6 +107,8 @@ CONF = dedent("""\
 		))
 		document._AddDesignUnit(Entity("Adder"))
 		document._AddDesignUnit(Architecture("rtl", EntitySymbol(SimpleName("Counter")), documentation="-- The RTL model."))
+		document._AddDesignUnit(Architecture("sim", EntitySymbol(SimpleName("Counter")), documentation="-- A model."))
+		document._AddDesignUnit(Architecture("rtl", EntitySymbol(SimpleName("Adder")), documentation="-- The adder."))
 		document._AddDesignUnit(Package(
 			"Utilities",
 			genericItems=[GenericConstantInterfaceItem(("SIZE", ), Mode.In, subtype("positive"))],
@@ -204,16 +208,17 @@ class DesignUnitProject(Project):
 
 	_CONF: ClassVar[str] = CONF  #: The project's :file:`conf.py`.
 
-	def _page(self, body: str, **pages: str) -> VHDLDomain:
+	def _page(self, body: str, pages: Nullable[dict[str, str]] = None, **config: Any) -> VHDLDomain:
 		"""
 		Build a page placing the body after ``vhdl:design`` and ``vhdl:library``, and further pages as given.
 
-		:param body:  The page's body.
-		:param pages: Further pages by name.
-		:returns:     The domain after the build.
+		:param body:   The page's body.
+		:param pages:  Optional, further pages by name. Default: ``None``, none.
+		:param config: Configuration values overriding the defaults.
+		:returns:      The domain after the build.
 		"""
 		page = f"Page\n####\n\n.. vhdl:design:: Demo\n   :no-index:\n\n.. vhdl:library:: lib_A\n   :no-index:\n\n{body}"
-		app = self._build({"page": page, **pages})
+		app =  self._build({"page": page, **({} if pages is None else pages)}, **config)
 
 		return app.env.get_domain("vhdl")
 
@@ -234,6 +239,7 @@ class Entity(DesignUnitProject):
 				("port",         "demo.lib_a.counter.q0"),
 				("port",         "demo.lib_a.counter.q1"),
 				("architecture", "demo.lib_a.counter.rtl"),
+				("architecture", "demo.lib_a.counter.sim"),
 			},
 			set(domain.Objects)
 		)
@@ -292,6 +298,85 @@ class Entity(DesignUnitProject):
 			with self.subTest(anchor=anchor):
 				self.assertIn(f'id="{anchor}"', html)
 				self.assertIn(f'href="#{anchor}"', html)
+
+	def test_Architectures(self) -> None:
+		"""By default, every entity lists its architectures with their documentation."""
+		domain = self._page(".. vhdl:entity:: Counter\n\n.. vhdl:entity:: Adder\n")
+
+		html = self._html("page")
+		self.assertEqual(2, html.count('<p class="rubric">Architectures</p>'))
+		for text in ("<p>The RTL model.</p>", "<p>A model.</p>", "<p>The adder.</p>"):
+			with self.subTest(text=text):
+				self.assertIn(text, html)
+
+		self.assertIn(("architecture", "demo.lib_a.adder.rtl"), domain.Objects)
+
+	def test_Architectures_Multiple(self) -> None:
+		"""With ``multiple``, only an entity with more than one architecture lists them."""
+		domain = self._page(".. vhdl:entity:: Counter\n\n.. vhdl:entity:: Adder\n", vhdl_architectures="multiple")
+
+		self.assertEqual([], self._warningLines())
+		html = self._html("page")
+		self.assertEqual(1, html.count('<p class="rubric">Architectures</p>'))
+		self.assertIn("<p>A model.</p>", html)
+		self.assertNotIn("<p>The adder.</p>", html)
+		self.assertNotIn(("architecture", "demo.lib_a.adder.rtl"), domain.Objects)
+
+	def test_Architectures_Option(self) -> None:
+		"""The options override the configuration values; hidden descriptions keep the architectures' signatures."""
+		body = dedent("""\
+			.. vhdl:entity:: Counter
+			   :architectures: never
+
+			.. vhdl:entity:: Adder
+			   :architectures: always
+			   :architecture-descriptions: show
+			""")
+		domain = self._page(body, vhdl_architectures="multiple", vhdl_architecture_descriptions="hide")
+
+		self.assertEqual([], self._warningLines())
+		html = self._html("page")
+		self.assertEqual(1, html.count('<p class="rubric">Architectures</p>'))
+		self.assertNotIn(("architecture", "demo.lib_a.counter.rtl"), domain.Objects)
+		self.assertIn("<p>The adder.</p>", html)
+
+		self._page(".. vhdl:entity:: Counter\n", vhdl_architecture_descriptions="hide")
+
+		html = self._html("page")
+		self.assertIn('id="vhdl-architecture-demo.lib_a.counter.sim"', html)
+		self.assertNotIn("<p>A model.</p>", html)
+
+	def test_Architectures_Invalid(self) -> None:
+		self._page(".. vhdl:entity:: Counter\n   :architectures: some\n")
+
+		self.assertEqual(
+			[
+				"/src/page.rst:10: ERROR: Error in \"vhdl:entity\" directive:",
+				"invalid option value: (option: \"architectures\"; value: 'some')",
+				"'some' is not a valid ArchitectureListing..",
+				"",
+				".. vhdl:entity:: Counter",
+				"   :architectures: some [docutils]",
+			],
+			self._warningLines()[:6]
+		)
+
+	def test_Architectures_InvalidConfiguration(self) -> None:
+		with self.assertRaises(ConfigError) as context:
+			self._page(".. vhdl:entity:: Counter\n", vhdl_architectures="some")
+
+		self.assertEqual("conf.py: vhdl_architectures: 'some' is not a listing of architectures.", str(context.exception))
+		self.assertEqual(["Allowed values: always, multiple, never."], context.exception.__notes__)
+
+	def test_ArchitectureDescriptions_InvalidConfiguration(self) -> None:
+		with self.assertRaises(ConfigError) as context:
+			self._page(".. vhdl:entity:: Counter\n", vhdl_architecture_descriptions="full")
+
+		self.assertEqual(
+			"conf.py: vhdl_architecture_descriptions: 'full' is not a choice of architecture descriptions.",
+			str(context.exception)
+		)
+		self.assertEqual(["Allowed values: show, hide."], context.exception.__notes__)
 
 	def test_QualifiedArgument(self) -> None:
 		app = self._build({"page": "Page\n####\n\n.. vhdl:design:: Demo\n\n.. vhdl:entity:: lib_A.Counter\n"})
