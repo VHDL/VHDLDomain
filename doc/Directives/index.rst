@@ -270,3 +270,42 @@ LaTeX
 
 Other builders, e.g. text
    A listing of the symbol: its name, a line per parameter and a line per pin with its side.
+
+
+.. _DIR/css:
+
+CSS classes
+***********
+
+A description is written as Sphinx writes a Python object's: an HTML ``dl`` with the classes ``vhdl`` and the object
+type, e.g. ``<dl class="vhdl entity">``; its ``dt`` is the signature, its ``dd`` the content. A variant of the object
+type adds a class ``vhdl-<variant>``, so a theme can shade each kind of object:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 30 45
+
+   * - Object type
+     - Variant classes
+     - Description of
+   * - ``type``
+     - ``vhdl-enumeration``, ``vhdl-integer``, ``vhdl-real``, ``vhdl-physical``, ``vhdl-array``, ``vhdl-record``,
+       ``vhdl-access``, ``vhdl-file``, ``vhdl-protected``
+     - The kind of type, e.g. ``<dl class="vhdl type vhdl-protected">``.
+   * - ``constant``
+     - ``vhdl-deferred``
+     - A deferred constant.
+   * - ``function``, ``procedure``
+     - ``vhdl-generic``, ``vhdl-method``, ``vhdl-impure``
+     - A generic subprogram, a method of a protected type, an impure function.
+
+The other object types - ``entity``, ``architecture``, ``package``, ``context``, ``configuration``, ``subtype``,
+``signal``, ``variable``, ``component`` - have no variants. The fields *Generics*, *Ports*, *Parameters*, *Elements* and
+*Units* are a field list with the class ``vhdl-interface``; a library's table of design units has the classes ``vhdl``
+and ``vhdl-library-units``.
+
+This documentation adds the style sheet :file:`_static/css/vhdl.css` (``html_css_files`` in :file:`conf.py`) for the
+theme ``sphinx_rtd_theme``; the StopWatch example shows it:
+
+.. literalinclude:: ../_static/css/vhdl.css
+   :language: CSS
