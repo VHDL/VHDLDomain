@@ -102,14 +102,28 @@ vhdl:entity
    comment after a dash. A declaration with several names, e.g. ``Q0, Q1 : out std_logic``, is one item. A generic
    type, package or subprogram shows its kind: ``type``, ``package``, ``function`` or ``procedure``.
 
+   The architectures follow, each with its documentation comment - which and whether with documentation, set the
+   options below.
+
+   .. rst:directive:option:: architectures: always | multiple | never
+
+      Which architectures to list: ``always`` all, ``multiple`` all if there are more than one - e.g. a testbench with
+      an architecture per test -, ``never`` none. Default: :ref:`CONFIG/architectures`.
+
+   .. rst:directive:option:: architecture-descriptions: show | hide
+
+      Whether a listed architecture shows its documentation comment, or its declaration only. Default:
+      :ref:`CONFIG/architecture-descriptions`.
+
    .. code-block:: rst
 
       .. vhdl:entity:: lib_Utilities.Counter
+         :architectures: multiple
 
          The counter is used by the debouncer.
 
    Refer to its parts by ``:vhdl:generic:`Counter.BITS```, ``:vhdl:port:`Counter.Clock``` and
-   ``:vhdl:arch:`Counter.rtl```.
+   ``:vhdl:arch:`Counter.rtl```; an architecture not listed is no object.
 
 
 .. _DIR/package:
