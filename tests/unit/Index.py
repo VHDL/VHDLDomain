@@ -74,6 +74,9 @@ class Indices(DesignUnitProject):
 		anchor = "vhdl-function-demo.lib_a.utilities"
 		self.assertEqual(
 			[
+				("C", [
+					IndexEntry("clip(natural)", 0, "page", f"{anchor}.clip-natural", extra, "", ""),
+				]),
 				("R", [
 					IndexEntry("random()", 0, "page", f"{anchor}.random", extra, "", ""),
 					IndexEntry(
@@ -98,7 +101,10 @@ class Indices(DesignUnitProject):
 		content, _ = TypeIndex(domain).generate()
 
 		self.assertEqual(
-			[("T", ["subtype in lib_A.Utilities", "type in lib_A.Utilities"])],
+			[(
+				"T",
+				["type in lib_A.Utilities", "type in lib_A.Utilities", "subtype in lib_A.Utilities", "type in lib_A.Utilities"]
+			)],
 			[(letter, [entry.extra for entry in entries]) for letter, entries in content]
 		)
 
