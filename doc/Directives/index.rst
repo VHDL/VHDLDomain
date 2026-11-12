@@ -175,6 +175,17 @@ vhdl:package
       The style of the fields *Generics*, *Elements*, *Units*, *Ports* and *Parameters*, as
       :rst:dir:`vhdl:entity:style`. Default: :ref:`CONFIG/style`.
 
+   .. rst:directive:option:: undoc-members
+
+      Describe the declarations - and a protected type's methods - without documentation comment too. Default:
+      :ref:`CONFIG/undoc-members`, on.
+
+   .. rst:directive:option:: no-undoc-members
+
+      Describe only the declarations - and methods - with a documentation comment.
+      :rst:dir:`vhdl:package:undoc-members` wins over it, as in Sphinx' autodoc. The interface lists - generics, a
+      record's elements, a physical type's units, a component's ports, a subprogram's parameters - are always complete.
+
    .. code-block:: rst
 
       .. vhdl:package:: lib_Utilities.Utilities_pkg

@@ -153,6 +153,22 @@ package and the architectures of an entity are named without library and unit, a
    vhdl_add_library_names = True
 
 
+.. _CONFIG/undoc-members:
+
+vhdl_undoc_members
+******************
+
+Whether :rst:dir:`vhdl:package` describes the declarations - and a protected type's methods - without documentation
+comment too: ``True`` (default) or ``False`` - only documented declarations are described, as Sphinx' autodoc does
+without ``undoc-members``. Options :rst:dir:`vhdl:package:undoc-members` and :rst:dir:`vhdl:package:no-undoc-members`
+override it per package. A declaration not described is no object of the domain: a role can't refer to it, and a type
+mark naming it isn't linked.
+
+.. code-block:: Python
+
+   vhdl_undoc_members = False
+
+
 .. _CONFIG/reference-popups:
 
 vhdl_reference_popups
