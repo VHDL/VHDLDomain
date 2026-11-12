@@ -180,7 +180,8 @@ class DesignUnitDirective(VHDLDirective):
 		qualifiedName = f"{designName}.{library.Identifier}.{unit.Identifier}"
 		description, content, index = self._Description(
 			self._OBJECT_TYPE, qualifiedName, [self._KEYWORD], unit.Identifier,
-			f"{unit.Identifier} (VHDL {self._KEYWORD} in {library.Identifier})"
+			f"{unit.Identifier} (VHDL {self._KEYWORD} in {library.Identifier})",
+			prefix=f"{library.Identifier}." if self.config.vhdl_add_library_names else ""
 		)
 		content.extend(self._Documentation(unit.Documentation))
 		content.extend(self.parse_content_to_nodes())
@@ -196,11 +197,12 @@ class DesignUnitDirective(VHDLDirective):
 		name:          str,
 		indexText:     str,
 		suffix:        Iterable[Node] = (),
-		variants:      Iterable[str] = ()
+		variants:      Iterable[str] = (),
+		prefix:        str = ""
 	) -> tuple[addnodes.desc, addnodes.desc_content, addnodes.index]:
 		"""
-		Create the description of an object: its signature line - keywords, name and suffix -, its content, its target
-		and index entry, and register it in the domain.
+		Create the description of an object: its signature line - keywords, prefix, name and suffix -, its content, its
+		target and index entry, and register it in the domain.
 
 		The description has the classes ``vhdl`` and the object type, e.g. ``vhdl function``, and a class ``vhdl-<variant>``
 		per variant of the object type, e.g. ``vhdl-impure``, so a theme can style each kind of object.
@@ -214,6 +216,8 @@ class DesignUnitDirective(VHDLDirective):
 		:param indexText:     The text of the object's entry in the general index.
 		:param suffix:        Optional, the nodes following the name, e.g. a subprogram's parameters. Default: none.
 		:param variants:      Optional, the variants of the object type, as ``["impure", "generic"]``. Default: none.
+		:param prefix:        Optional, the prefix of the name, e.g. a design unit's library ``lib_Utilities.``, as Sphinx
+		                      writes a Python class' module. Default: ``""``, none.
 		:returns:             The description, its content node the caller fills, and the index node.
 		"""
 		description = addnodes.desc(
@@ -224,6 +228,10 @@ class DesignUnitDirective(VHDLDirective):
 		for keyword in keywords:
 			signature += addnodes.desc_annotation(f"{keyword} ", "", addnodes.desc_sig_keyword(keyword, keyword),
 				addnodes.desc_sig_space())
+
+		if prefix != "":
+			signature += addnodes.desc_addname(prefix, prefix)
+
 		signature += addnodes.desc_name(name, name)
 		signature.extend(suffix)
 		description += signature

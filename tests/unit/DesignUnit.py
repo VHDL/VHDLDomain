@@ -770,3 +770,30 @@ class Style(DesignUnitProject):
 
 		self.assertEqual("conf.py: vhdl_style: 'grid' is not a style of interface lists.", str(context.exception))
 		self.assertEqual(["Allowed values: auto, list, table."], context.exception.__notes__)
+
+
+class LibraryNames(DesignUnitProject):
+	_UNITS: ClassVar[str] = (
+		".. vhdl:entity:: Counter\n\n.. vhdl:package:: Second\n\n.. vhdl:context:: ctx\n\n.. vhdl:configuration:: cfg\n"
+	)  #: A directive per kind of design unit.
+
+	def test_Default(self) -> None:
+		"""By default, a design unit's signature names the unit only."""
+		self._page(self._UNITS)
+
+		self.assertEqual([], self._warningLines())
+		self.assertNotIn("lib_A.</span>", self._html("page"))
+
+	def test_Configuration(self) -> None:
+		"""With ``vhdl_add_library_names``, a design unit's signature names its library, as Python's module."""
+		self._page(self._UNITS, vhdl_add_library_names=True)
+
+		self.assertEqual([], self._warningLines())
+		html = self._html("page")
+		self.assertEqual(4, html.count('<span class="sig-prename descclassname"><span class="pre">lib_A.</span></span>'))
+		self.assertIn(
+			'<span class="sig-prename descclassname"><span class="pre">lib_A.</span></span>'
+			'<span class="sig-name descname"><span class="pre">Counter</span></span>',
+			html
+		)
+		self.assertIn('<span class="sig-name descname"><span class="pre">rtl</span></span>', html)
