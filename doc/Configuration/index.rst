@@ -117,6 +117,28 @@ configuration error.
    vhdl_architecture_descriptions = "hide"
 
 
+.. _CONFIG/style:
+
+vhdl_style
+**********
+
+The style of the interface lists - an entity's generics and ports, a record's elements, a subprogram's parameters -
+of :rst:dir:`vhdl:entity` and :rst:dir:`vhdl:package`; option :rst:dir:`vhdl:entity:style` overrides it per unit.
+
+``"auto"``
+  The domain chooses the style: ``"list"``. Default.
+``"list"``
+  A field per list, an item per declaration, as Sphinx writes a Python function's parameters.
+``"table"``
+  A table per list - not supported yet: a unit is written as ``"list"``, and warned about.
+
+Another value ends the build with a configuration error.
+
+.. code-block:: Python
+
+   vhdl_style = "list"
+
+
 .. _CONFIG/reference-popups:
 
 vhdl_reference_popups
