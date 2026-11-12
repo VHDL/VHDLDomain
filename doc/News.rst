@@ -28,6 +28,8 @@ Version 0.3.0 (2026)
    * New configuration values ``vhdl_architectures`` and ``vhdl_architecture_descriptions``, and options
      ``:architectures:`` and ``:architecture-descriptions:`` of ``vhdl:entity``: which architectures an entity lists -
      always, only several, never -, with or without their documentation.
+   * A type mark in a description - an object's or interface item's subtype, a function's return type, a type's
+     definition - refers to the type's description.
 
    .. rubric:: Documentation
 

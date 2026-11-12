@@ -505,6 +505,9 @@ class VHDLDomain(Domain):
 		"""
 		Resolve a reference by one of the domain's roles.
 
+		An ambiguous name is warned about, except for an implicit reference - a type mark in a description, marked
+		``vhdl:implicit``.
+
 		:param env:         The build environment.
 		:param fromdocname: The document containing the reference.
 		:param builder:     The builder.
@@ -520,6 +523,8 @@ class VHDLDomain(Domain):
 		matches = self.FindObjects(ROLES[typ], target, node.get("vhdl:design", None), node.get("vhdl:library", None))
 		if len(matches) == 0:
 			return None
+		elif len(matches) > 1 and node.get("vhdl:implicit", False):
+			return contnode
 		elif len(matches) > 1:
 			candidates = ", ".join(sorted(self.data["objects"][key][2] for key in matches))
 			_logger.warning(
