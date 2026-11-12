@@ -133,9 +133,10 @@ vhdl:package
           range <>) of T_BCD``. A record type has the field *Elements*, a physical type the field *Units*.
       * - Constant, signal, shared variable
         - A description per name: the subtype and the value - a constant's, a signal's default value. A deferred
-          constant has no value in the package.
+          constant has no value in the package; its signature starts with ``deferred constant``.
       * - Component
-        - The fields *Generics* and *Ports*, as an entity's.
+        - The field *Entity*, referring to the entity of the same name in the package's library, if pyVHDLModel bound
+          the component to it, and the fields *Generics* and *Ports*, as an entity's.
       * - Function, procedure
         - The parameters - with their mode, if the declaration gives one, and their default values - and a function's
           return type. If a parameter is documented, the field *Parameters*.
