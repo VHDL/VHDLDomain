@@ -19,6 +19,13 @@ Version 0.3.0 (2026)
    * Sphinx 9.2 is required, so Python 3.13 to 3.15 are supported (Python 3.12 is dropped).
    * pyTooling 10.3 is required: without matplotlib, the PNG renderer's error names the extra ``VHDLDomain[diagram]``
      as installation hint.
+   * ``vhdl:entity`` and ``vhdl:package`` write generics and ports as fields, as Sphinx writes a Python function's
+     parameters, instead of tables.
+
+   .. rubric:: Documentation
+
+   * The StopWatch example is documented again, where pyGHDL is installed; the entity ``Counter`` shows its VHDL source
+     and the directive next to the output.
 
 
 Version 0.2.0 (2026)
