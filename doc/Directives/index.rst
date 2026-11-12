@@ -109,8 +109,7 @@ vhdl:entity
          The counter is used by the debouncer.
 
    Refer to its parts by ``:vhdl:generic:`Counter.BITS```, ``:vhdl:port:`Counter.Clock``` and
-   ``:vhdl:arch:`Counter.rtl```. The StopWatch example shows the entity ``Counter`` with its VHDL source (see
-   :ref:`EX/StopWatch`).
+   ``:vhdl:arch:`Counter.rtl```.
 
 
 .. _DIR/package:
