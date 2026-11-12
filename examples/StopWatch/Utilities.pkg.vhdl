@@ -9,6 +9,19 @@ use     IEEE.numeric_std.all;
 
 
 -- Useful utility functions and types.
+--
+-- The package collects *generic* helpers, used by both libraries of the StopWatch example:
+--
+-- * the physical type ``freq`` and the error counter ``T_ERROR_COUNTER``,
+-- * functions computing sizes, e.g. ``log2``, and converting values, e.g. ``bin2onehot``,
+-- * the component ``Debouncer``.
+--
+-- .. seealso::
+--
+--    :vhdl:ctx:`Utilities_ctx`
+--       |rarr| A context referencing this package and the IEEE packages.
+--    :vhdl:ent:`Counter`
+--       |rarr| A counter, sized by :vhdl:func:`log2`.
 package Utilities_pkg is
 	-- A frequency, from Hz to THz.
 	type freq is range integer'low to integer'high units
