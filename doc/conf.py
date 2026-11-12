@@ -349,7 +349,7 @@ pyTooling_ExternalLink_Icons = "all"
 # ==============================================================================
 if find_spec("pyGHDL") is None:
 	# Without pyGHDL, as in CI, the StopWatch example isn't read and its page isn't built.
-	exclude_patterns.append("StopWatch")
+	exclude_patterns.append("StopWatch/**")
 	suppress_warnings.append("toc.excluded")
 	vhdl_designs = {}
 else:
