@@ -37,6 +37,8 @@ Version 0.3.0 (2026)
      ``vhdl-protected``, ``vhdl-generic``; the documentation shades the descriptions by them.
    * The index pages - e.g. ``vhdl-entities`` - are generated documents, which a table of contents lists, as
      ``genindex``.
+   * New configuration value ``vhdl_style`` and option ``:style:`` of ``vhdl:entity`` and ``vhdl:package``: the style
+     of the interface lists, ``auto``, ``list`` or - not supported yet, written as a list - ``table``.
 
    .. rubric:: Documentation
 

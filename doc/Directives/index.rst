@@ -119,6 +119,12 @@ vhdl:entity
       Whether a listed architecture shows its documentation comment, or its declaration only. Default:
       :ref:`CONFIG/architecture-descriptions`.
 
+   .. rst:directive:option:: style: auto | list | table
+
+      The style of the generics and ports: ``list`` - fields, as described above -, ``auto`` - the domain chooses,
+      ``list`` -, or ``table``, which isn't supported yet: it is warned about, and written as ``list``. Default:
+      :ref:`CONFIG/style`.
+
    .. code-block:: rst
 
       .. vhdl:entity:: lib_Utilities.Counter
@@ -162,6 +168,11 @@ vhdl:package
           return type. If a parameter is documented, the field *Parameters*. A generic subprogram (VHDL-2008) names its
           generics in brackets before the parameters, as Sphinx writes a Python function's type parameters, e.g.
           ``procedure swap[T_VALUE](A : inout T_VALUE, B : inout T_VALUE)``, and has the field *Generics*.
+
+   .. rst:directive:option:: style: auto | list | table
+
+      The style of the fields *Generics*, *Elements*, *Units*, *Ports* and *Parameters*, as
+      :rst:dir:`vhdl:entity:style`. Default: :ref:`CONFIG/style`.
 
    .. code-block:: rst
 
@@ -302,7 +313,8 @@ type adds a class ``vhdl-<variant>``, so a theme can shade each kind of object:
 
 The other object types - ``entity``, ``architecture``, ``package``, ``context``, ``configuration``, ``subtype``,
 ``signal``, ``variable``, ``component`` - have no variants. The fields *Generics*, *Ports*, *Parameters*, *Elements* and
-*Units* are a field list with the class ``vhdl-interface``; a library's table of design units has the classes ``vhdl``
+*Units* are a field list with the classes ``vhdl-interface`` and ``vhdl-<style>`` of the style of the interface lists,
+e.g. ``vhdl-list`` (see :rst:dir:`vhdl:entity:style`); a library's table of design units has the classes ``vhdl``
 and ``vhdl-library-units``. The classes of a reference's popup: see :ref:`ROLE/popups`.
 
 This documentation adds the style sheet :file:`_static/css/vhdl.css` (``html_css_files`` in :file:`conf.py`) for the
