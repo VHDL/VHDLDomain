@@ -24,6 +24,7 @@ Version 0.3.0 (2026)
      A deferred constant is marked ``deferred constant``; a component refers to the entity it is bound to.
    * A generic subprogram's signature names its generics, as Python's type parameters; its description has the field
      *Generics*.
+   * ``vhdl:package`` describes a protected type's methods, in the type's description.
 
    .. rubric:: Documentation
 

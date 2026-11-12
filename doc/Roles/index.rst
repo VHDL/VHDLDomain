@@ -85,11 +85,12 @@ Declarations
 
 .. rst:role:: vhdl:func
 
-   Refer to a function, optionally with its signature.
+   Refer to a function, optionally with its signature. A method of a protected type is named after the type, e.g.
+   ``T_ERROR_COUNTER.Errors``.
 
 .. rst:role:: vhdl:proc
 
-   Refer to a procedure, optionally with its signature.
+   Refer to a procedure, optionally with its signature, e.g. ``T_ERROR_COUNTER.Increment``.
 
 .. rst:role:: vhdl:generic
 

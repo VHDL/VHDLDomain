@@ -130,7 +130,9 @@ vhdl:package
         - Description
       * - Type, subtype
         - The definition's first line, as pyVHDLModel's writer writes it, e.g. ``type T_BCD_Vector is array (natural
-          range <>) of T_BCD``. A record type has the field *Elements*, a physical type the field *Units*.
+          range <>) of T_BCD``. A record type has the field *Elements*, a physical type the field *Units*. A protected
+          type's methods are descriptions of their own in the type's description, as a Python class' methods; the
+          protected type body isn't described.
       * - Constant, signal, shared variable
         - A description per name: the subtype and the value - a constant's, a signal's default value. A deferred
           constant has no value in the package; its signature starts with ``deferred constant``.
