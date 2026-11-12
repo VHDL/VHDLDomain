@@ -52,7 +52,7 @@ design, a library or a design unit from the model, and a role refers to what a d
   ``:vhdl:config:``, ``:vhdl:type:``, ``:vhdl:const:``, ``:vhdl:sig:``, ``:vhdl:var:``, ``:vhdl:comp:``,
   ``:vhdl:func:``, ``:vhdl:proc:``, ``:vhdl:generic:``, ``:vhdl:port:``
 * Indices: ``vhdl-entities``, ``vhdl-packages``, ``vhdl-subprograms``, ``vhdl-types``
-* Configuration value ``vhdl_designs``
+* Configuration values ``vhdl_designs``, ``vhdl_architectures``, ``vhdl_architecture_descriptions``
 * Node :class:`~VHDLDomain.Symbol.Directive.SymbolNode` with visitors for HTML and LaTeX, and LaTeX package ``tikz``
 * Generated pages per library and design unit, for a design declared with ``pages`` (see :mod:`VHDLDomain.Pages`)
 
@@ -87,8 +87,10 @@ from docutils.nodes              import Element, Node
 from sphinx                      import addnodes
 from sphinx.application          import Sphinx
 from sphinx.builders             import Builder
+from sphinx.config               import Config
 from sphinx.domains              import Domain, Index, ObjType
 from sphinx.environment          import BuildEnvironment
+from sphinx.errors               import ConfigError
 from sphinx.roles                import XRefRole
 from sphinx.util.logging         import getLogger
 from sphinx.util.nodes           import make_refnode
@@ -99,7 +101,8 @@ from pyTooling.Exceptions        import MissingDependencyError
 
 from pyVHDLModel                 import Design
 
-from VHDLDomain.DesignUnit       import ConfigurationDirective, ContextDirective, EntityDirective, PackageDirective
+from VHDLDomain.DesignUnit       import ArchitectureDescriptions, ArchitectureListing, ConfigurationDirective, \
+                                        ContextDirective, EntityDirective, PackageDirective
 from VHDLDomain.Directive        import DesignDirective, LibraryDirective
 from VHDLDomain.Frontend         import DesignConfiguration, VHDLDomainException
 from VHDLDomain.Index            import EntityIndex, PackageIndex, SubprogramIndex, TypeIndex
@@ -259,8 +262,18 @@ class VHDLDomain(Domain):
 	#: ``designs``
 	#:    The designs to read, by name: the directory of the source files and the libraries' files, see
 	#:    :mod:`VHDLDomain.Frontend`.
+	#: ``architectures``
+	#:    Which entities ``vhdl:entity`` lists the architectures of, a value of
+	#:    :class:`~VHDLDomain.DesignUnit.ArchitectureListing`, ``None`` for its default; option ``:architectures:``
+	#:    overrides it.
+	#: ``architecture_descriptions``
+	#:    Whether a listed architecture shows its documentation, a value of
+	#:    :class:`~VHDLDomain.DesignUnit.ArchitectureDescriptions`, ``None`` for its default; option
+	#:    ``:architecture-descriptions:`` overrides it.
 	configValues: ClassVar[dict[str, tuple[Any, str, Any]]] = {
-		"designs": ({}, "env", dict),
+		"designs":                   ({},       "env", dict),
+		"architectures":             (None,     "env", (str, ArchitectureListing)),
+		"architecture_descriptions": (None,     "env", (str, ArchitectureDescriptions)),
 	}
 
 	_designs: dict[str, Design]                                     #: The designs read by this build, by name.
@@ -560,6 +573,43 @@ class VHDLDomain(Domain):
 
 
 @export
+def readConfiguration(sphinx: Sphinx, config: Config) -> None:
+	"""
+	Call-back for Sphinx' ``config-inited`` event, replacing ``vhdl_architectures`` and
+	``vhdl_architecture_descriptions`` by the member of their enumeration they name - ``None`` names the default.
+
+	The enumerations are :class:`~VHDLDomain.DesignUnit.ArchitectureListing` and
+	:class:`~VHDLDomain.DesignUnit.ArchitectureDescriptions`.
+
+	:param sphinx:       The Sphinx application.
+	:param config:       The configuration, after :file:`conf.py` was read.
+	:raises ConfigError: If ``vhdl_architectures`` is neither ``None`` nor a string.
+	:raises ConfigError: If ``vhdl_architectures`` names no member of
+	                     :class:`~VHDLDomain.DesignUnit.ArchitectureListing`. |br|
+	                     The note lists the allowed values.
+	:raises ConfigError: If ``vhdl_architecture_descriptions`` is neither ``None`` nor a string.
+	:raises ConfigError: If ``vhdl_architecture_descriptions`` names no member of
+	                     :class:`~VHDLDomain.DesignUnit.ArchitectureDescriptions`. |br|
+	                     The note lists the allowed values.
+	"""
+	for name, enumeration, meaning in (
+		("vhdl_architectures",             ArchitectureListing,      "listing of architectures"),
+		("vhdl_architecture_descriptions", ArchitectureDescriptions, "choice of architecture descriptions"),
+	):
+		if (value := config[name]) is not None and not isinstance(value, str):
+			ex = ConfigError(f"conf.py: {name}: Value is not of type 'str'.")
+			ex.add_note(f"Got type '{getFullyQualifiedName(value)}'.")
+			raise ex
+
+		try:
+			config[name] = enumeration.Parse(value)
+		except ValueError as cause:
+			ex = ConfigError(f"conf.py: {name}: '{value}' is not a {meaning}.")
+			ex.add_note(f"Allowed values: {', '.join(enumeration)}.")
+			raise ex from cause
+
+
+@export
 def readDesigns(sphinx: Sphinx) -> None:
 	"""
 	Call-back for Sphinx' ``builder-inited`` event, reading the designs of ``vhdl_designs`` into the domain.
@@ -592,6 +642,7 @@ def setup(sphinx: Sphinx) -> dict[str, Any]:
 	for configName, (default, rebuild, types) in VHDLDomain.configValues.items():
 		sphinx.add_config_value(f"{VHDLDomain.name}_{configName}", default, rebuild, types)
 
+	sphinx.connect("config-inited", readConfiguration)
 	sphinx.connect("builder-inited", DesignPages.Reset)
 	sphinx.connect("builder-inited", readDesigns)
 	sphinx.connect("env-before-read-docs", DesignPages.GenerateAll)
