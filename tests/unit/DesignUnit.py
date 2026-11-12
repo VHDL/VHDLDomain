@@ -96,13 +96,15 @@ CONF = dedent("""\
 					ConstrainedArraySubtypeSymbol(
 						SimpleName("unsigned"), [SimpleRange(IntegerLiteral(7), IntegerLiteral(0), Direction.DownTo)]
 					),
-					FunctionCall()
+					FunctionCall(),
+					documentation="-- The value.\\n--\\n-- Second paragraph."
 				),
 			]
 		))
 		document._AddDesignUnit(Architecture("rtl", EntitySymbol(SimpleName("Counter")), documentation="-- The RTL model."))
 		document._AddDesignUnit(Package(
 			"Utilities",
+			genericItems=[GenericConstantInterfaceItem(("SIZE", ), Mode.In, subtype("positive"))],
 			declaredItems=[
 				EnumeratedType("T_STATE", [EnumerationLiteral("Idle"), EnumerationLiteral("Run")], documentation="-- States."),
 				Subtype("T_SMALL", subtype("natural")),
@@ -185,13 +187,42 @@ class Entity(DesignUnitProject):
 
 		html = self._html("page")
 		for text in (
-			"<p>A counter.</p>", "<p>Second paragraph.</p>", "<p>Written by hand.</p>", "<em>Clock</em> input.",
-			'<span class="pre">positive</span>', '<span class="pre">8</span>', '<span class="pre">type</span>',
-			'<span class="pre">BITS,</span>', '<span class="pre">in</span>', "<p>The RTL model.</p>",
+			"<p>A counter.</p>", "<p>Second paragraph.</p>", "<p>Written by hand.</p>", "<p>The RTL model.</p>",
 			'<span class="sig-name descname"><span class="pre">rtl</span></span>'
 		):
 			with self.subTest(text=text):
 				self.assertIn(text, html)
+
+	def test_InterfaceFields(self) -> None:
+		"""Generics and ports are fields as Python's parameters: name, declaration, default value and documentation."""
+		self._page(".. vhdl:entity:: Counter\n")
+
+		html = self._html("page")
+		for text in (
+			'<dt class="field-odd">Generics<span class="colon">:</span></dt>',
+			'<li><p id="vhdl-generic-demo.lib_a.counter.modulo"><strong>MODULO</strong> : <em>positive</em> – Modulo value.'
+			'</p></li>',
+			'<li><p id="vhdl-generic-demo.lib_a.counter.bits"><span id="vhdl-generic-demo.lib_a.counter.width"></span>'
+			'<strong>BITS, WIDTH</strong> : <em>natural</em> := <em>8</em></p></li>',
+			'<li><p id="vhdl-generic-demo.lib_a.counter.t_data"><strong>T_DATA</strong> : <em>type</em></p></li>',
+			'<dt class="field-even">Ports<span class="colon">:</span></dt>',
+			'<li><p id="vhdl-port-demo.lib_a.counter.clock"><strong>Clock</strong> : <em>in std_logic</em> – <em>Clock</em> '
+			'input.</p></li>',
+			'<li><p id="vhdl-port-demo.lib_a.counter.q0"><span id="vhdl-port-demo.lib_a.counter.q1"></span>'
+			'<strong>Q0, Q1</strong> : <em>out std_logic</em></p></li>',
+		):
+			with self.subTest(text=text):
+				self.assertIn(text, html)
+
+	def test_InterfaceField_SingleItem(self) -> None:
+		"""A field of one item is a paragraph; its documentation's first paragraph follows the declaration."""
+		self._page(".. vhdl:entity:: Wide\n")
+
+		self.assertIn(
+			'<dd class="field-odd"><p id="vhdl-port-demo.lib_a.wide.value"><strong>Value</strong> : '
+			'<em>out unsigned(7 downto 0)</em> := <em>...</em> – The value.</p>\n<p>Second paragraph.</p>\n</dd>',
+			self._html("page")
+		)
 
 	def test_References(self) -> None:
 		self._page(".. vhdl:entity:: Counter\n\n:vhdl:port:`Counter.Clock` :vhdl:generic:`WIDTH` :vhdl:arch:`rtl`\n")
@@ -230,9 +261,7 @@ class Entity(DesignUnitProject):
 			],
 			self._warningLines()
 		)
-		html = self._html("page")
-		self.assertIn('<span class="pre">unsigned(7</span>', html)
-		self.assertIn('<span class="pre">0)</span>', html)
+		self.assertIn("<em>out unsigned(7 downto 0)</em> := <em>...</em>", self._html("page"))
 
 
 class Errors(DesignUnitProject):
@@ -286,6 +315,7 @@ class Package(DesignUnitProject):
 		self.assertEqual(
 			{
 				("package",   "demo.lib_a.utilities"),
+				("generic",   "demo.lib_a.utilities.size"),
 				("type",      "demo.lib_a.utilities.t_state"),
 				("subtype",   "demo.lib_a.utilities.t_small"),
 				("constant",  "demo.lib_a.utilities.c_one"),
@@ -304,7 +334,8 @@ class Package(DesignUnitProject):
 		html = self._html("page")
 		for text in (
 			"<p>Utilities.</p>", "<p>States.</p>", "<p>One.</p>",
-			'<span class="pre">impure</span>', '<span class="pre">low</span>'
+			'<span class="pre">impure</span>', '<span class="pre">low</span>',
+			'<p id="vhdl-generic-demo.lib_a.utilities.size"><strong>SIZE</strong> : <em>positive</em></p>'
 		):
 			with self.subTest(text=text):
 				self.assertIn(text, html)
