@@ -52,8 +52,11 @@ design, a library or a design unit from the model, and a role refers to what a d
   ``:vhdl:config:``, ``:vhdl:type:``, ``:vhdl:const:``, ``:vhdl:sig:``, ``:vhdl:var:``, ``:vhdl:comp:``,
   ``:vhdl:func:``, ``:vhdl:proc:``, ``:vhdl:generic:``, ``:vhdl:port:``
 * Indices: ``vhdl-entities``, ``vhdl-packages``, ``vhdl-subprograms``, ``vhdl-types``
-* Configuration values ``vhdl_designs``, ``vhdl_architectures``, ``vhdl_architecture_descriptions``
+* Configuration values ``vhdl_designs``, ``vhdl_architectures``, ``vhdl_architecture_descriptions``,
+  ``vhdl_reference_popups``
 * Node :class:`~VHDLDomain.Symbol.Directive.SymbolNode` with visitors for HTML and LaTeX, and LaTeX package ``tikz``
+* Nodes :class:`~VHDLDomain.Popup.PopupReferenceNode` and :class:`~VHDLDomain.Popup.PopupNode` with visitors for HTML,
+  and the stylesheet :file:`VHDLDomain.css` (see :mod:`VHDLDomain.Popup`)
 * Generated pages per library and design unit, for a design declared with ``pages`` (see :mod:`VHDLDomain.Pages`)
 
 .. rubric:: Names
@@ -108,6 +111,8 @@ from VHDLDomain.Directive        import DesignDirective, LibraryDirective
 from VHDLDomain.Frontend         import DesignConfiguration, VHDLDomainException
 from VHDLDomain.Index            import EntityIndex, PackageIndex, SubprogramIndex, TypeIndex
 from VHDLDomain.Pages            import DesignPages
+from VHDLDomain.Popup            import PopupNode, PopupReferenceNode, html_depart_PopupNode, html_visit_PopupNode, \
+                                        html_visit_PopupReferenceNode, installStylesheet
 from VHDLDomain.Symbol.Directive import SymbolDirective, SymbolNode, html_visit_SymbolNode, latex_visit_SymbolNode, \
                                         loadTikZLibraries
 
@@ -213,14 +218,15 @@ class VHDLDomain(Domain):
 	"""
 	The Sphinx domain ``vhdl``, documenting VHDL designs from their model.
 
-	Its objects are keyed by object type and normalized qualified name - ``("entity", "stopwatch.lib_stopwatch.counter")``
-	- and located by document and anchor. The designs are no domain data, as the environment pickles the data: they are
-	read again by every build, and handed to the domain by :meth:`AddDesign`.
+	Its objects are keyed by object type and normalized qualified name, e.g.
+	``("entity", "stopwatch.lib_stopwatch.counter")``, and located by document and anchor; a declaration of a package has
+	a popup too, which a reference shows in HTML (see :mod:`VHDLDomain.Popup`). The designs are no domain data, as the
+	environment pickles the data: they are read again by every build, and handed to the domain by :meth:`AddDesign`.
 	"""
 
 	name =         "vhdl"  #: Name of the domain, the prefix of its directives and roles.
 	label =        "VHDL"  #: Name of the domain, as displayed.
-	data_version = 1       #: Version of the data layout; a change discards pickled environments.
+	data_version = 2       #: Version of the data layout; a change discards pickled environments.
 
 	object_types: ClassVar[dict[str, ObjType]] = {
 		objectType: ObjType(displayName, *[roleName for roleName, types in ROLES.items() if objectType in types])
@@ -255,7 +261,9 @@ class VHDLDomain(Domain):
 
 	initial_data: ClassVar[dict[str, Any]] = {
 		"objects": {},
-	}  #: The domain's data: ``objects`` maps (object type, normalized name) to (document, anchor, qualified name).
+		"popups":  {},
+	}  #: The domain's data: ``objects`` maps (object type, normalized name) to (document, anchor, qualified name),
+	#: ``popups`` maps it to (signature as text, popup).
 
 	#: The configuration values the domain adds to :file:`conf.py`, as ``name: (default, rebuild, types)``. Each is
 	#: registered with the domain's name as prefix, e.g. ``vhdl_designs``.
@@ -271,14 +279,19 @@ class VHDLDomain(Domain):
 	#:    Whether a listed architecture shows its documentation, a value of
 	#:    :class:`~VHDLDomain.DesignUnit.ArchitectureDescriptions`, ``None`` for its default; option
 	#:    ``:architecture-descriptions:`` overrides it.
+	#: ``reference_popups``
+	#:    Whether a reference to a declaration of a package shows the declaration in a popup, in HTML; otherwise the
+	#:    link's title is the declaration's signature.
 	configValues: ClassVar[dict[str, tuple[Any, str, Any]]] = {
-		"designs":                   ({},       "env", dict),
-		"architectures":             (None,     "env", (str, ArchitectureListing)),
-		"architecture_descriptions": (None,     "env", (str, ArchitectureDescriptions)),
+		"designs":                   ({},       "env",  dict),
+		"architectures":             (None,     "env",  (str, ArchitectureListing)),
+		"architecture_descriptions": (None,     "env",  (str, ArchitectureDescriptions)),
+		"reference_popups":          (True,     "html", bool),
 	}
 
-	_designs: dict[str, Design]                                     #: The designs read by this build, by name.
-	_lookup:  Nullable[dict[tuple[str, str], list[tuple[str, str]]]]  #: Object keys by (object type, last name part).
+	_designs:    dict[str, Design]                                     #: The designs read by this build, by name.
+	_lookup:     Nullable[dict[tuple[str, str], list[tuple[str, str]]]]  #: Object keys by (object type, last name part).
+	_popupCount: int                                                   #: The number of popups written by this build.
 
 	def __init__(self, env: BuildEnvironment) -> None:
 		"""
@@ -288,8 +301,9 @@ class VHDLDomain(Domain):
 		"""
 		super().__init__(env)
 
-		self._designs = {}
-		self._lookup =  None
+		self._designs =    {}
+		self._lookup =     None
+		self._popupCount = 0
 
 	@readonly
 	def Objects(self) -> dict[tuple[str, str], tuple[str, str, str]]:
@@ -299,6 +313,15 @@ class VHDLDomain(Domain):
 		:returns: A mapping of (object type, normalized qualified name) to (document, anchor, qualified name).
 		"""
 		return self.data["objects"]
+
+	@readonly
+	def Popups(self) -> dict[tuple[str, str], tuple[str, PopupNode]]:
+		"""
+		Read-only property to return the popups of the documented objects.
+
+		:returns: A mapping of (object type, normalized qualified name) to (signature as text, popup).
+		"""
+		return self.data["popups"]
 
 	@readonly
 	def Designs(self) -> dict[str, Design]:
@@ -390,6 +413,23 @@ class VHDLDomain(Domain):
 		objects[key] = (self.env.docname, nodeID, qualifiedName)
 		self._lookup = None
 
+	def NotePopup(self, objectType: str, qualifiedName: str, title: str, popup: PopupNode) -> None:
+		"""
+		Register the popup of a documented object, which a reference to the object shows in HTML.
+
+		:param objectType:    The object type, as ``type``.
+		:param qualifiedName: The object's qualified name, as ``StopWatch.lib_StopWatch.StopWatch_pkg.T_BCD``.
+		:param title:         The object's signature as text: the title of a reference without popup.
+		:param popup:         The popup.
+		:raises ValueError:   If parameter 'qualifiedName' names no documented object of the object type.
+		"""
+		if (key := (objectType, normalizeName(qualifiedName))) not in self.data["objects"]:
+			ex = ValueError(f"Parameter 'qualifiedName' names no documented vhdl:{objectType}.")
+			ex.add_note(f"Got value '{qualifiedName}'.")
+			raise ex
+
+		self.data["popups"][key] = (title, popup)
+
 	def FindObjects(
 		self,
 		objectTypes: Iterable[str],
@@ -473,8 +513,10 @@ class VHDLDomain(Domain):
 		:param docname: The document.
 		"""
 		objects = self.data["objects"]
+		popups =  self.data["popups"]
 		for key in [key for key, (document, _, _) in objects.items() if document == docname]:
 			del objects[key]
+			popups.pop(key, None)
 
 		self._lookup = None
 
@@ -486,10 +528,13 @@ class VHDLDomain(Domain):
 		:param otherdata: The other reader's data.
 		"""
 		documents = set(docnames)
-		objects = self.data["objects"]
+		objects =   self.data["objects"]
+		popups =    self.data["popups"]
 		for key, location in otherdata["objects"].items():
 			if location[0] in documents:
 				objects[key] = location
+				if (popup := otherdata["popups"].get(key, None)) is not None:
+					popups[key] = popup
 
 		self._lookup = None
 
@@ -516,7 +561,8 @@ class VHDLDomain(Domain):
 		:param target:      The target, as ``lib_StopWatch.Counter``.
 		:param node:        The pending reference.
 		:param contnode:    The node rendering the reference's title.
-		:returns:           The reference, the title if the name is ambiguous, or ``None`` if the target isn't documented.
+		:returns:           The reference - see :meth:`_Reference` -, the title if the name is ambiguous, or ``None`` if the
+		                    target isn't documented.
 		"""
 		if typ not in ROLES:
 			return None
@@ -534,8 +580,7 @@ class VHDLDomain(Domain):
 			)
 			return contnode
 
-		document, nodeID, qualifiedName = self.data["objects"][matches[0]]
-		return make_refnode(builder, fromdocname, document, nodeID, contnode, qualifiedName)
+		return self._Reference(builder, fromdocname, matches[0], contnode)
 
 	def resolve_any_xref(
 		self,
@@ -561,11 +606,38 @@ class VHDLDomain(Domain):
 		for roleName, objectTypes in ROLES.items():
 			matches = self.FindObjects(objectTypes, target, node.get("vhdl:design", None), node.get("vhdl:library", None))
 			if len(matches) == 1:
-				document, nodeID, qualifiedName = self.data["objects"][matches[0]]
-				reference = make_refnode(builder, fromdocname, document, nodeID, contnode, qualifiedName)
-				results.append((f"{self.name}:{roleName}", reference))
+				results.append((f"{self.name}:{roleName}", self._Reference(builder, fromdocname, matches[0], contnode)))
 
 		return results
+
+	def _Reference(self, builder: Builder, fromdocname: str, key: tuple[str, str], contnode: Element) -> Element:
+		"""
+		Create the reference to a documented object.
+
+		In HTML, while ``vhdl_reference_popups`` is on, a reference to an object with a popup is a
+		:class:`~VHDLDomain.Popup.PopupReferenceNode`: the link and a copy of the popup. Otherwise, the link's title is the
+		object's signature - or its qualified name, if the object has no popup.
+
+		:param builder:     The builder.
+		:param fromdocname: The document containing the reference.
+		:param key:         The object's key, (object type, normalized qualified name).
+		:param contnode:    The node rendering the reference's title.
+		:returns:           The link, or the link with its popup.
+		"""
+		document, nodeID, qualifiedName = self.data["objects"][key]
+		if (popup := self.data["popups"].get(key, None)) is None:
+			return make_refnode(builder, fromdocname, document, nodeID, contnode, qualifiedName)
+
+		title, content = popup
+		if builder.format != "html" or not self.env.config.vhdl_reference_popups:
+			return make_refnode(builder, fromdocname, document, nodeID, contnode, title)
+
+		self._popupCount += 1
+		popupNode =        content.deepcopy()
+		popupNode["ids"] = [f"vhdl-popup-{self._popupCount}"]
+		reference =        make_refnode(builder, fromdocname, document, nodeID, contnode)
+
+		return PopupReferenceNode("", "", reference, popupNode, classes=["vhdl-popup-anchor"])
 
 	def get_objects(self) -> Iterator[tuple[str, str, str, str, str, int]]:
 		"""
@@ -664,6 +736,10 @@ def setup(sphinx: Sphinx) -> dict[str, Any]:
 	sphinx.add_node(SymbolNode, html=(html_visit_SymbolNode, None), latex=(latex_visit_SymbolNode, None))
 	sphinx.add_latex_package("tikz")
 	sphinx.connect("builder-inited", loadTikZLibraries)
+
+	sphinx.add_node(PopupReferenceNode, html=(html_visit_PopupReferenceNode, None))
+	sphinx.add_node(PopupNode, html=(html_visit_PopupNode, html_depart_PopupNode))
+	sphinx.connect("builder-inited", installStylesheet)
 
 	return {
 		"version":             __version__,
