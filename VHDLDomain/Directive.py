@@ -138,13 +138,28 @@ class VHDLDirective(SphinxDirective):
 		"""
 		Parse an object's documentation comment as reStructuredText.
 
-		A line's leading comment marker ``--`` and the space following it are removed, so a comment block reads as text.
+		The comment's text is the comment without its comment markers, see :meth:`_DocumentationText`.
 
 		:param documentation: The documentation comment, as the frontend extracted it, or ``None``.
 		:returns:             The parsed nodes, none for no or an empty comment.
 		"""
-		if documentation is None:
+		if (text := self._DocumentationText(documentation)) == "":
 			return []
+
+		return self.parse_text_to_nodes(text)
+
+	@staticmethod
+	def _DocumentationText(documentation: Nullable[str]) -> str:
+		"""
+		Return the text of an object's documentation comment.
+
+		A line's leading comment marker ``--`` and the space following it are removed, so a comment block reads as text.
+
+		:param documentation: The documentation comment, as the frontend extracted it, or ``None``.
+		:returns:             The text, without leading and trailing white space; ``""`` for no or an empty comment.
+		"""
+		if documentation is None:
+			return ""
 
 		lines = []
 		for line in documentation.splitlines():
@@ -154,10 +169,7 @@ class VHDLDirective(SphinxDirective):
 
 			lines.append(line)
 
-		if (text := "\n".join(lines).strip()) == "":
-			return []
-
-		return self.parse_text_to_nodes(text)
+		return "\n".join(lines).strip()
 
 	def _Format(self, element: object) -> str:
 		"""

@@ -640,14 +640,21 @@ class PackageDirective(DesignUnitDirective):
 	``:vhdl:proc:`T_ERROR_COUNTER.Increment```. A component's generics and ports are no objects: a reference to a port
 	names the entity's port. Option ``:style:`` - default: ``vhdl_style`` - selects the style of the interface lists, see
 	:class:`InterfaceStyle`.
+
+	A declaration - or method - without documentation comment is described only with ``:undoc-members:``, the default
+	of ``vhdl_undoc_members``; ``:no-undoc-members:`` leaves it out, as Sphinx' autodoc does. An interface - generics,
+	ports, parameters, a record's elements, a physical type's units - is always complete.
 	"""
 
 	directiveName: ClassVar[str] = "vhdl:package"  #: Name the directive is invoked by.
 
 	option_spec = {
 		**DesignUnitDirective.option_spec,
-		"style": InterfaceStyle.Parse,
-	}  #: The options of every design-unit directive, and the style of the interface lists.
+		"style":            InterfaceStyle.Parse,
+		"undoc-members":    directives.flag,
+		"no-undoc-members": directives.flag,
+	}  #: The options of every design-unit directive, the style of the interface lists, and whether undocumented
+	#: declarations are described.
 
 	_KEYWORD:     ClassVar[str] = "package"   #: The unit's keyword in VHDL.
 	_COLLECTION:  ClassVar[str] = "Packages"  #: The collection of :class:`~pyVHDLModel.Library` holding packages.
@@ -667,9 +674,14 @@ class PackageDirective(DesignUnitDirective):
 
 	_POPUP_MEMBERS: ClassVar[int] = 8  #: The number of elements, literals or units a popup lists at most.
 
+	_undocumentedMembers: bool  #: Whether declarations without documentation comment are described.
+
 	def _Interface(self, unit: DesignUnit, library: Library, qualifiedName: str, content: addnodes.desc_content) -> None:
 		"""
 		Write a package's generics and declarations.
+
+		A declaration without documentation comment is written only if undocumented members are described: with option
+		``:undoc-members:``, else not with ``:no-undoc-members:``, else per ``vhdl_undoc_members``.
 
 		:param unit:          The package.
 		:param library:       The package's library.
@@ -678,11 +690,20 @@ class PackageDirective(DesignUnitDirective):
 		"""
 		package: Package = unit  # type: ignore[assignment]
 		self._style = self._InterfaceStyle()
+		if "undoc-members" in self.options:
+			self._undocumentedMembers = True
+		elif "no-undoc-members" in self.options:
+			self._undocumentedMembers = False
+		else:
+			self._undocumentedMembers = self.config.vhdl_undoc_members
+
 		if (generics := self._Generics(package, qualifiedName)) is not None:
 			content += self._FieldList(generics)
 
 		for item in package.DeclaredItems:
-			if isinstance(item, BaseType):
+			if not self._undocumentedMembers and self._DocumentationText(getattr(item, "Documentation", None)) == "":
+				continue
+			elif isinstance(item, BaseType):
 				self._Type(content, qualifiedName, item)
 			elif isinstance(item, Constant):
 				self._Objects(content, "constant", ["constant"], qualifiedName, item)
@@ -757,8 +778,9 @@ class PackageDirective(DesignUnitDirective):
 		enumeration's literals.
 
 		The signature shows the definition's first line, e.g. ``is array (natural range <>) of T_BCD`` or ``is record``.
-		A protected type's methods are descriptions of their own in the type's description, as a Python class' methods;
-		the protected type body isn't public interface.
+		A protected type's methods are descriptions of their own in the type's description, as a Python class' methods -
+		without documentation comment only if undocumented members are described -; the protected type body isn't public
+		interface.
 
 		:param content:       The package's description content.
 		:param qualifiedName: The package's qualified name.
@@ -808,7 +830,8 @@ class PackageDirective(DesignUnitDirective):
 			typeContent += self._FieldList(self._Field("Units", bodies))
 		elif isinstance(item, ProtectedType):
 			for method in item.Methods:
-				self._Subprogram(typeContent, f"{qualifiedName}.{item.Identifier}", method, method=True)
+				if self._undocumentedMembers or self._DocumentationText(method.Documentation) != "":
+					self._Subprogram(typeContent, f"{qualifiedName}.{item.Identifier}", method, method=True)
 
 	@classmethod
 	def _PopupMembers(cls, label: str, members: list[str]) -> list[Node]:

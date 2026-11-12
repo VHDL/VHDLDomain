@@ -53,7 +53,7 @@ design, a library or a design unit from the model, and a role refers to what a d
   ``:vhdl:func:``, ``:vhdl:proc:``, ``:vhdl:generic:``, ``:vhdl:port:``
 * Indices: ``vhdl-entities``, ``vhdl-packages``, ``vhdl-subprograms``, ``vhdl-types``
 * Configuration values ``vhdl_designs``, ``vhdl_architectures``, ``vhdl_architecture_descriptions``,
-  ``vhdl_reference_popups``, ``vhdl_style``, ``vhdl_add_library_names``
+  ``vhdl_reference_popups``, ``vhdl_style``, ``vhdl_add_library_names``, ``vhdl_undoc_members``
 * Node :class:`~VHDLDomain.Symbol.Directive.SymbolNode` with visitors for HTML and LaTeX, and LaTeX package ``tikz``
 * Nodes :class:`~VHDLDomain.Popup.PopupReferenceNode` and :class:`~VHDLDomain.Popup.PopupNode` with visitors for HTML,
   and the stylesheet :file:`VHDLDomain.css` (see :mod:`VHDLDomain.Popup`)
@@ -288,6 +288,9 @@ class VHDLDomain(Domain):
 	#: ``add_library_names``
 	#:    Whether a design unit's signature names its library, e.g. ``entity lib_Utilities.Counter``, as Sphinx'
 	#:    ``add_module_names`` names a Python class' module.
+	#: ``undoc_members``
+	#:    Whether ``vhdl:package`` describes declarations without documentation comment; options ``:undoc-members:``
+	#:    and ``:no-undoc-members:`` override it.
 	configValues: ClassVar[dict[str, tuple[Any, str, Any]]] = {
 		"designs":                   ({},       "env",  dict),
 		"architectures":             (None,     "env",  (str, ArchitectureListing)),
@@ -295,6 +298,7 @@ class VHDLDomain(Domain):
 		"reference_popups":          (True,     "html", bool),
 		"style":                     (None,     "env",  (str, InterfaceStyle)),
 		"add_library_names":         (False,    "env",  bool),
+		"undoc_members":             (True,     "env",  bool),
 	}
 
 	_designs:    dict[str, Design]                                     #: The designs read by this build, by name.
