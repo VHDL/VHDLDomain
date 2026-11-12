@@ -44,6 +44,8 @@ Version 0.3.0 (2026)
      the context ``Utilities_ctx`` show their VHDL source and the directive next to the output. Their documentation
      comments use reStructuredText markup, with cross-references to other units.
    * New section *Examples*, holding the StopWatch example; the navigation lists the domain's index pages.
+   * Every design unit, generic, port and declaration of a package of the StopWatch example has a documentation
+     comment; the configuration's comment no longer is the encoder's.
 
 
 Version 0.2.0 (2026)

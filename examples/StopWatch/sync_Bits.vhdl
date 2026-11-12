@@ -10,18 +10,19 @@ use     ieee.std_logic_1164.all;
 -- Multi-stage FF synchronizer
 entity sync_Bits is
 	generic (
-		BITS      : positive              := 1;
-		STAGES    : positive range 2 to 5 := 3
+		BITS      : positive              := 1;  -- The number of bits.
+		STAGES    : positive range 2 to 5 := 3   -- The number of flip-flops per bit.
 	);
 	port (
-		Clock     : in  std_logic;
+		Clock     : in  std_logic;                            -- The clock the inputs are synchronized to.
 
-		Input     : in  std_logic_vector(BITS - 1 downto 0);
-		Output    : out std_logic_vector(BITS - 1 downto 0)
+		Input     : in  std_logic_vector(BITS - 1 downto 0);  -- The asynchronous inputs.
+		Output    : out std_logic_vector(BITS - 1 downto 0)   -- The synchronized inputs.
 	);
 end entity;
 
 
+-- The implementation: a chain of ``STAGES`` flip-flops per bit.
 architecture rtl of sync_Bits is
 
 begin
