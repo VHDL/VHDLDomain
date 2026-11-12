@@ -115,3 +115,17 @@ configuration error.
 .. code-block:: Python
 
    vhdl_architecture_descriptions = "hide"
+
+
+.. _CONFIG/reference-popups:
+
+vhdl_reference_popups
+*********************
+
+Whether a reference to a declaration of a package shows the declaration in a popup, in HTML (see :ref:`ROLE/popups`):
+``True`` (default) or ``False`` - the reference's title is the declaration's signature then, and the domain adds no
+style sheet to the pages.
+
+.. code-block:: Python
+
+   vhdl_reference_popups = False
