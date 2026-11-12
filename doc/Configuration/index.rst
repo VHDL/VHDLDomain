@@ -77,3 +77,41 @@ event in :file:`conf.py`, with :meth:`~VHDLDomain.VHDLDomain.AddDesign`:
 
    def setup(app):
      app.connect("builder-inited", addDesigns)
+
+
+.. _CONFIG/architectures:
+
+vhdl_architectures
+******************
+
+Which entities :rst:dir:`vhdl:entity` lists the architectures of; option :rst:dir:`vhdl:entity:architectures`
+overrides it per entity.
+
+``"always"``
+  Every entity lists its architectures. Default.
+``"multiple"``
+  Only an entity with more than one architecture lists them, e.g. a testbench with an architecture per test.
+``"never"``
+  No entity lists its architectures.
+
+An architecture which isn't listed is no object of the domain: :rst:role:`vhdl:arch` can't refer to it. Another value
+ends the build with a configuration error.
+
+.. code-block:: Python
+
+   vhdl_architectures = "multiple"
+
+
+.. _CONFIG/architecture-descriptions:
+
+vhdl_architecture_descriptions
+******************************
+
+Whether a listed architecture shows its documentation comment: ``"show"`` (default) or ``"hide"`` - the
+architecture's declaration only, e.g. ``architecture rtl of Counter``. Option
+:rst:dir:`vhdl:entity:architecture-descriptions` overrides it per entity. Another value ends the build with a
+configuration error.
+
+.. code-block:: Python
+
+   vhdl_architecture_descriptions = "hide"

@@ -26,6 +26,7 @@ entity Counter is
 end entity;
 
 
+-- The implementation for synthesis.
 architecture rtl of Counter is
 	signal CounterValue : unsigned(log2(MODULO) - 1 downto 0) := (others => '0');
 begin
@@ -45,6 +46,7 @@ begin
 end architecture;
 
 
+-- The implementation for simulation, the same as ``rtl``.
 architecture sim of Counter is
 	signal CounterValue : unsigned(log2(MODULO) - 1 downto 0) := (others => '0');
 begin
