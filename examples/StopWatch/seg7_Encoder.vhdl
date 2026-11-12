@@ -10,14 +10,15 @@ context work.StopWatch_ctx;
 -- Encoder that translates from 4-bit binary (BCD) to 7-segment code.
 entity seg7_Encoder is
 	port (
-		BCDValue  : in  T_BCD;
-		Dot       : in  std_logic  := '0';
+		BCDValue  : in  T_BCD;                         -- The BCD digit to display.
+		Dot       : in  std_logic  := '0';             -- The dot after the digit is lit.
 
-		Seg7Code  : out std_logic_vector(7 downto 0)
+		Seg7Code  : out std_logic_vector(7 downto 0)   -- The segments: bit 7 the dot, bits 6 to 0 the segments G to A.
 	);
 end entity;
 
 
+-- The implementation: a table of the segments of each digit; a value above 9 lights unknown segments.
 architecture rtl of seg7_Encoder is
 begin
 	process(BCDValue, Dot)
