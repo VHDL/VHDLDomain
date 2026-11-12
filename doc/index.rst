@@ -96,7 +96,16 @@ License
    Roles/index
    Indices/index
    Symbol/index
-   StopWatch/index
+
+.. raw:: latex
+
+   \part{Examples}
+
+.. toctree::
+   :caption: Examples
+   :hidden:
+
+   Examples/index
 
 .. raw:: latex
 
