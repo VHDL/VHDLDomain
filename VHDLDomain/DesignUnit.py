@@ -53,12 +53,13 @@ from pyTooling.MetaClasses       import abstractmethod
 
 from pyVHDLModel                 import Library
 from pyVHDLModel.Base            import identifiersOf
-from pyVHDLModel.DesignUnit      import Configuration, Context, DesignUnit, Entity, Package
+from pyVHDLModel.DesignUnit      import Component, Configuration, Context, DesignUnit, Entity, Package
 from pyVHDLModel.Interface       import GenericConstantInterfaceItem, GenericFunctionInterfaceItem, \
-                                        GenericPackageInterfaceItem, GenericTypeInterfaceItem, PortSignalInterfaceItem
-from pyVHDLModel.Object          import Constant, DeferredConstant
+                                        GenericPackageInterfaceItem, GenericTypeInterfaceItem, \
+                                        InterfaceItemWithModeMixin, PortSignalInterfaceItem
+from pyVHDLModel.Object          import Constant, DeferredConstant, SharedVariable, Signal, WithDefaultExpressionMixin
 from pyVHDLModel.Subprogram      import Function, Procedure
-from pyVHDLModel.Type            import BaseType, Subtype
+from pyVHDLModel.Type            import BaseType, PhysicalType, RecordType, Subtype
 
 from VHDLDomain.Directive        import VHDLDirective
 
@@ -182,24 +183,64 @@ class DesignUnitDirective(VHDLDirective):
 
 		return description, content, index
 
+	@staticmethod
+	def _Field(label: str, bodies: list[list[Node]]) -> nodes.field:
+		"""
+		Create a field of a description, as Sphinx writes the fields of a Python function.
+
+		A field is e.g. a function's parameters. A field of one item writes it as paragraphs, a field of several items as
+		a bullet list.
+
+		:param label:  The field's name, as ``Ports``.
+		:param bodies: Per item, its nodes: the paragraph declaring it, followed by further paragraphs of its documentation.
+		:returns:      The field.
+		"""
+		if len(bodies) == 1:
+			fieldBody = nodes.field_body("", *bodies[0])
+		else:
+			fieldBody = nodes.field_body("", nodes.bullet_list("", *(nodes.list_item("", *body) for body in bodies)))
+
+		return nodes.field("", nodes.field_name(label, label), fieldBody)
+
+	def _Item(self, paragraph: nodes.paragraph, documentation: Nullable[str]) -> list[Node]:
+		"""
+		Complete an item of a field by its documentation comment.
+
+		The comment's first paragraph follows the item's declaration after a dash; its further paragraphs follow below.
+
+		:param paragraph:     The paragraph declaring the item.
+		:param documentation: The item's documentation comment, or ``None``.
+		:returns:             The item's nodes.
+		"""
+		body: list[Node] = [paragraph]
+		if len(description := self._Documentation(documentation)) > 0:
+			paragraph += nodes.Text(" -- ")
+			if isinstance(description[0], nodes.paragraph):
+				paragraph.extend(list(description.pop(0).children))
+
+			body.extend(description)
+
+		return body
+
 	def _InterfaceField(
 		self,
 		label:         str,
-		objectType:    str,
+		objectType:    Nullable[str],
 		qualifiedName: str,
 		entries:       Iterable[tuple[Iterable[str], str, str, Nullable[str]]]
 	) -> nodes.field:
 		"""
-		Create the field of an interface list - generics or ports -, as Sphinx writes a Python function's parameters.
+		Create the field of an interface list, as Sphinx writes a Python function's parameters.
 
-		Each entry is an item of the list: its names in bold, its declaration - e.g. mode and subtype -, its default value
-		and its documentation. A field of one item writes it as a paragraph, a field of several items as a bullet list.
-		Each item is the target of the objects it declares; an item declares several objects, if its declaration has an
-		identifier list, e.g. a port ``Q0, Q1``.
+		An interface list is e.g. an entity's generics or ports. Each entry is an item of the list: its names in bold, its
+		declaration - e.g. mode and subtype -, its default value and its documentation. Each item is the target of the
+		objects it declares; an item declares several objects, if its declaration has an identifier list, e.g. a port
+		``Q0, Q1``.
 
 		:param label:         The field's name, as ``Ports``.
-		:param objectType:    The object type of the items, as ``port``.
-		:param qualifiedName: The qualified name of the unit declaring the items.
+		:param objectType:    The object type of the items, as ``port``, or ``None`` if they are no objects of the domain,
+		                      as a subprogram's parameters.
+		:param qualifiedName: The qualified name of the unit or declaration declaring the items.
 		:param entries:       Per item: its identifiers, its declaration, its default value or an empty string, and its
 		                      documentation comment.
 		:returns:             The field.
@@ -215,37 +256,31 @@ class DesignUnitDirective(VHDLDirective):
 				paragraph += nodes.Text(" := ")
 				paragraph += addnodes.literal_emphasis(default, default)
 
-			body: list[Node] = [paragraph]
-			if len(description := self._Documentation(documentation)) > 0:
-				paragraph += nodes.Text(" -- ")
-				if isinstance(description[0], nodes.paragraph):
-					paragraph.extend(list(description.pop(0).children))
-
-				body.extend(description)
-
-			if "no-index" not in self.options:
+			if objectType is not None and "no-index" not in self.options:
 				for identifier in identifiers:
 					itemName = f"{qualifiedName}.{identifier}"
 					nodeID =   self._NodeID(objectType, itemName)
 					paragraph["ids"].append(nodeID)
 					self._Domain().NoteObject(objectType, itemName, nodeID, paragraph)
 
-			bodies.append(body)
+			bodies.append(self._Item(paragraph, documentation))
 
-		if len(bodies) == 1:
-			fieldBody = nodes.field_body("", *bodies[0])
-		else:
-			fieldBody = nodes.field_body("", nodes.bullet_list("", *(nodes.list_item("", *body) for body in bodies)))
+		return self._Field(label, bodies)
 
-		return nodes.field("", nodes.field_name(label, label), fieldBody)
-
-	def _Generics(self, unit: Entity | Package, qualifiedName: str) -> Nullable[nodes.field]:
+	def _Generics(
+		self,
+		unit:          Entity | Package | Component,
+		qualifiedName: str,
+		*,
+		objects:       bool = True
+	) -> Nullable[nodes.field]:
 		"""
 		Create the field of a unit's generics: per generic its name, its subtype - or the kind of a generic type, package
 		or subprogram -, its default value and its documentation.
 
-		:param unit:          The entity or package.
+		:param unit:          The entity, package or component.
 		:param qualifiedName: The unit's qualified name.
+		:param objects:       Optional, whether the generics are objects of the domain. Default: ``True``.
 		:returns:             The field, or ``None`` if the unit has no generics.
 		"""
 		if len(unit.GenericItems) == 0:
@@ -269,7 +304,61 @@ class DesignUnitDirective(VHDLDirective):
 
 			entries.append((identifiersOf(item), kind, default, item.Documentation))
 
-		return self._InterfaceField("Generics", "generic", qualifiedName, entries)
+		return self._InterfaceField("Generics", "generic" if objects else None, qualifiedName, entries)
+
+	def _Ports(self, unit: Entity | Component, qualifiedName: str, *, objects: bool = True) -> Nullable[nodes.field]:
+		"""
+		Create the field of a unit's ports: per port its name, its mode and subtype, its default value and its
+		documentation.
+
+		:param unit:          The entity or component.
+		:param qualifiedName: The unit's qualified name.
+		:param objects:       Optional, whether the ports are objects of the domain. Default: ``True``.
+		:returns:             The field, or ``None`` if the unit has no ports.
+		"""
+		if len(unit.PortItems) == 0:
+			return None
+
+		entries: list[tuple[Iterable[str], str, str, Nullable[str]]] = []
+		for item in unit.PortItems:
+			if isinstance(item, PortSignalInterfaceItem) and hasattr(item, "Mode"):
+				mode = str(item.Mode)
+			elif hasattr(item, "ModeViewIndication"):
+				mode = "view"
+			else:
+				mode = ""
+
+			subtype = "" if (symbol := getattr(item, "Subtype", None)) is None else self._Format(symbol)
+			default = "" if (expression := getattr(item, "DefaultExpression", None)) is None else self._Format(expression)
+
+			declaration = " ".join(part for part in (mode, subtype) if part != "")
+			entries.append((identifiersOf(item), declaration, default, item.Documentation))
+
+		return self._InterfaceField("Ports", "port" if objects else None, qualifiedName, entries)
+
+	def _InterfaceFields(
+		self,
+		unit:          Entity | Component,
+		qualifiedName: str,
+		*,
+		objects:       bool = True
+	) -> Nullable[nodes.field_list]:
+		"""
+		Create the fields of an entity's or component's interface: its generics and its ports.
+
+		:param unit:          The entity or component.
+		:param qualifiedName: The unit's qualified name.
+		:param objects:       Optional, whether the generics and ports are objects of the domain. Default: ``True``.
+		:returns:             The fields, or ``None`` if the unit has neither generics nor ports.
+		"""
+		fields = nodes.field_list(classes=["vhdl-interface"])
+		if (generics := self._Generics(unit, qualifiedName, objects=objects)) is not None:
+			fields += generics
+
+		if (ports := self._Ports(unit, qualifiedName, objects=objects)) is not None:
+			fields += ports
+
+		return fields if len(fields) > 0 else None
 
 	@abstractmethod
 	def _Interface(self, unit: DesignUnit, library: Library, qualifiedName: str, content: addnodes.desc_content) -> None:
@@ -312,29 +401,7 @@ class EntityDirective(DesignUnitDirective):
 		:param content:       The entity's description content.
 		"""
 		entity: Entity = unit  # type: ignore[assignment]
-		fields = nodes.field_list(classes=["vhdl-interface"])
-		if (generics := self._Generics(entity, qualifiedName)) is not None:
-			fields += generics
-
-		if len(entity.PortItems) > 0:
-			entries: list[tuple[Iterable[str], str, str, Nullable[str]]] = []
-			for item in entity.PortItems:
-				if isinstance(item, PortSignalInterfaceItem) and hasattr(item, "Mode"):
-					mode = str(item.Mode)
-				elif hasattr(item, "ModeViewIndication"):
-					mode = "view"
-				else:
-					mode = ""
-
-				subtype = "" if (symbol := getattr(item, "Subtype", None)) is None else self._Format(symbol)
-				default = "" if (expression := getattr(item, "DefaultExpression", None)) is None else self._Format(expression)
-
-				declaration = " ".join(part for part in (mode, subtype) if part != "")
-				entries.append((identifiersOf(item), declaration, default, item.Documentation))
-
-			fields += self._InterfaceField("Ports", "port", qualifiedName, entries)
-
-		if len(fields) > 0:
+		if (fields := self._InterfaceFields(entity, qualifiedName)) is not None:
 			content += fields
 
 		if len(entity.Architectures) > 0:
@@ -354,16 +421,18 @@ class EntityDirective(DesignUnitDirective):
 @export
 class PackageDirective(DesignUnitDirective):
 	"""
-	The directive ``vhdl:package``: a package's declaration, documentation, generics, types, subtypes, constants and
-	subprograms, in declaration order.
+	The directive ``vhdl:package``: a package's declaration, documentation, generics, and - in declaration order - its
+	types, subtypes, constants, signals, shared variables, components and subprograms.
 
 	.. code-block:: rst
 
 	   .. vhdl:package:: lib_Utilities.Utilities_pkg
 
 	Each declaration is an object of the domain: ``:vhdl:type:`Utilities_pkg.freq```,
-	``:vhdl:const:`Utilities_pkg.IS_SIMULATION``` and ``:vhdl:func:`Utilities_pkg.to_index(natural, positive)```. A
-	subprogram's qualified name ends in its signature, the type marks of its parameters.
+	``:vhdl:const:`Utilities_pkg.IS_SIMULATION```, ``:vhdl:comp:`Utilities_pkg.Debouncer``` and
+	``:vhdl:func:`Utilities_pkg.to_index(natural, positive)```. A subprogram's qualified name ends in its signature, the
+	type marks of its parameters. A component's generics and ports are no objects: a reference to a port names the
+	entity's port.
 	"""
 
 	directiveName: ClassVar[str] = "vhdl:package"  #: Name the directive is invoked by.
@@ -386,15 +455,20 @@ class PackageDirective(DesignUnitDirective):
 			content += nodes.field_list("", generics, classes=["vhdl-interface"])
 
 		for item in package.DeclaredItems:
-			if isinstance(item, Subtype):
-				self._Declaration(content, "subtype", qualifiedName, item.Identifier, [], item.Documentation, package)
-			elif isinstance(item, BaseType):
-				self._Declaration(content, "type", qualifiedName, item.Identifier, [], item.Documentation, package)
+			if isinstance(item, BaseType):
+				self._Type(content, qualifiedName, item, package)
 			elif isinstance(item, (Constant, DeferredConstant)):
-				subtype = self._Format(item.Subtype)
-				for identifier in item.Identifiers:
-					suffix = [addnodes.desc_annotation(f" : {subtype}", f" : {subtype}")]
-					self._Declaration(content, "constant", qualifiedName, identifier, suffix, item.Documentation, package)
+				self._Objects(content, "constant", ["constant"], qualifiedName, item, package)
+			elif isinstance(item, Signal):
+				self._Objects(content, "signal", ["signal"], qualifiedName, item, package)
+			elif isinstance(item, SharedVariable):
+				self._Objects(content, "variable", ["shared", "variable"], qualifiedName, item, package)
+			elif isinstance(item, Component):
+				componentContent = self._Declaration(
+					content, "component", qualifiedName, item.Identifier, [], item.Documentation, package
+				)
+				if (fields := self._InterfaceFields(item, f"{qualifiedName}.{item.Identifier}", objects=False)) is not None:
+					componentContent += fields
 			elif isinstance(item, (Function, Procedure)):
 				self._Subprogram(content, qualifiedName, item, package)
 
@@ -408,7 +482,7 @@ class PackageDirective(DesignUnitDirective):
 		documentation: Nullable[str],
 		package:       Package,
 		keywords:      Nullable[list[str]] = None
-	) -> None:
+	) -> addnodes.desc_content:
 		"""
 		Write a declaration of a package as a description of its own.
 
@@ -420,6 +494,7 @@ class PackageDirective(DesignUnitDirective):
 		:param documentation: The declaration's documentation comment.
 		:param package:       The package.
 		:param keywords:      Optional, the VHDL keywords preceding the name. Default: the object type.
+		:returns:             The declaration's description content, holding its documentation.
 		"""
 		displayName = name.partition("(")[0]
 		description, declarationContent, index = self._Description(
@@ -429,6 +504,81 @@ class PackageDirective(DesignUnitDirective):
 		declarationContent.extend(self._Documentation(documentation))
 		content += index
 		content += description
+
+		return declarationContent
+
+	def _Type(self, content: addnodes.desc_content, qualifiedName: str, item: BaseType, package: Package) -> None:
+		"""
+		Write a type or subtype declaration: its definition as pyVHDLModel's writer writes it, a record type's elements
+		and a physical type's units.
+
+		The signature shows the definition's first line, e.g. ``is array (natural range <>) of T_BCD`` or ``is record``.
+
+		:param content:       The package's description content.
+		:param qualifiedName: The package's qualified name.
+		:param item:          The type or subtype.
+		:param package:       The package.
+		"""
+		keyword =     "subtype" if isinstance(item, Subtype) else "type"
+		prefix =      f"{keyword} {item.Identifier}"
+		declaration = self._Format(item).strip().partition("\n")[0].removesuffix(";")
+
+		suffix: list[Node] = []
+		if declaration.startswith(prefix) and (definition := declaration[len(prefix):]) != "":
+			suffix.append(addnodes.desc_annotation(definition, definition))
+
+		typeContent = self._Declaration(
+			content, keyword, qualifiedName, item.Identifier, suffix, item.Documentation, package
+		)
+		if isinstance(item, RecordType) and len(item.Elements) > 0:
+			entries = [
+				(element.Identifiers, self._Format(element.Subtype), "", element.Documentation) for element in item.Elements
+			]
+			typeContent += nodes.field_list(
+				"", self._InterfaceField("Elements", None, qualifiedName, entries), classes=["vhdl-interface"]
+			)
+		elif isinstance(item, PhysicalType):
+			bodies: list[list[Node]] = []
+			for unit in (item.PrimaryUnit, *item.SecondaryUnits):
+				paragraph = nodes.paragraph("", "", addnodes.literal_strong(unit.Identifier, unit.Identifier))
+				if unit.Value is not None:
+					value = self._Format(unit.Value)
+					paragraph += nodes.Text(" = ")
+					paragraph += addnodes.literal_emphasis(value, value)
+
+				bodies.append(self._Item(paragraph, unit.Documentation))
+
+			typeContent += nodes.field_list("", self._Field("Units", bodies), classes=["vhdl-interface"])
+
+	def _Objects(
+		self,
+		content:       addnodes.desc_content,
+		objectType:    str,
+		keywords:      list[str],
+		qualifiedName: str,
+		item:          Constant | DeferredConstant | Signal | SharedVariable,
+		package:       Package
+	) -> None:
+		"""
+		Write an object declaration - a constant, signal or shared variable -, a description per identifier: its subtype
+		and its default value.
+
+		A deferred constant has no value in the package, a shared variable no default value.
+
+		:param content:       The package's description content.
+		:param objectType:    The objects' object type, as ``signal``.
+		:param keywords:      The VHDL keywords preceding the name, as ``["shared", "variable"]``.
+		:param qualifiedName: The package's qualified name.
+		:param item:          The object declaration.
+		:param package:       The package.
+		"""
+		text = f" : {self._Format(item.Subtype)}"
+		if isinstance(item, WithDefaultExpressionMixin) and item.DefaultExpression is not None:
+			text += f" := {self._Format(item.DefaultExpression)}"
+
+		for identifier in item.Identifiers:
+			suffix = [addnodes.desc_annotation(text, text)]
+			self._Declaration(content, objectType, qualifiedName, identifier, suffix, item.Documentation, package, keywords)
 
 	def _Subprogram(
 		self,
@@ -440,17 +590,30 @@ class PackageDirective(DesignUnitDirective):
 		"""
 		Write a function or procedure with its parameter list - and a function's return type - as a declaration.
 
+		A parameter shows its mode, if the declaration gives one, its subtype and its default value. If a parameter is
+		documented, the description has the field *Parameters*, as an entity's *Ports*.
+
 		:param content:       The package's description content.
 		:param qualifiedName: The package's qualified name.
 		:param subprogram:    The subprogram.
 		:param package:       The package.
 		"""
 		parameters = addnodes.desc_parameterlist()
+		entries: list[tuple[Iterable[str], str, str, Nullable[str]]] = []
 		for item in subprogram.ParameterItems:
-			subtype = "" if (symbol := getattr(item, "Subtype", None)) is None else f" : {self._Format(symbol)}"
+			mode =    str(item.Mode) if isinstance(item, InterfaceItemWithModeMixin) else ""
+			subtype = "" if (symbol := getattr(item, "Subtype", None)) is None else self._Format(symbol)
+			default = "" if (expression := getattr(item, "DefaultExpression", None)) is None else self._Format(expression)
+
+			declaration = " ".join(part for part in (mode, subtype) if part != "")
 			for identifier in identifiersOf(item):
-				text = f"{identifier}{subtype}"
+				text = identifier if declaration == "" else f"{identifier} : {declaration}"
+				if default != "":
+					text += f" := {default}"
+
 				parameters += addnodes.desc_parameter(text, text)
+
+			entries.append((identifiersOf(item), declaration, default, item.Documentation))
 
 		suffix: list[Node] = [parameters]
 		if isinstance(subprogram, Function):
@@ -463,10 +626,14 @@ class PackageDirective(DesignUnitDirective):
 			keywords =   ["procedure"]
 
 		signature = ", ".join(subprogram.Signature.ParameterTypeNames)
-		self._Declaration(
+		subprogramContent = self._Declaration(
 			content, objectType, qualifiedName, f"{subprogram.Identifier}({signature})", suffix, subprogram.Documentation,
 			package, keywords
 		)
+		if any(documentation is not None for *_, documentation in entries):
+			subprogramContent += nodes.field_list(
+				"", self._InterfaceField("Parameters", None, qualifiedName, entries), classes=["vhdl-interface"]
+			)
 
 
 @export
