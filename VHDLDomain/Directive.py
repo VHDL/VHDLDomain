@@ -43,15 +43,18 @@ from docutils                    import nodes
 from docutils.nodes              import Node
 from docutils.parsers.rst        import directives
 from sphinx                      import addnodes
-from sphinx.util.docutils        import SphinxDirective
+from sphinx.util.docutils        import SphinxDirective, is_node_registered
 from sphinx.util.logging         import getLogger
 from sphinx.util.nodes           import make_id
 
 from pyTooling.Decorators        import export
+from pyTooling.Exceptions        import MissingDependencyError
+from pyTooling.Sphinx.Node       import TaskListCheckbox
 
 from pyVHDLModel                 import Design, Library
 from pyVHDLModel.Formatting.VHDL import VHDLWriter
 
+from VHDLDomain.Documentation    import DocumentationSyntax, MarkdownConverter
 from VHDLDomain.Pages            import DesignPages
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -71,6 +74,8 @@ class VHDLDirective(SphinxDirective):
 	_WARNING_TYPE: ClassVar[str] = "vhdl"  #: Type of the warnings the directives emit, the domain's name.
 
 	directiveName: ClassVar[str]  #: Name the directive is invoked by, used in every warning.
+
+	_markdownConverters: ClassVar[dict[DocumentationSyntax, MarkdownConverter]] = {}  #: The converters, by syntax.
 
 	def _Domain(self) -> VHDLDomain:
 		"""
@@ -136,17 +141,49 @@ class VHDLDirective(SphinxDirective):
 
 	def _Documentation(self, documentation: Nullable[str]) -> list[Node]:
 		"""
-		Parse an object's documentation comment as reStructuredText.
+		Parse an object's documentation comment, in the syntax of option ``:doc-syntax:``, default ``vhdl_doc_syntax``.
 
-		The comment's text is the comment without its comment markers, see :meth:`_DocumentationText`.
+		The comment's text is the comment without its comment markers, see :meth:`_DocumentationText`. A comment in
+		reStructuredText is parsed as a Python doc-string is, a comment in Markdown converted, see :meth:`_Markdown`.
 
 		:param documentation: The documentation comment, as the frontend extracted it, or ``None``.
 		:returns:             The parsed nodes, none for no or an empty comment.
 		"""
 		if (text := self._DocumentationText(documentation)) == "":
 			return []
+		elif (syntax := self.options.get("doc-syntax", self.config.vhdl_doc_syntax)) is DocumentationSyntax.ReST:
+			return self.parse_text_to_nodes(text)
 
-		return self.parse_text_to_nodes(text)
+		return self._Markdown(text, syntax)
+
+	def _Markdown(self, text: str, syntax: DocumentationSyntax) -> list[Node]:
+		"""
+		Convert the text of a documentation comment in Markdown, by a :class:`~VHDLDomain.Documentation.MarkdownConverter`.
+
+		Without the extra ``markdown``, or without the extension ``pyTooling.Sphinx`` - whose nodes write a task list's
+		checkboxes and a line break -, the text is written as paragraphs, and warned about once per build.
+
+		:param text:   The comment's text, without the comment markers.
+		:param syntax: The Markdown syntax.
+		:returns:      The nodes.
+		"""
+		if not is_node_registered(TaskListCheckbox):
+			problem = "Extension 'pyTooling.Sphinx' isn't loaded."
+		elif (converter := self._markdownConverters.get(syntax, None)) is not None:
+			return converter.Convert(text, self.state.document, self.get_location())
+		else:
+			try:
+				self._markdownConverters[syntax] = MarkdownConverter(syntax)
+			except MissingDependencyError as ex:
+				problem = f"{ex} {' '.join(ex.__notes__)}"
+			else:
+				return self._markdownConverters[syntax].Convert(text, self.state.document, self.get_location())
+
+		_logger.warning(
+			f"{self.directiveName}: Documentation comments in '{syntax}' written as text: {problem}",
+			location=self.get_location(), type=self._WARNING_TYPE, subtype="markdown", once=True
+		)
+		return [nodes.paragraph(block, block) for block in text.split("\n\n") if block.strip() != ""]
 
 	@staticmethod
 	def _DocumentationText(documentation: Nullable[str]) -> str:

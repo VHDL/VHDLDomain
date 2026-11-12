@@ -53,7 +53,7 @@ design, a library or a design unit from the model, and a role refers to what a d
   ``:vhdl:func:``, ``:vhdl:proc:``, ``:vhdl:generic:``, ``:vhdl:port:``
 * Indices: ``vhdl-entities``, ``vhdl-packages``, ``vhdl-subprograms``, ``vhdl-types``
 * Configuration values ``vhdl_designs``, ``vhdl_architectures``, ``vhdl_architecture_descriptions``,
-  ``vhdl_reference_popups``, ``vhdl_style``, ``vhdl_add_library_names``, ``vhdl_undoc_members``
+  ``vhdl_reference_popups``, ``vhdl_style``, ``vhdl_add_library_names``, ``vhdl_undoc_members``, ``vhdl_doc_syntax``
 * Node :class:`~VHDLDomain.Symbol.Directive.SymbolNode` with visitors for HTML and LaTeX, and LaTeX package ``tikz``
 * Nodes :class:`~VHDLDomain.Popup.PopupReferenceNode` and :class:`~VHDLDomain.Popup.PopupNode` with visitors for HTML,
   and the stylesheet :file:`VHDLDomain.css` (see :mod:`VHDLDomain.Popup`)
@@ -108,6 +108,7 @@ from pyVHDLModel                 import Design
 from VHDLDomain.DesignUnit       import ArchitectureDescriptions, ArchitectureListing, ConfigurationDirective, \
                                         ContextDirective, EntityDirective, InterfaceStyle, PackageDirective
 from VHDLDomain.Directive        import DesignDirective, LibraryDirective
+from VHDLDomain.Documentation    import DocumentationSyntax
 from VHDLDomain.Frontend         import DesignConfiguration, VHDLDomainException
 from VHDLDomain.Index            import EntityIndex, PackageIndex, SubprogramIndex, TypeIndex
 from VHDLDomain.Pages            import DesignPages
@@ -291,6 +292,9 @@ class VHDLDomain(Domain):
 	#: ``undoc_members``
 	#:    Whether ``vhdl:package`` describes declarations without documentation comment; options ``:undoc-members:``
 	#:    and ``:no-undoc-members:`` override it.
+	#: ``doc_syntax``
+	#:    The syntax of the documentation comments, a value of :class:`~VHDLDomain.Documentation.DocumentationSyntax`,
+	#:    ``None`` for its default; option ``:doc-syntax:`` overrides it.
 	configValues: ClassVar[dict[str, tuple[Any, str, Any]]] = {
 		"designs":                   ({},       "env",  dict),
 		"architectures":             (None,     "env",  (str, ArchitectureListing)),
@@ -299,6 +303,7 @@ class VHDLDomain(Domain):
 		"style":                     (None,     "env",  (str, InterfaceStyle)),
 		"add_library_names":         (False,    "env",  bool),
 		"undoc_members":             (True,     "env",  bool),
+		"doc_syntax":                (None,     "env",  (str, DocumentationSyntax)),
 	}
 
 	_designs:    dict[str, Design]                                     #: The designs read by this build, by name.
@@ -665,11 +670,12 @@ class VHDLDomain(Domain):
 @export
 def readConfiguration(sphinx: Sphinx, config: Config) -> None:
 	"""
-	Call-back for Sphinx' ``config-inited`` event, replacing ``vhdl_architectures``, ``vhdl_architecture_descriptions``
-	and ``vhdl_style`` by the member of their enumeration they name - ``None`` names the default.
+	Call-back for Sphinx' ``config-inited`` event, replacing ``vhdl_architectures``, ``vhdl_architecture_descriptions``,
+	``vhdl_style`` and ``vhdl_doc_syntax`` by the member of their enumeration they name - ``None`` names the default.
 
 	The enumerations are :class:`~VHDLDomain.DesignUnit.ArchitectureListing`,
-	:class:`~VHDLDomain.DesignUnit.ArchitectureDescriptions` and :class:`~VHDLDomain.DesignUnit.InterfaceStyle`.
+	:class:`~VHDLDomain.DesignUnit.ArchitectureDescriptions`, :class:`~VHDLDomain.DesignUnit.InterfaceStyle` and
+	:class:`~VHDLDomain.Documentation.DocumentationSyntax`.
 
 	:param sphinx:       The Sphinx application.
 	:param config:       The configuration, after :file:`conf.py` was read.
@@ -684,11 +690,16 @@ def readConfiguration(sphinx: Sphinx, config: Config) -> None:
 	:raises ConfigError: If ``vhdl_style`` is neither ``None`` nor a string.
 	:raises ConfigError: If ``vhdl_style`` names no member of :class:`~VHDLDomain.DesignUnit.InterfaceStyle`. |br|
 	                     The note lists the allowed values.
+	:raises ConfigError: If ``vhdl_doc_syntax`` is neither ``None`` nor a string.
+	:raises ConfigError: If ``vhdl_doc_syntax`` names no member of
+	                     :class:`~VHDLDomain.Documentation.DocumentationSyntax`. |br|
+	                     The note lists the allowed values.
 	"""
 	for name, enumeration, meaning in (
 		("vhdl_architectures",             ArchitectureListing,      "listing of architectures"),
 		("vhdl_architecture_descriptions", ArchitectureDescriptions, "choice of architecture descriptions"),
 		("vhdl_style",                     InterfaceStyle,           "style of interface lists"),
+		("vhdl_doc_syntax",                DocumentationSyntax,      "syntax of documentation comments"),
 	):
 		if (value := config[name]) is not None and not isinstance(value, str):
 			ex = ConfigError(f"conf.py: {name}: Value is not of type 'str'.")
