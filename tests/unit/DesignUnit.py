@@ -581,7 +581,7 @@ class Package(DesignUnitProject):
 			'<em class="sig-param"><span class="pre">T_VALUE</span></em><span class="sig-paren">]</span>'
 			'<span class="sig-paren">(</span><em class="sig-param"><span class="pre">A</span> <span class="pre">:</span> '
 			'<span class="pre">inout</span> <span class="pre">T_VALUE</span></em>',
-			'<p>Swap two values.</p>\n<dl class="vhdl-interface field-list simple">\n'
+			'<p>Swap two values.</p>\n<dl class="vhdl-interface vhdl-list field-list simple">\n'
 			'<dt class="field-odd">Generics<span class="colon">:</span></dt>\n'
 			'<dd class="field-odd"><p><strong>T_VALUE</strong> : <em>type</em> – The values’ type.</p>\n</dd>\n</dl>',
 			'<em class="sig-param"><span class="pre">T_VALUE</span></em>, <em class="sig-param">'
@@ -718,3 +718,55 @@ class Configuration(DesignUnitProject):
 		self.assertEqual([], self._warningLines())
 		self.assertIn(("configuration", "demo.lib_a.cfg"), domain.Objects)
 		self.assertIn('href="#vhdl-entity-demo.lib_a.counter"', self._html("page"))
+
+
+class Style(DesignUnitProject):
+	def test_Default(self) -> None:
+		"""By default, the domain chooses the style: the interface lists are fields with the class ``vhdl-list``."""
+		self._page(".. vhdl:entity:: Counter\n\n.. vhdl:package:: Utilities\n")
+
+		self.assertEqual([], self._warningLines())
+		html = self._html("page")
+		self.assertIn('<dl class="vhdl-interface vhdl-list field-list simple">', html)
+		self.assertNotIn('<dl class="vhdl-interface field-list simple">', html)
+
+	def test_Table(self) -> None:
+		"""Style ``table`` isn't supported yet: it is warned about, once per unit, and written as ``list``."""
+		self._page(".. vhdl:entity:: Counter\n   :style: table\n\n.. vhdl:package:: Utilities\n   :style: list\n")
+
+		self.assertEqual(
+			["/src/page.rst:10: WARNING: vhdl:entity: Style 'table' isn't supported yet, written as 'list'. [vhdl.style]"],
+			self._warningLines()
+		)
+		self.assertIn('<dl class="vhdl-interface vhdl-list field-list simple">', self._html("page"))
+
+	def test_Configuration(self) -> None:
+		"""``vhdl_style`` is the default of the option; a unit without interface lists isn't warned about."""
+		self._page(
+			".. vhdl:entity:: Counter\n\n.. vhdl:entity:: Adder\n   :style: auto\n\n.. vhdl:context:: ctx\n",
+			vhdl_style="table"
+		)
+
+		self.assertEqual(
+			["/src/page.rst:10: WARNING: vhdl:entity: Style 'table' isn't supported yet, written as 'list'. [vhdl.style]"],
+			self._warningLines()
+		)
+
+	def test_Invalid(self) -> None:
+		self._page(".. vhdl:entity:: Counter\n   :style: grid\n")
+
+		self.assertEqual(
+			[
+				"/src/page.rst:10: ERROR: Error in \"vhdl:entity\" directive:",
+				"invalid option value: (option: \"style\"; value: 'grid')",
+				"'grid' is not a valid InterfaceStyle..",
+			],
+			self._warningLines()[:3]
+		)
+
+	def test_InvalidConfiguration(self) -> None:
+		with self.assertRaises(ConfigError) as context:
+			self._page(".. vhdl:entity:: Counter\n", vhdl_style="grid")
+
+		self.assertEqual("conf.py: vhdl_style: 'grid' is not a style of interface lists.", str(context.exception))
+		self.assertEqual(["Allowed values: auto, list, table."], context.exception.__notes__)
