@@ -360,6 +360,28 @@ class DesignUnitDirective(VHDLDirective):
 
 		return fields if len(fields) > 0 else None
 
+	def _EntityReference(self, designName: str, libraryName: str, entityName: str) -> addnodes.pending_xref:
+		"""
+		Create a reference to an entity's description.
+
+		A configuration and a component refer to their entity. An entity without a description is written as its name,
+		without a warning.
+
+		:param designName:  The entity's design.
+		:param libraryName: The entity's library.
+		:param entityName:  The entity's name.
+		:returns:           The reference.
+		"""
+		reference = addnodes.pending_xref(
+			"", refdomain="vhdl", reftype="ent", reftarget=f"{libraryName}.{entityName}", refexplicit=True, refwarn=False,
+			refdoc=self.env.docname
+		)
+		reference["vhdl:design"] =  designName
+		reference["vhdl:library"] = libraryName
+		reference += nodes.literal(entityName, entityName)
+
+		return reference
+
 	@abstractmethod
 	def _Interface(self, unit: DesignUnit, library: Library, qualifiedName: str, content: addnodes.desc_content) -> None:
 		"""
@@ -457,18 +479,16 @@ class PackageDirective(DesignUnitDirective):
 		for item in package.DeclaredItems:
 			if isinstance(item, BaseType):
 				self._Type(content, qualifiedName, item, package)
-			elif isinstance(item, (Constant, DeferredConstant)):
+			elif isinstance(item, Constant):
 				self._Objects(content, "constant", ["constant"], qualifiedName, item, package)
+			elif isinstance(item, DeferredConstant):
+				self._Objects(content, "constant", ["deferred", "constant"], qualifiedName, item, package)
 			elif isinstance(item, Signal):
 				self._Objects(content, "signal", ["signal"], qualifiedName, item, package)
 			elif isinstance(item, SharedVariable):
 				self._Objects(content, "variable", ["shared", "variable"], qualifiedName, item, package)
 			elif isinstance(item, Component):
-				componentContent = self._Declaration(
-					content, "component", qualifiedName, item.Identifier, [], item.Documentation, package
-				)
-				if (fields := self._InterfaceFields(item, f"{qualifiedName}.{item.Identifier}", objects=False)) is not None:
-					componentContent += fields
+				self._Component(content, qualifiedName, item, package)
 			elif isinstance(item, (Function, Procedure)):
 				self._Subprogram(content, qualifiedName, item, package)
 
@@ -550,6 +570,32 @@ class PackageDirective(DesignUnitDirective):
 
 			typeContent += nodes.field_list("", self._Field("Units", bodies), classes=["vhdl-interface"])
 
+	def _Component(self, content: addnodes.desc_content, qualifiedName: str, item: Component, package: Package) -> None:
+		"""
+		Write a component declaration: the entity it is bound to, its generics and its ports.
+
+		The field *Entity* refers to the entity of the same name in the package's library, if pyVHDLModel linked the
+		component to it.
+
+		:param content:       The package's description content.
+		:param qualifiedName: The package's qualified name.
+		:param item:          The component.
+		:param package:       The package.
+		"""
+		componentContent = self._Declaration(
+			content, "component", qualifiedName, item.Identifier, [], item.Documentation, package
+		)
+		fields = self._InterfaceFields(item, f"{qualifiedName}.{item.Identifier}", objects=False)
+		if (entity := item.Entity) is not None:
+			reference = self._EntityReference(qualifiedName.partition(".")[0], entity.Library.Identifier, entity.Identifier)
+			if fields is None:
+				fields = nodes.field_list(classes=["vhdl-interface"])
+
+			fields.insert(0, self._Field("Entity", [[nodes.paragraph("", "", reference)]]))
+
+		if fields is not None:
+			componentContent += fields
+
 	def _Objects(
 		self,
 		content:       addnodes.desc_content,
@@ -563,7 +609,8 @@ class PackageDirective(DesignUnitDirective):
 		Write an object declaration - a constant, signal or shared variable -, a description per identifier: its subtype
 		and its default value.
 
-		A deferred constant has no value in the package, a shared variable no default value.
+		A deferred constant has no value in the package, its signature is marked ``deferred constant``; a shared variable
+		has no default value.
 
 		:param content:       The package's description content.
 		:param objectType:    The objects' object type, as ``signal``.
@@ -704,12 +751,7 @@ class ConfigurationDirective(DesignUnitDirective):
 		:param content:       The configuration's description content.
 		"""
 		configuration: Configuration = unit  # type: ignore[assignment]
-		entityName = self._Format(configuration.Entity)
-		reference = addnodes.pending_xref(
-			"", refdomain="vhdl", reftype="ent", reftarget=f"{library.Identifier}.{entityName}", refexplicit=True,
-			refwarn=False, refdoc=self.env.docname
+		reference = self._EntityReference(
+			qualifiedName.partition(".")[0], library.Identifier, self._Format(configuration.Entity)
 		)
-		reference["vhdl:design"] =  qualifiedName.partition(".")[0]
-		reference["vhdl:library"] = library.Identifier
-		reference += nodes.literal(entityName, entityName)
 		content += nodes.paragraph("", "Configures entity ", reference, nodes.Text("."))
