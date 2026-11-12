@@ -610,11 +610,27 @@ class Package(DesignUnitProject):
 		for text in (
 			'<span class="sig-name descname"><span class="pre">T_COUNTER</span></span><span class="property"> '
 			'<span class="pre">is</span> <span class="pre">protected</span></span>',
-			'<dd><p>A counter.</p>\n<dl class="vhdl procedure">\n<dt class="sig sig-object vhdl" '
+			'<dd><p>A counter.</p>\n<dl class="vhdl procedure vhdl-method">\n<dt class="sig sig-object vhdl" '
 			'id="vhdl-procedure-demo.lib_a.utilities.t_counter.increment-positive">',
 			"<p>Add to the counter.</p>", "<p>The counter’s value.</p>",
 			'href="#vhdl-procedure-demo.lib_a.utilities.t_counter.increment-positive"',
 			'href="#vhdl-function-demo.lib_a.utilities.t_counter.value"',
+		):
+			with self.subTest(text=text):
+				self.assertIn(text, html)
+
+	def test_Classes(self) -> None:
+		"""A description has the classes ``vhdl``, its object type, and a ``vhdl-<variant>`` per variant."""
+		self._page(".. vhdl:package:: Utilities\n")
+
+		html = self._html("page")
+		for text in (
+			'<dl class="vhdl package">', '<dl class="vhdl type vhdl-enumeration">', '<dl class="vhdl type vhdl-record">',
+			'<dl class="vhdl type vhdl-physical">', '<dl class="vhdl type vhdl-protected">', '<dl class="vhdl subtype">',
+			'<dl class="vhdl constant">', '<dl class="vhdl constant vhdl-deferred">', '<dl class="vhdl function">',
+			'<dl class="vhdl function vhdl-impure">', '<dl class="vhdl procedure vhdl-generic">',
+			'<dl class="vhdl function vhdl-generic">', '<dl class="vhdl procedure vhdl-method">',
+			'<dl class="vhdl function vhdl-method vhdl-impure">', '<dl class="vhdl component">',
 		):
 			with self.subTest(text=text):
 				self.assertIn(text, html)
