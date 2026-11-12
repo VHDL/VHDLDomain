@@ -62,7 +62,8 @@ from pyVHDLModel.Interface       import GenericConstantInterfaceItem, GenericFun
 from pyVHDLModel.Object          import Constant, DeferredConstant, SharedVariable, Signal, WithDefaultExpressionMixin
 from pyVHDLModel.Subprogram      import Function, Procedure, Subprogram
 from pyVHDLModel.Symbol          import SubtypeSymbol
-from pyVHDLModel.Type            import BaseType, PhysicalType, ProtectedType, RecordType, Subtype
+from pyVHDLModel.Type            import AccessType, ArrayType, BaseType, EnumeratedType, FileType, IntegerType, \
+                                        PhysicalType, ProtectedType, RealType, RecordType, Subtype
 
 from VHDLDomain.Directive        import VHDLDirective
 
@@ -176,11 +177,15 @@ class DesignUnitDirective(VHDLDirective):
 		keywords:      list[str],
 		name:          str,
 		indexText:     str,
-		suffix:        Iterable[Node] = ()
+		suffix:        Iterable[Node] = (),
+		variants:      Iterable[str] = ()
 	) -> tuple[addnodes.desc, addnodes.desc_content, addnodes.index]:
 		"""
 		Create the description of an object: its signature line - keywords, name and suffix -, its content, its target
 		and index entry, and register it in the domain.
+
+		The description has the classes ``vhdl`` and the object type, e.g. ``vhdl function``, and a class ``vhdl-<variant>``
+		per variant of the object type, e.g. ``vhdl-impure``, so a theme can style each kind of object.
 
 		With ``:no-index:``, the signature has no target, and neither the index nor the domain records the object.
 
@@ -190,10 +195,12 @@ class DesignUnitDirective(VHDLDirective):
 		:param name:          The object's name.
 		:param indexText:     The text of the object's entry in the general index.
 		:param suffix:        Optional, the nodes following the name, e.g. a subprogram's parameters. Default: none.
+		:param variants:      Optional, the variants of the object type, as ``["impure", "generic"]``. Default: none.
 		:returns:             The description, its content node the caller fills, and the index node.
 		"""
 		description = addnodes.desc(
-			"", domain="vhdl", objtype=objectType, desctype=objectType, classes=["vhdl", objectType]
+			"", domain="vhdl", objtype=objectType, desctype=objectType,
+			classes=["vhdl", objectType, *(f"vhdl-{variant}" for variant in variants)]
 		)
 		signature = addnodes.desc_signature("", "")
 		for keyword in keywords:
@@ -582,6 +589,18 @@ class PackageDirective(DesignUnitDirective):
 	_COLLECTION:  ClassVar[str] = "Packages"  #: The collection of :class:`~pyVHDLModel.Library` holding packages.
 	_OBJECT_TYPE: ClassVar[str] = "package"   #: The unit's object type in the domain.
 
+	_TYPE_VARIANTS: ClassVar[dict[type[BaseType], str]] = {
+		EnumeratedType: "enumeration",
+		IntegerType:    "integer",
+		RealType:       "real",
+		PhysicalType:   "physical",
+		ArrayType:      "array",
+		RecordType:     "record",
+		AccessType:     "access",
+		FileType:       "file",
+		ProtectedType:  "protected",
+	}  #: The variant of a type's description, by kind of type.
+
 	def _Interface(self, unit: DesignUnit, library: Library, qualifiedName: str, content: addnodes.desc_content) -> None:
 		"""
 		Write a package's generics and declarations.
@@ -619,7 +638,8 @@ class PackageDirective(DesignUnitDirective):
 		name:          str,
 		suffix:        Iterable[Node],
 		documentation: Nullable[str],
-		keywords:      Nullable[list[str]] = None
+		keywords:      Nullable[list[str]] = None,
+		variants:      Iterable[str] = ()
 	) -> addnodes.desc_content:
 		"""
 		Write a declaration of a package - or a method of a protected type - as a description of its own.
@@ -631,13 +651,14 @@ class PackageDirective(DesignUnitDirective):
 		:param suffix:        The nodes following the name.
 		:param documentation: The declaration's documentation comment.
 		:param keywords:      Optional, the VHDL keywords preceding the name. Default: the object type.
+		:param variants:      Optional, the variants of the object type, as ``["deferred"]``. Default: none.
 		:returns:             The declaration's description content, holding its documentation.
 		"""
 		displayName = name.partition("(")[0]
 		owner =       qualifiedName.split(".", 2)[2]
 		description, declarationContent, index = self._Description(
 			objectType, f"{qualifiedName}.{name}", [objectType] if keywords is None else keywords, displayName,
-			f"{displayName} (VHDL {objectType} in {owner})", suffix
+			f"{displayName} (VHDL {objectType} in {owner})", suffix, variants
 		)
 		declarationContent.extend(self._Documentation(documentation))
 		content += index
@@ -666,8 +687,9 @@ class PackageDirective(DesignUnitDirective):
 		if declaration.startswith(prefix) and (definition := declaration[len(prefix):]) != "":
 			suffix.append(addnodes.desc_annotation("", "", *self._TypeReferences(definition, item, qualifiedName)))
 
+		variants = [variant for kind, variant in self._TYPE_VARIANTS.items() if isinstance(item, kind)]
 		typeContent = self._Declaration(
-			content, keyword, qualifiedName, item.Identifier, suffix, item.Documentation
+			content, keyword, qualifiedName, item.Identifier, suffix, item.Documentation, variants=variants
 		)
 		if isinstance(item, RecordType) and len(item.Elements) > 0:
 			entries = [(element.Identifiers, self._Format(element.Subtype), "", element) for element in item.Elements]
@@ -688,7 +710,7 @@ class PackageDirective(DesignUnitDirective):
 			typeContent += nodes.field_list("", self._Field("Units", bodies), classes=["vhdl-interface"])
 		elif isinstance(item, ProtectedType):
 			for method in item.Methods:
-				self._Subprogram(typeContent, f"{qualifiedName}.{item.Identifier}", method)
+				self._Subprogram(typeContent, f"{qualifiedName}.{item.Identifier}", method, method=True)
 
 	def _Component(self, content: addnodes.desc_content, qualifiedName: str, item: Component) -> None:
 		"""
@@ -742,13 +764,18 @@ class PackageDirective(DesignUnitDirective):
 
 		for identifier in item.Identifiers:
 			suffix = [addnodes.desc_annotation("", "", *self._TypeReferences(text, item, qualifiedName))]
-			self._Declaration(content, objectType, qualifiedName, identifier, suffix, item.Documentation, keywords)
+			self._Declaration(
+				content, objectType, qualifiedName, identifier, suffix, item.Documentation, keywords,
+				["deferred"] if isinstance(item, DeferredConstant) else []
+			)
 
 	def _Subprogram(
 		self,
 		content:       addnodes.desc_content,
 		qualifiedName: str,
-		subprogram:    Function | Procedure
+		subprogram:    Function | Procedure,
+		*,
+		method:        bool = False
 	) -> None:
 		"""
 		Write a function or procedure with its parameter list - and a function's return type - as a declaration.
@@ -756,11 +783,13 @@ class PackageDirective(DesignUnitDirective):
 		A generic subprogram's signature shows the names of its generics before the parameter list, as Sphinx writes a
 		Python function's type parameters; its description has the field *Generics*, as an entity's. A parameter shows
 		its mode, if the declaration gives one, its subtype and its default value. If a parameter is documented, the
-		description has the field *Parameters*, as an entity's *Ports*.
+		description has the field *Parameters*, as an entity's *Ports*. The description's variants are ``impure``,
+		``generic`` and ``method``.
 
 		:param content:       The description content of the package or protected type.
 		:param qualifiedName: The qualified name of the package or protected type.
 		:param subprogram:    The subprogram.
+		:param method:        Optional, whether the subprogram is a method of a protected type. Default: ``False``.
 		"""
 		parameters = addnodes.desc_parameterlist()
 		entries: list[tuple[Iterable[str], str, str, DocumentedEntityMixin]] = []
@@ -780,7 +809,9 @@ class PackageDirective(DesignUnitDirective):
 			entries.append((identifiersOf(item), declaration, default, item))
 
 		suffix: list[Node] = [parameters]
+		variants: list[str] = ["method"] if method else []
 		if len(subprogram.GenericItems) > 0:
+			variants.append("generic")
 			typeParameters = addnodes.desc_type_parameter_list()
 			for generic in subprogram.GenericItems:
 				for designator in self._Designators(generic):
@@ -792,6 +823,9 @@ class PackageDirective(DesignUnitDirective):
 			objectType = "function"
 			keywords =   ["function"] if subprogram.IsPure else ["impure", "function"]
 			returnType = self._Format(subprogram.ReturnType)
+			if not subprogram.IsPure:
+				variants.append("impure")
+
 			suffix.append(addnodes.desc_returns("", "", *self._TypeReferences(returnType, subprogram, qualifiedName)))
 		else:
 			objectType = "procedure"
@@ -800,7 +834,7 @@ class PackageDirective(DesignUnitDirective):
 		signature = ", ".join(subprogram.Signature.ParameterTypeNames)
 		subprogramContent = self._Declaration(
 			content, objectType, qualifiedName, f"{subprogram.Identifier}({signature})", suffix, subprogram.Documentation,
-			keywords
+			keywords, variants
 		)
 		fields = nodes.field_list(classes=["vhdl-interface"])
 		if (generics := self._Generics(subprogram, qualifiedName, objects=False)) is not None:
