@@ -64,8 +64,8 @@ CONF = dedent("""\
 	from pyVHDLModel.Subprogram    import Function, Procedure
 	from pyVHDLModel.Symbol        import ConstrainedArraySubtypeSymbol, EntitySymbol, LibraryReferenceSymbol
 	from pyVHDLModel.Symbol        import PossibleReference, SimpleSubtypeSymbol, Symbol
-	from pyVHDLModel.Type          import EnumeratedType, EnumerationLiteral, PhysicalType, PhysicalUnit, RecordType
-	from pyVHDLModel.Type          import RecordTypeElement, Subtype
+	from pyVHDLModel.Type          import EnumeratedType, EnumerationLiteral, PhysicalType, PhysicalUnit, ProtectedType
+	from pyVHDLModel.Type          import RecordType, RecordTypeElement, Subtype
 
 	extensions = ["VHDLDomain"]
 
@@ -159,6 +159,18 @@ CONF = dedent("""\
 						GenericTypeInterfaceItem("T_VALUE"), GenericFunctionInterfaceItem("<", subtype("boolean"))
 					],
 					parameterItems=[ParameterConstantInterfaceItem(("L", "R"), Mode.Default, subtype("T_VALUE"))]
+				),
+				ProtectedType(
+					"T_COUNTER",
+					[
+						Procedure(
+							"Increment",
+							parameterItems=[ParameterConstantInterfaceItem(("Count", ), Mode.Default, subtype("positive"))],
+							documentation="-- Add to the counter."
+						),
+						Function("Value", subtype("natural"), isPure=False, documentation="-- The counter's value."),
+					],
+					documentation="-- A counter."
 				),
 			],
 			documentation="-- Utilities."
@@ -377,6 +389,9 @@ class Package(DesignUnitProject):
 				("function",  "demo.lib_a.utilities.clip(natural)"),
 				("procedure", "demo.lib_a.utilities.swap(t_value,t_value)"),
 				("function",  "demo.lib_a.utilities.maximum(t_value,t_value)"),
+				("type",      "demo.lib_a.utilities.t_counter"),
+				("procedure", "demo.lib_a.utilities.t_counter.increment(positive)"),
+				("function",  "demo.lib_a.utilities.t_counter.value()"),
 			},
 			set(domain.Objects)
 		)
@@ -497,6 +512,24 @@ class Package(DesignUnitProject):
 			'<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">Adder</span></code></p>',
 			self._html("page")
 		)
+
+	def test_ProtectedType(self) -> None:
+		"""A protected type's methods are descriptions in the type's description, as a Python class' methods."""
+		self._page(".. vhdl:package:: Utilities\n\n:vhdl:proc:`T_COUNTER.Increment` :vhdl:func:`Value`\n")
+
+		self.assertEqual([], self._warningLines())
+		html = self._html("page")
+		for text in (
+			'<span class="sig-name descname"><span class="pre">T_COUNTER</span></span><span class="property"> '
+			'<span class="pre">is</span> <span class="pre">protected</span></span>',
+			'<dd><p>A counter.</p>\n<dl class="vhdl procedure">\n<dt class="sig sig-object vhdl" '
+			'id="vhdl-procedure-demo.lib_a.utilities.t_counter.increment-positive">',
+			"<p>Add to the counter.</p>", "<p>The counter’s value.</p>",
+			'href="#vhdl-procedure-demo.lib_a.utilities.t_counter.increment-positive"',
+			'href="#vhdl-function-demo.lib_a.utilities.t_counter.value"',
+		):
+			with self.subTest(text=text):
+				self.assertIn(text, html)
 
 	def test_References(self) -> None:
 		body = dedent("""\

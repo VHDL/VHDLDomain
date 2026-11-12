@@ -59,7 +59,7 @@ from pyVHDLModel.Interface       import GenericConstantInterfaceItem, GenericFun
                                         GenericTypeInterfaceItem, InterfaceItemWithModeMixin, PortSignalInterfaceItem
 from pyVHDLModel.Object          import Constant, DeferredConstant, SharedVariable, Signal, WithDefaultExpressionMixin
 from pyVHDLModel.Subprogram      import Function, Procedure, Subprogram
-from pyVHDLModel.Type            import BaseType, PhysicalType, RecordType, Subtype
+from pyVHDLModel.Type            import BaseType, PhysicalType, ProtectedType, RecordType, Subtype
 
 from VHDLDomain.Directive        import VHDLDirective
 
@@ -468,8 +468,9 @@ class PackageDirective(DesignUnitDirective):
 	Each declaration is an object of the domain: ``:vhdl:type:`Utilities_pkg.freq```,
 	``:vhdl:const:`Utilities_pkg.IS_SIMULATION```, ``:vhdl:comp:`Utilities_pkg.Debouncer``` and
 	``:vhdl:func:`Utilities_pkg.to_index(natural, positive)```. A subprogram's qualified name ends in its signature, the
-	type marks of its parameters. A component's generics and ports are no objects: a reference to a port names the
-	entity's port.
+	type marks of its parameters. A protected type's methods are objects too, named after the type:
+	``:vhdl:proc:`T_ERROR_COUNTER.Increment```. A component's generics and ports are no objects: a reference to a port
+	names the entity's port.
 	"""
 
 	directiveName: ClassVar[str] = "vhdl:package"  #: Name the directive is invoked by.
@@ -493,19 +494,19 @@ class PackageDirective(DesignUnitDirective):
 
 		for item in package.DeclaredItems:
 			if isinstance(item, BaseType):
-				self._Type(content, qualifiedName, item, package)
+				self._Type(content, qualifiedName, item)
 			elif isinstance(item, Constant):
-				self._Objects(content, "constant", ["constant"], qualifiedName, item, package)
+				self._Objects(content, "constant", ["constant"], qualifiedName, item)
 			elif isinstance(item, DeferredConstant):
-				self._Objects(content, "constant", ["deferred", "constant"], qualifiedName, item, package)
+				self._Objects(content, "constant", ["deferred", "constant"], qualifiedName, item)
 			elif isinstance(item, Signal):
-				self._Objects(content, "signal", ["signal"], qualifiedName, item, package)
+				self._Objects(content, "signal", ["signal"], qualifiedName, item)
 			elif isinstance(item, SharedVariable):
-				self._Objects(content, "variable", ["shared", "variable"], qualifiedName, item, package)
+				self._Objects(content, "variable", ["shared", "variable"], qualifiedName, item)
 			elif isinstance(item, Component):
-				self._Component(content, qualifiedName, item, package)
+				self._Component(content, qualifiedName, item)
 			elif isinstance(item, (Function, Procedure)):
-				self._Subprogram(content, qualifiedName, item, package)
+				self._Subprogram(content, qualifiedName, item)
 
 	def _Declaration(
 		self,
@@ -515,26 +516,25 @@ class PackageDirective(DesignUnitDirective):
 		name:          str,
 		suffix:        Iterable[Node],
 		documentation: Nullable[str],
-		package:       Package,
 		keywords:      Nullable[list[str]] = None
 	) -> addnodes.desc_content:
 		"""
-		Write a declaration of a package as a description of its own.
+		Write a declaration of a package - or a method of a protected type - as a description of its own.
 
-		:param content:       The package's description content.
+		:param content:       The description content of the package or protected type.
 		:param objectType:    The declaration's object type, as ``constant``.
-		:param qualifiedName: The package's qualified name.
+		:param qualifiedName: The qualified name of the package or protected type.
 		:param name:          The declared name, with a subprogram's signature.
 		:param suffix:        The nodes following the name.
 		:param documentation: The declaration's documentation comment.
-		:param package:       The package.
 		:param keywords:      Optional, the VHDL keywords preceding the name. Default: the object type.
 		:returns:             The declaration's description content, holding its documentation.
 		"""
 		displayName = name.partition("(")[0]
+		owner =       qualifiedName.split(".", 2)[2]
 		description, declarationContent, index = self._Description(
 			objectType, f"{qualifiedName}.{name}", [objectType] if keywords is None else keywords, displayName,
-			f"{displayName} (VHDL {objectType} in {package.Identifier})", suffix
+			f"{displayName} (VHDL {objectType} in {owner})", suffix
 		)
 		declarationContent.extend(self._Documentation(documentation))
 		content += index
@@ -542,17 +542,18 @@ class PackageDirective(DesignUnitDirective):
 
 		return declarationContent
 
-	def _Type(self, content: addnodes.desc_content, qualifiedName: str, item: BaseType, package: Package) -> None:
+	def _Type(self, content: addnodes.desc_content, qualifiedName: str, item: BaseType) -> None:
 		"""
-		Write a type or subtype declaration: its definition as pyVHDLModel's writer writes it, a record type's elements
-		and a physical type's units.
+		Write a type or subtype declaration: its definition as pyVHDLModel's writer writes it, a record type's elements,
+		a physical type's units and a protected type's methods.
 
 		The signature shows the definition's first line, e.g. ``is array (natural range <>) of T_BCD`` or ``is record``.
+		A protected type's methods are descriptions of their own in the type's description, as a Python class' methods;
+		the protected type body isn't public interface.
 
 		:param content:       The package's description content.
 		:param qualifiedName: The package's qualified name.
 		:param item:          The type or subtype.
-		:param package:       The package.
 		"""
 		keyword =     "subtype" if isinstance(item, Subtype) else "type"
 		prefix =      f"{keyword} {item.Identifier}"
@@ -563,7 +564,7 @@ class PackageDirective(DesignUnitDirective):
 			suffix.append(addnodes.desc_annotation(definition, definition))
 
 		typeContent = self._Declaration(
-			content, keyword, qualifiedName, item.Identifier, suffix, item.Documentation, package
+			content, keyword, qualifiedName, item.Identifier, suffix, item.Documentation
 		)
 		if isinstance(item, RecordType) and len(item.Elements) > 0:
 			entries = [
@@ -584,8 +585,11 @@ class PackageDirective(DesignUnitDirective):
 				bodies.append(self._Item(paragraph, unit.Documentation))
 
 			typeContent += nodes.field_list("", self._Field("Units", bodies), classes=["vhdl-interface"])
+		elif isinstance(item, ProtectedType):
+			for method in item.Methods:
+				self._Subprogram(typeContent, f"{qualifiedName}.{item.Identifier}", method)
 
-	def _Component(self, content: addnodes.desc_content, qualifiedName: str, item: Component, package: Package) -> None:
+	def _Component(self, content: addnodes.desc_content, qualifiedName: str, item: Component) -> None:
 		"""
 		Write a component declaration: the entity it is bound to, its generics and its ports.
 
@@ -595,10 +599,9 @@ class PackageDirective(DesignUnitDirective):
 		:param content:       The package's description content.
 		:param qualifiedName: The package's qualified name.
 		:param item:          The component.
-		:param package:       The package.
 		"""
 		componentContent = self._Declaration(
-			content, "component", qualifiedName, item.Identifier, [], item.Documentation, package
+			content, "component", qualifiedName, item.Identifier, [], item.Documentation
 		)
 		fields = self._InterfaceFields(item, f"{qualifiedName}.{item.Identifier}", objects=False)
 		if (entity := item.Entity) is not None:
@@ -617,8 +620,7 @@ class PackageDirective(DesignUnitDirective):
 		objectType:    str,
 		keywords:      list[str],
 		qualifiedName: str,
-		item:          Constant | DeferredConstant | Signal | SharedVariable,
-		package:       Package
+		item:          Constant | DeferredConstant | Signal | SharedVariable
 	) -> None:
 		"""
 		Write an object declaration - a constant, signal or shared variable -, a description per identifier: its subtype
@@ -632,7 +634,6 @@ class PackageDirective(DesignUnitDirective):
 		:param keywords:      The VHDL keywords preceding the name, as ``["shared", "variable"]``.
 		:param qualifiedName: The package's qualified name.
 		:param item:          The object declaration.
-		:param package:       The package.
 		"""
 		text = f" : {self._Format(item.Subtype)}"
 		if isinstance(item, WithDefaultExpressionMixin) and item.DefaultExpression is not None:
@@ -640,14 +641,13 @@ class PackageDirective(DesignUnitDirective):
 
 		for identifier in item.Identifiers:
 			suffix = [addnodes.desc_annotation(text, text)]
-			self._Declaration(content, objectType, qualifiedName, identifier, suffix, item.Documentation, package, keywords)
+			self._Declaration(content, objectType, qualifiedName, identifier, suffix, item.Documentation, keywords)
 
 	def _Subprogram(
 		self,
 		content:       addnodes.desc_content,
 		qualifiedName: str,
-		subprogram:    Function | Procedure,
-		package:       Package
+		subprogram:    Function | Procedure
 	) -> None:
 		"""
 		Write a function or procedure with its parameter list - and a function's return type - as a declaration.
@@ -657,10 +657,9 @@ class PackageDirective(DesignUnitDirective):
 		its mode, if the declaration gives one, its subtype and its default value. If a parameter is documented, the
 		description has the field *Parameters*, as an entity's *Ports*.
 
-		:param content:       The package's description content.
-		:param qualifiedName: The package's qualified name.
+		:param content:       The description content of the package or protected type.
+		:param qualifiedName: The qualified name of the package or protected type.
 		:param subprogram:    The subprogram.
-		:param package:       The package.
 		"""
 		parameters = addnodes.desc_parameterlist()
 		entries: list[tuple[Iterable[str], str, str, Nullable[str]]] = []
@@ -700,7 +699,7 @@ class PackageDirective(DesignUnitDirective):
 		signature = ", ".join(subprogram.Signature.ParameterTypeNames)
 		subprogramContent = self._Declaration(
 			content, objectType, qualifiedName, f"{subprogram.Identifier}({signature})", suffix, subprogram.Documentation,
-			package, keywords
+			keywords
 		)
 		fields = nodes.field_list(classes=["vhdl-interface"])
 		if (generics := self._Generics(subprogram, qualifiedName, objects=False)) is not None:
