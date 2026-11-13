@@ -19,6 +19,20 @@ package Utilities_pkg is
 		THz = 1000 GHz;
 	end units;
 
+	-- A counter of errors, e.g. of the failed checks of a testbench.
+	type T_ERROR_COUNTER is protected
+		-- Add errors to the counter.
+		procedure Increment(
+			Count : positive := 1  -- The number of errors to add.
+		);
+
+		-- Reset the counter to no errors.
+		procedure Reset;
+
+		-- The number of errors since the last reset.
+		impure function Errors return natural;
+	end protected;
+
 	-- ``true`` in a simulation, ``false`` in a synthesis; the package body sets this deferred constant.
 	constant IS_SIMULATION : boolean;
 
@@ -82,6 +96,25 @@ package body Utilities_pkg is
 
 	-- deferred constant initialization
 	constant IS_SIMULATION : boolean := simulation;
+
+	type T_ERROR_COUNTER is protected body
+		variable Counter : natural := 0;
+
+		procedure Increment(Count : positive := 1) is
+		begin
+			Counter := Counter + Count;
+		end procedure;
+
+		procedure Reset is
+		begin
+			Counter := 0;
+		end procedure;
+
+		impure function Errors return natural is
+		begin
+			return Counter;
+		end function;
+	end protected body;
 
 	function ite(condition : boolean; ThenValue : integer; ElseValue : integer) return integer is
 	begin

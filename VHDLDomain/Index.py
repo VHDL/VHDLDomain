@@ -33,7 +33,8 @@ The indices of the domain ``vhdl``: entities, packages, subprograms and types, a
 
 An index lists the described objects - not every object of the designs -, grouped by the first letter of their name,
 each linking to its description. An entry's extra information names where the object is: the library for a design
-unit, the library and design unit for a declaration, preceded by the design if the documentation describes several.
+unit, the library and design unit for a declaration - and the protected type for a method -, preceded by the design if
+the documentation describes several.
 A subprogram's entry shows its signature, so its overloads are told apart.
 
 An index is a page of its own, referred to as ``:ref:`vhdl-<index name>```, e.g. ``:ref:`vhdl-entities```.
@@ -78,6 +79,12 @@ class VHDLIndex(Index):
 
 			designName, library, name = qualifiedName.split(".", 2)
 			unit, _, member = name.partition(".")
+			base, separator, signature = member.partition("(")
+			owner, _, memberName = base.rpartition(".")
+			if owner != "":
+				unit =   f"{unit}.{owner}"
+				member = f"{memberName}{separator}{signature}"
+
 			objects.append((designName, library, unit, member, objectType, document, nodeID))
 			designs.add(designName.lower())
 
