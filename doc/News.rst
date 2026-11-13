@@ -25,6 +25,9 @@ Version 0.3.0 (2026)
    * A generic subprogram's signature names its generics, as Python's type parameters; its description has the field
      *Generics*.
    * ``vhdl:package`` describes a protected type's methods, in the type's description.
+   * New configuration values ``vhdl_architectures`` and ``vhdl_architecture_descriptions``, and options
+     ``:architectures:`` and ``:architecture-descriptions:`` of ``vhdl:entity``: which architectures an entity lists -
+     always, only several, never -, with or without their documentation.
 
    .. rubric:: Documentation
 

@@ -10,7 +10,9 @@ StopWatch
 The example design :file:`examples/StopWatch` is read by pyGHDL.dom (see :ref:`CONFIG`); each of its design units is
 described by a directive (see :ref:`DIR`). The packages :vhdl:pack:`Utilities_pkg` and :vhdl:pack:`StopWatch_pkg` and
 the entity :vhdl:ent:`Counter` show a directive's output together with its input: the VHDL source, whose comments
-document the unit and its declarations, generics and ports, and the directive.
+document the unit and its declarations, generics and ports, and the directive. The documentation's :file:`conf.py` sets
+:ref:`vhdl_architectures = "multiple" <CONFIG/architectures>`: only :vhdl:ent:`Counter` - with an architecture for
+synthesis and one for simulation - lists its architectures.
 
 lib_Utilities
 *************
