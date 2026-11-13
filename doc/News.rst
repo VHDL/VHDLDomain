@@ -41,6 +41,8 @@ Version 0.3.0 (2026)
      of the interface lists, ``auto``, ``list`` or - not supported yet, written as a list - ``table``.
    * New configuration value ``vhdl_add_library_names``: a design unit's signature names its library, e.g.
      ``entity lib_Utilities.Counter``, as Sphinx' ``add_module_names`` a Python class' module.
+   * New configuration value ``vhdl_undoc_members`` and options ``:undoc-members:`` and ``:no-undoc-members:`` of
+     ``vhdl:package``: whether declarations without documentation comment are described - by default, they are.
 
    .. rubric:: Documentation
 
