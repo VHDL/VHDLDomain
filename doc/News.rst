@@ -30,6 +30,8 @@ Version 0.3.0 (2026)
      always, only several, never -, with or without their documentation.
    * A type mark in a description - an object's or interface item's subtype, a function's return type, a type's
      definition - refers to the type's description.
+   * A description has a CSS class ``vhdl-<variant>`` per variant of its object type, e.g. ``vhdl-deferred``,
+     ``vhdl-protected``, ``vhdl-generic``; the documentation shades the descriptions by them.
 
    .. rubric:: Documentation
 
