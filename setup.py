@@ -67,7 +67,8 @@ with WarningCollector() as warnings:
 			developmentStatus="alpha",
 			pythonVersions=("3.12", "3.13", "3.14", "3.15"),
 			dataFiles={
-				packageName: ["py.typed"]
+				packageName:                ["py.typed"],
+				f"{packageName}.Resources": ["*.css"]
 			},
 			debug=True
 		)

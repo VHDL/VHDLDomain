@@ -637,18 +637,18 @@ class Package(DesignUnitProject):
 
 	def test_TypeReferences(self) -> None:
 		"""A type mark refers to the type's description; an undescribed type's stays text, without a warning."""
-		self._page(".. vhdl:package:: Utilities\n")
+		self._page(".. vhdl:package:: Utilities\n", vhdl_reference_popups=False)
 
 		self.assertEqual([], self._warningLines())
 		html = self._html("page")
 		for text in (
 			'<span class="pre">S_STATE</span></span><span class="property"> <span class="pre">:</span> '
 			'<a class="reference internal" href="#vhdl-type-demo.lib_a.utilities.t_state" '
-			'title="Demo.lib_A.Utilities.T_STATE"><span class="pre">T_STATE</span></a></span>',
+			'title="type T_STATE is (Idle, Run)"><span class="pre">T_STATE</span></a></span>',
 			'<span class="pre">S_READY</span></span><span class="property"> <span class="pre">:</span> '
 			'<span class="pre">std_logic</span>',
 			'<span class="sig-return-typehint"><a class="reference internal" '
-			'href="#vhdl-subtype-demo.lib_a.utilities.t_small" title="Demo.lib_A.Utilities.T_SMALL">'
+			'href="#vhdl-subtype-demo.lib_a.utilities.t_small" title="subtype T_SMALL is natural">'
 			'<span class="pre">T_SMALL</span></a></span>',
 		):
 			with self.subTest(text=text):

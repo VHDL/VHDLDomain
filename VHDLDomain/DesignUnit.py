@@ -66,6 +66,7 @@ from pyVHDLModel.Type            import AccessType, ArrayType, BaseType, Enumera
                                         PhysicalType, ProtectedType, RealType, RecordType, Subtype
 
 from VHDLDomain.Directive        import VHDLDirective
+from VHDLDomain.Popup            import PopupNode, popupContent
 
 
 _logger = getLogger(__name__)
@@ -601,6 +602,8 @@ class PackageDirective(DesignUnitDirective):
 		ProtectedType:  "protected",
 	}  #: The variant of a type's description, by kind of type.
 
+	_POPUP_MEMBERS: ClassVar[int] = 8  #: The number of elements, literals or units a popup lists at most.
+
 	def _Interface(self, unit: DesignUnit, library: Library, qualifiedName: str, content: addnodes.desc_content) -> None:
 		"""
 		Write a package's generics and declarations.
@@ -639,10 +642,13 @@ class PackageDirective(DesignUnitDirective):
 		suffix:        Iterable[Node],
 		documentation: Nullable[str],
 		keywords:      Nullable[list[str]] = None,
-		variants:      Iterable[str] = ()
+		variants:      Iterable[str] = (),
+		members:       Iterable[Node] = ()
 	) -> addnodes.desc_content:
 		"""
-		Write a declaration of a package - or a method of a protected type - as a description of its own.
+		Write a declaration of a package - or a method of a protected type - as a description of its own, and note its
+		popup in the domain: the library and design unit declaring it - and the protected type, for a method -, its
+		signature, the first paragraph of its documentation, and the list of members.
 
 		:param content:       The description content of the package or protected type.
 		:param objectType:    The declaration's object type, as ``constant``.
@@ -652,6 +658,7 @@ class PackageDirective(DesignUnitDirective):
 		:param documentation: The declaration's documentation comment.
 		:param keywords:      Optional, the VHDL keywords preceding the name. Default: the object type.
 		:param variants:      Optional, the variants of the object type, as ``["deferred"]``. Default: none.
+		:param members:       Optional, the popup's list of members, see :meth:`_PopupMembers`. Default: none.
 		:returns:             The declaration's description content, holding its documentation.
 		"""
 		displayName = name.partition("(")[0]
@@ -660,7 +667,20 @@ class PackageDirective(DesignUnitDirective):
 			objectType, f"{qualifiedName}.{name}", [objectType] if keywords is None else keywords, displayName,
 			f"{displayName} (VHDL {objectType} in {owner})", suffix, variants
 		)
-		declarationContent.extend(self._Documentation(documentation))
+		documentationNodes = self._Documentation(documentation)
+		if "no-index" not in self.options:
+			signature: addnodes.desc_signature = description[0]  # type: ignore[assignment]
+			location = qualifiedName.split(".", 1)[1]
+			popup =    PopupNode("", "", classes=["vhdl-popup", "no-search"])
+			popup += nodes.inline(location, location, classes=["vhdl-popup-location"])
+			popup += nodes.inline("", "", *popupContent(signature), classes=["vhdl-popup-signature"])
+			if len(documentationNodes) > 0 and isinstance(first := documentationNodes[0], nodes.paragraph):
+				popup += nodes.inline("", "", *popupContent(first), classes=["vhdl-popup-documentation"])
+
+			popup.extend(members)
+			self._Domain().NotePopup(objectType, f"{qualifiedName}.{name}", signature.astext(), popup)
+
+		declarationContent.extend(documentationNodes)
 		content += index
 		content += description
 
@@ -669,7 +689,8 @@ class PackageDirective(DesignUnitDirective):
 	def _Type(self, content: addnodes.desc_content, qualifiedName: str, item: BaseType) -> None:
 		"""
 		Write a type or subtype declaration: its definition as pyVHDLModel's writer writes it, a record type's elements,
-		a physical type's units and a protected type's methods.
+		a physical type's units and a protected type's methods. Its popup lists the elements, the units, or an
+		enumeration's literals.
 
 		The signature shows the definition's first line, e.g. ``is array (natural range <>) of T_BCD`` or ``is record``.
 		A protected type's methods are descriptions of their own in the type's description, as a Python class' methods;
@@ -688,20 +709,35 @@ class PackageDirective(DesignUnitDirective):
 			suffix.append(addnodes.desc_annotation("", "", *self._TypeReferences(definition, item, qualifiedName)))
 
 		variants = [variant for kind, variant in self._TYPE_VARIANTS.items() if isinstance(item, kind)]
-		typeContent = self._Declaration(
-			content, keyword, qualifiedName, item.Identifier, suffix, item.Documentation, variants=variants
-		)
-		if isinstance(item, RecordType) and len(item.Elements) > 0:
+		members: list[Node] = []
+		if isinstance(item, RecordType):
 			entries = [(element.Identifiers, self._Format(element.Subtype), "", element) for element in item.Elements]
+			members = self._PopupMembers(
+				"Elements", [f"{', '.join(identifiers)} : {subtype}" for identifiers, subtype, *_ in entries]
+			)
+		elif isinstance(item, PhysicalType):
+			units = [
+				(unit, "" if unit.Value is None else self._Format(unit.Value))
+				for unit in (item.PrimaryUnit, *item.SecondaryUnits)
+			]
+			members = self._PopupMembers(
+				"Units", [unit.Identifier if value == "" else f"{unit.Identifier} = {value}" for unit, value in units]
+			)
+		elif isinstance(item, EnumeratedType):
+			members = self._PopupMembers("Literals", [literal.Value for literal in item.Literals])
+
+		typeContent = self._Declaration(
+			content, keyword, qualifiedName, item.Identifier, suffix, item.Documentation, variants=variants, members=members
+		)
+		if isinstance(item, RecordType) and len(entries) > 0:
 			typeContent += nodes.field_list(
 				"", self._InterfaceField("Elements", None, qualifiedName, entries), classes=["vhdl-interface"]
 			)
 		elif isinstance(item, PhysicalType):
 			bodies: list[list[Node]] = []
-			for unit in (item.PrimaryUnit, *item.SecondaryUnits):
+			for unit, value in units:
 				paragraph = nodes.paragraph("", "", addnodes.literal_strong(unit.Identifier, unit.Identifier))
-				if unit.Value is not None:
-					value = self._Format(unit.Value)
+				if value != "":
 					paragraph += nodes.Text(" = ")
 					paragraph += addnodes.literal_emphasis(value, value)
 
@@ -711,6 +747,30 @@ class PackageDirective(DesignUnitDirective):
 		elif isinstance(item, ProtectedType):
 			for method in item.Methods:
 				self._Subprogram(typeContent, f"{qualifiedName}.{item.Identifier}", method, method=True)
+
+	@classmethod
+	def _PopupMembers(cls, label: str, members: list[str]) -> list[Node]:
+		"""
+		Create a popup's list of members - a record's elements, an enumeration's literals or a physical type's units -:
+		the label and the first :attr:`_POPUP_MEMBERS` members, followed by ``...`` if there are more.
+
+		:param label:   The label, as ``Elements``.
+		:param members: The members, each as text, e.g. ``Modulo : positive``.
+		:returns:       The list's node, or nothing if there are no members.
+		"""
+		if len(members) == 0:
+			return []
+
+		memberList = nodes.inline(
+			"", "", nodes.inline(label, label, classes=["vhdl-popup-label"]), classes=["vhdl-popup-members"]
+		)
+		for member in members[:cls._POPUP_MEMBERS]:
+			memberList += nodes.inline(member, member, classes=["vhdl-popup-member"])
+
+		if len(members) > cls._POPUP_MEMBERS:
+			memberList += nodes.inline("...", "...", classes=["vhdl-popup-member"])
+
+		return [memberList]
 
 	def _Component(self, content: addnodes.desc_content, qualifiedName: str, item: Component) -> None:
 		"""
