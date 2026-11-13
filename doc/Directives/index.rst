@@ -305,7 +305,7 @@ The other object types - ``entity``, ``architecture``, ``package``, ``context``,
 and ``vhdl-library-units``.
 
 This documentation adds the style sheet :file:`_static/css/vhdl.css` (``html_css_files`` in :file:`conf.py`) for the
-theme ``sphinx_rtd_theme``; the StopWatch example shows it:
+theme ``sphinx_rtd_theme``; the examples (see :ref:`EX`) show it:
 
 .. literalinclude:: ../_static/css/vhdl.css
    :language: CSS
