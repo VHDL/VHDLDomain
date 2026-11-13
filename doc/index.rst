@@ -96,6 +96,7 @@ License
    Roles/index
    Indices/index
    Symbol/index
+   StopWatch/index
 
 .. raw:: latex
 
