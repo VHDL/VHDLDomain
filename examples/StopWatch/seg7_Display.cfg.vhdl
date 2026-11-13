@@ -1,12 +1,12 @@
 -- Author:  Patrick Lehmann
 -- License: MIT
 --
--- A generic counter module used in the StopWatch example.
+-- A configuration of the 7-segment display.
 --
 context work.StopWatch_ctx;
 
 
--- Encoder that translates from 4-bit binary (BCD) to 7-segment code.
+-- Configures architecture ``rtl`` of :vhdl:ent:`seg7_Display`: its encoder ``enc`` is entity :vhdl:ent:`seg7_Encoder`.
 configuration seg7_Display_cfg of seg7_Display is
 	for rtl
 		for enc : seg7_Encoder
