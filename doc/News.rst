@@ -35,8 +35,9 @@ Version 0.3.0 (2026)
 
    .. rubric:: Documentation
 
-   * The StopWatch example is documented again, where pyGHDL is installed; the entity ``Counter`` and the packages
-     show their VHDL source and the directive next to the output.
+   * The StopWatch example is documented again, where pyGHDL is installed; the entity ``Counter``, the packages and
+     the context ``Utilities_ctx`` show their VHDL source and the directive next to the output. Their documentation
+     comments use reStructuredText markup, with cross-references to other units.
 
 
 Version 0.2.0 (2026)
