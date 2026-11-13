@@ -18,11 +18,15 @@ Version 0.3.0 (2026)
    * New directive ``vhdl:symbol``: an entity's or a component's interface symbol, as SVG in HTML and TikZ in LaTeX.
    * ``vhdl:entity`` and ``vhdl:package`` write generics and ports as fields, as Sphinx writes a Python function's
      parameters, instead of tables.
+   * ``vhdl:package`` describes signals, shared variables and components (roles ``:vhdl:sig:``, ``:vhdl:var:``,
+     ``:vhdl:comp:``); a type's or subtype's definition as pyVHDLModel's writer writes it, a record's elements, a
+     physical type's units, a constant's value, and a subprogram's parameter modes, default values and documentation.
+     A deferred constant is marked ``deferred constant``; a component refers to the entity it is bound to.
 
    .. rubric:: Documentation
 
-   * The StopWatch example is documented again, where pyGHDL is installed; the entity ``Counter`` shows its VHDL source
-     and the directive next to the output.
+   * The StopWatch example is documented again, where pyGHDL is installed; the entity ``Counter`` and the packages
+     show their VHDL source and the directive next to the output.
 
 
 Version 0.2.0 (2026)
