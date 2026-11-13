@@ -70,7 +70,8 @@ Design units
 A design-unit directive's argument is the unit's name, optionally preceded by its library, e.g.
 ``lib_Utilities.Counter``; without a library, the unit is in the current one. The unit is described by its declaration,
 its documentation comment - without the comment markers ``--``, parsed as reStructuredText -, the directive's content,
-and its public interface. The interface's parts are objects of the domain too, which the roles refer to.
+and its public interface. The interface's parts are objects of the domain too, which the roles refer to. The
+declaration's signature names the library as well, if :ref:`CONFIG/add-library-names` is set.
 
 Types, default values and parameter subtypes are written as VHDL by pyVHDLModel's writer; an element the writer can't
 write yet is written by its name and warned about (warning type ``vhdl.writer``). A type mark - e.g. ``T_BCD`` of
