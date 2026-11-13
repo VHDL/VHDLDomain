@@ -169,6 +169,70 @@ mark naming it isn't linked.
    vhdl_undoc_members = False
 
 
+.. _CONFIG/doc-syntax:
+
+vhdl_doc_syntax
+***************
+
+The syntax of the documentation comments; option ``doc-syntax`` of the design-unit directives (see :ref:`DIR/units`)
+overrides it per unit. A comment is the text of its comment lines, without the comment markers ``--`` and the space
+after them.
+
+``"rest"``
+  reStructuredText, as a Python doc-string: roles - e.g. :rst:role:`vhdl:ent` -, directives - e.g. ``.. seealso::`` -
+  and field lists. Default.
+``"markdown"``
+  CommonMark, markdown-it-py's preset ``commonmark``: emphasis, code, links, lists, block quotes, code blocks, raw
+  HTML.
+``"gfm"``
+  GitHub-flavoured Markdown: CommonMark with tables, strikethrough, task lists, alerts - ``> [!NOTE]`` -, autolinks
+  and footnotes. GitHub's references - ``#12``, ``@user``, a commit's hash - stay text: a VHDL comment has no
+  repository.
+
+Markdown needs the extra ``markdown`` (see :ref:`DEP/markdown`) and the extension ``pyTooling.Sphinx`` in
+``extensions``; pyTooling.Sphinx' :class:`~pyTooling.Sphinx.Markdown.MarkdownTranslator` translates it. A heading
+becomes a topic or a rubric, never a section. Without either, a comment in Markdown is written as text, and warned
+about once (warning type ``vhdl.markdown``). Another value ends the build with a configuration error.
+
+.. tab-set::
+
+   .. tab-item:: VHDL source
+
+      .. code-block:: VHDL
+
+         -- A **debouncer** of `BITS` inputs.
+         --
+         -- | Generic         | Default |
+         -- |-----------------|---------|
+         -- | `CLOCK_PERIOD`  | 10 ns   |
+         -- | `DEBOUNCE_TIME` | 3 ms    |
+         --
+         -- > [!NOTE]
+         -- > An input passes, once it is stable for `DEBOUNCE_TIME`.
+         entity Debouncer is
+
+   .. tab-item:: conf.py
+
+      .. code-block:: Python
+
+         extensions = [
+           # ...
+           "pyTooling.Sphinx",
+           "VHDLDomain",
+         ]
+
+         vhdl_doc_syntax = "gfm"
+
+   .. tab-item:: reStructuredText
+
+      .. code-block:: rst
+
+         .. vhdl:entity:: lib_Utilities.Debouncer
+            :doc-syntax: gfm
+
+The syntax is the same for every comment of a unit; this documentation's examples use reStructuredText.
+
+
 .. _CONFIG/reference-popups:
 
 vhdl_reference_popups

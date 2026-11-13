@@ -43,6 +43,9 @@ Version 0.3.0 (2026)
      ``entity lib_Utilities.Counter``, as Sphinx' ``add_module_names`` a Python class' module.
    * New configuration value ``vhdl_undoc_members`` and options ``:undoc-members:`` and ``:no-undoc-members:`` of
      ``vhdl:package``: whether declarations without documentation comment are described - by default, they are.
+   * New configuration value ``vhdl_doc_syntax`` and option ``:doc-syntax:`` of the design-unit directives: the
+     documentation comments are reStructuredText, CommonMark or GitHub-flavoured Markdown, the latter two converted by
+     pyTooling.Sphinx' Markdown translator; new extra ``markdown``.
 
    .. rubric:: Documentation
 
