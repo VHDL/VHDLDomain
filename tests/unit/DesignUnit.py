@@ -56,8 +56,9 @@ CONF = dedent("""\
 	from pyVHDLModel.Configuration import BlockConfiguration
 	from pyVHDLModel.DesignUnit    import Architecture, Component, Configuration, Context, Entity, LibraryClause, Package
 	from pyVHDLModel.Expression    import FunctionCall, IntegerLiteral, PhysicalIntegerLiteral
-	from pyVHDLModel.Interface     import GenericConstantInterfaceItem, GenericTypeInterfaceItem
-	from pyVHDLModel.Interface     import ParameterConstantInterfaceItem, PortSimpleSignalInterfaceItem
+	from pyVHDLModel.Interface     import GenericConstantInterfaceItem, GenericFunctionInterfaceItem
+	from pyVHDLModel.Interface     import GenericTypeInterfaceItem, ParameterConstantInterfaceItem
+	from pyVHDLModel.Interface     import ParameterVariableInterfaceItem, PortSimpleSignalInterfaceItem
 	from pyVHDLModel.Name          import SimpleName
 	from pyVHDLModel.Object        import Constant, DeferredConstant, SharedVariable, Signal
 	from pyVHDLModel.Subprogram    import Function, Procedure
@@ -146,6 +147,19 @@ CONF = dedent("""\
 						("value", ), Mode.Default, subtype("natural"), IntegerLiteral(0), documentation="-- The value."
 					)
 				]),
+				Procedure(
+					"swap",
+					genericItems=[GenericTypeInterfaceItem("T_VALUE", documentation="-- The values' type.")],
+					parameterItems=[ParameterVariableInterfaceItem(("A", "B"), Mode.InOut, subtype("T_VALUE"))],
+					documentation="-- Swap two values."
+				),
+				Function(
+					"maximum", subtype("T_VALUE"),
+					genericItems=[
+						GenericTypeInterfaceItem("T_VALUE"), GenericFunctionInterfaceItem("<", subtype("boolean"))
+					],
+					parameterItems=[ParameterConstantInterfaceItem(("L", "R"), Mode.Default, subtype("T_VALUE"))]
+				),
 			],
 			documentation="-- Utilities."
 		))
@@ -361,6 +375,8 @@ class Package(DesignUnitProject):
 				("variable",  "demo.lib_a.utilities.v_count"),
 				("component", "demo.lib_a.utilities.adder"),
 				("function",  "demo.lib_a.utilities.clip(natural)"),
+				("procedure", "demo.lib_a.utilities.swap(t_value,t_value)"),
+				("function",  "demo.lib_a.utilities.maximum(t_value,t_value)"),
 			},
 			set(domain.Objects)
 		)
@@ -451,6 +467,26 @@ class Package(DesignUnitProject):
 				self.assertIn(text, html)
 
 		self.assertEqual(1, html.count("Parameters<span"))
+
+	def test_Generics(self) -> None:
+		"""A generic subprogram's generics are type parameters of the signature and the field *Generics*."""
+		self._page(".. vhdl:package:: Utilities\n")
+
+		html = self._html("page")
+		for text in (
+			'<span class="sig-name descname"><span class="pre">swap</span></span><span class="sig-paren">[</span>'
+			'<em class="sig-param"><span class="pre">T_VALUE</span></em><span class="sig-paren">]</span>'
+			'<span class="sig-paren">(</span><em class="sig-param"><span class="pre">A</span> <span class="pre">:</span> '
+			'<span class="pre">inout</span> <span class="pre">T_VALUE</span></em>',
+			'<p>Swap two values.</p>\n<dl class="vhdl-interface field-list simple">\n'
+			'<dt class="field-odd">Generics<span class="colon">:</span></dt>\n'
+			'<dd class="field-odd"><p><strong>T_VALUE</strong> : <em>type</em> – The values’ type.</p>\n</dd>\n</dl>',
+			'<em class="sig-param"><span class="pre">T_VALUE</span></em>, <em class="sig-param">'
+			'<span class="pre">&quot;&lt;&quot;</span></em><span class="sig-paren">]</span>',
+			'<li><p><strong>&quot;&lt;&quot;</strong> : <em>function</em></p></li>',
+		):
+			with self.subTest(text=text):
+				self.assertIn(text, html)
 
 	def test_Component_Undocumented(self) -> None:
 		"""A component's entity without a description is its name, without a warning."""

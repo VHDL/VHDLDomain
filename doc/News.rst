@@ -22,6 +22,8 @@ Version 0.3.0 (2026)
      ``:vhdl:comp:``); a type's or subtype's definition as pyVHDLModel's writer writes it, a record's elements, a
      physical type's units, a constant's value, and a subprogram's parameter modes, default values and documentation.
      A deferred constant is marked ``deferred constant``; a component refers to the entity it is bound to.
+   * A generic subprogram's signature names its generics, as Python's type parameters; its description has the field
+     *Generics*.
 
    .. rubric:: Documentation
 
