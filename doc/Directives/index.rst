@@ -73,7 +73,10 @@ its documentation comment - without the comment markers ``--``, parsed as reStru
 and its public interface. The interface's parts are objects of the domain too, which the roles refer to.
 
 Types, default values and parameter subtypes are written as VHDL by pyVHDLModel's writer; an element the writer can't
-write yet is written by its name and warned about (warning type ``vhdl.writer``).
+write yet is written by its name and warned about (warning type ``vhdl.writer``). A type mark - e.g. ``T_BCD`` of
+``array (natural range <>) of T_BCD``, or ``unsigned`` of ``unsigned(BITS - 1 downto 0)`` - refers to the type's
+description, as :rst:role:`vhdl:type` does, in the unit's design and library. A type mark of an undescribed type, e.g.
+``std_logic``, or of several described types stays text, without a warning.
 
 Every design-unit directive takes these options:
 

@@ -124,7 +124,7 @@ CONF = dedent("""\
 					ParameterConstantInterfaceItem(("value", ), Mode.In, subtype("unsigned")),
 					ParameterConstantInterfaceItem(("low", "high"), Mode.In, subtype("positive"))
 				]),
-				Function("random", subtype("natural"), isPure=False),
+				Function("random", subtype("T_SMALL"), isPure=False),
 				Procedure("reset", parameterItems=[ParameterConstantInterfaceItem(("value", ), Mode.In, subtype("natural"))]),
 				RecordType(
 					"T_PAIR",
@@ -136,6 +136,7 @@ CONF = dedent("""\
 					[PhysicalUnit("kHz", PhysicalIntegerLiteral(1000, "Hz"), documentation="-- Kilohertz.")]
 				),
 				Signal(("S_READY", ), subtype("std_logic"), IntegerLiteral(0), documentation="-- Ready."),
+				Signal(("S_STATE", ), subtype("T_STATE")),
 				SharedVariable(("V_COUNT", ), subtype("natural")),
 				Component(
 					"Adder",
@@ -179,6 +180,7 @@ CONF = dedent("""\
 			],
 			documentation="-- Utilities."
 		))
+		document._AddDesignUnit(Package("Second", declaredItems=[EnumeratedType("T_STATE", [EnumerationLiteral("Off")])]))
 		document._AddDesignUnit(Context("ctx", [LibraryClause([LibraryReferenceSymbol(SimpleName("IEEE"))])]))
 		document._AddDesignUnit(Configuration(
 			"cfg",
@@ -469,6 +471,7 @@ class Package(DesignUnitProject):
 				("type",      "demo.lib_a.utilities.t_pair"),
 				("type",      "demo.lib_a.utilities.t_freq"),
 				("signal",    "demo.lib_a.utilities.s_ready"),
+				("signal",    "demo.lib_a.utilities.s_state"),
 				("variable",  "demo.lib_a.utilities.v_count"),
 				("component", "demo.lib_a.utilities.adder"),
 				("function",  "demo.lib_a.utilities.clip(natural)"),
@@ -615,6 +618,42 @@ class Package(DesignUnitProject):
 		):
 			with self.subTest(text=text):
 				self.assertIn(text, html)
+
+	def test_TypeReferences(self) -> None:
+		"""A type mark refers to the type's description; an undescribed type's stays text, without a warning."""
+		self._page(".. vhdl:package:: Utilities\n")
+
+		self.assertEqual([], self._warningLines())
+		html = self._html("page")
+		for text in (
+			'<span class="pre">S_STATE</span></span><span class="property"> <span class="pre">:</span> '
+			'<a class="reference internal" href="#vhdl-type-demo.lib_a.utilities.t_state" '
+			'title="Demo.lib_A.Utilities.T_STATE"><span class="pre">T_STATE</span></a></span>',
+			'<span class="pre">S_READY</span></span><span class="property"> <span class="pre">:</span> '
+			'<span class="pre">std_logic</span>',
+			'<span class="sig-return-typehint"><a class="reference internal" '
+			'href="#vhdl-subtype-demo.lib_a.utilities.t_small" title="Demo.lib_A.Utilities.T_SMALL">'
+			'<span class="pre">T_SMALL</span></a></span>',
+		):
+			with self.subTest(text=text):
+				self.assertIn(text, html)
+
+	def test_TypeReferences_Ambiguous(self) -> None:
+		"""A type mark naming several described types stays text, without a warning; a role warns."""
+		self._page(".. vhdl:package:: Utilities\n\n.. vhdl:package:: Second\n\n:vhdl:type:`T_STATE`\n")
+
+		self.assertEqual(
+			[
+				"/src/page.rst:14: WARNING: VHDL type 'T_STATE' is ambiguous, candidates: Demo.lib_A.Second.T_STATE, "
+				"Demo.lib_A.Utilities.T_STATE [vhdl.ref]"
+			],
+			self._warningLines()
+		)
+		self.assertIn(
+			'<span class="pre">S_STATE</span></span><span class="property"> <span class="pre">:</span> '
+			'<span class="pre">T_STATE</span></span>',
+			self._html("page")
+		)
 
 	def test_References(self) -> None:
 		body = dedent("""\
