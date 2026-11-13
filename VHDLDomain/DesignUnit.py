@@ -76,6 +76,21 @@ _NAME = re_compile(r"[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)*")
 
 
 @export
+class InterfaceStyle(StringEnum):
+	"""
+	The style of a description's interface lists, as option ``:style:`` and ``vhdl_style`` state it.
+
+	An interface list is e.g. an entity's generics or ports, a record's elements or a subprogram's parameters.
+	"""
+
+	Auto =  "auto"   #: The domain chooses the style: ``list``.
+	List =  "list"   #: A field per list, an item per declaration, as Sphinx writes a Python function's parameters.
+	Table = "table"  #: A table per list; not supported yet, written as ``list``.
+
+	DEFAULT = Auto   #: Without a value, the domain chooses the style.
+
+
+@export
 class ArchitectureListing(StringEnum):
 	"""
 	Which architectures ``vhdl:entity`` lists, as option ``:architectures:`` and ``vhdl_architectures`` state it.
@@ -114,6 +129,8 @@ class DesignUnitDirective(VHDLDirective):
 	_KEYWORD:     ClassVar[str]  #: The unit's keyword in VHDL, as ``entity``.
 	_COLLECTION:  ClassVar[str]  #: Name of the collection of :class:`~pyVHDLModel.Library` holding the unit.
 	_OBJECT_TYPE: ClassVar[str]  #: The unit's object type in the domain.
+
+	_style: InterfaceStyle  #: The style the interface lists are written in, see :meth:`_InterfaceStyle`.
 
 	has_content =        True  #: The content describes the unit.
 	required_arguments = 1     #: The unit's name, optionally with its library.
@@ -241,6 +258,34 @@ class DesignUnitDirective(VHDLDirective):
 			fieldBody = nodes.field_body("", nodes.bullet_list("", *(nodes.list_item("", *body) for body in bodies)))
 
 		return nodes.field("", nodes.field_name(label, label), fieldBody)
+
+	def _FieldList(self, *fields: nodes.field) -> nodes.field_list:
+		"""
+		Create the list of fields of a description.
+
+		The fields are e.g. an entity's generics and ports. The list has the classes ``vhdl-interface`` and
+		``vhdl-<style>``, e.g. ``vhdl-list``, of the style the interface lists are written in.
+
+		:param fields: The fields.
+		:returns:      The list of fields.
+		"""
+		return nodes.field_list("", *fields, classes=["vhdl-interface", f"vhdl-{self._style}"])
+
+	def _InterfaceStyle(self) -> InterfaceStyle:
+		"""
+		Return the style the unit's interface lists are written in: option ``:style:``, default ``vhdl_style``.
+
+		``auto`` is written as ``list``. ``table`` isn't supported yet: it is warned about, and written as ``list``.
+
+		:returns: The style.
+		"""
+		if (style := self.options.get("style", self.config.vhdl_style)) is InterfaceStyle.Table:
+			_logger.warning(
+				f"{self.directiveName}: Style '{style}' isn't supported yet, written as '{InterfaceStyle.List}'.",
+				location=self.get_location(), type=self._WARNING_TYPE, subtype="style"
+			)
+
+		return InterfaceStyle.List
 
 	def _Item(self, paragraph: nodes.paragraph, documentation: Nullable[str]) -> list[Node]:
 		"""
@@ -453,7 +498,7 @@ class DesignUnitDirective(VHDLDirective):
 		:param objects:       Optional, whether the generics and ports are objects of the domain. Default: ``True``.
 		:returns:             The fields, or ``None`` if the unit has neither generics nor ports.
 		"""
-		fields = nodes.field_list(classes=["vhdl-interface"])
+		fields = self._FieldList()
 		if (generics := self._Generics(unit, qualifiedName, objects=objects)) is not None:
 			fields += generics
 
@@ -510,7 +555,8 @@ class EntityDirective(DesignUnitDirective):
 	``:vhdl:port:`Counter.Clock``` and ``:vhdl:arch:`Counter.rtl```. Option ``:architectures:`` - default:
 	``vhdl_architectures`` - lists the architectures ``always``, only for ``multiple`` architectures, or ``never``;
 	option ``:architecture-descriptions:`` - default: ``vhdl_architecture_descriptions`` - shows or hides their
-	documentation.
+	documentation. Option ``:style:`` - default: ``vhdl_style`` - selects the style of the generics and ports, see
+	:class:`InterfaceStyle`.
 	"""
 
 	directiveName: ClassVar[str] = "vhdl:entity"  #: Name the directive is invoked by.
@@ -519,7 +565,9 @@ class EntityDirective(DesignUnitDirective):
 		**DesignUnitDirective.option_spec,
 		"architectures":             ArchitectureListing.Parse,
 		"architecture-descriptions": ArchitectureDescriptions.Parse,
-	}  #: The options of every design-unit directive, and which architectures are listed, with or without documentation.
+		"style":                     InterfaceStyle.Parse,
+	}  #: The options of every design-unit directive, which architectures are listed, with or without documentation, and
+	#: the style of the interface lists.
 
 	_KEYWORD:     ClassVar[str] = "entity"    #: The unit's keyword in VHDL.
 	_COLLECTION:  ClassVar[str] = "Entities"  #: The collection of :class:`~pyVHDLModel.Library` holding entities.
@@ -539,6 +587,7 @@ class EntityDirective(DesignUnitDirective):
 		:param content:       The entity's description content.
 		"""
 		entity: Entity = unit  # type: ignore[assignment]
+		self._style = self._InterfaceStyle()
 		if (fields := self._InterfaceFields(entity, qualifiedName)) is not None:
 			content += fields
 
@@ -581,10 +630,16 @@ class PackageDirective(DesignUnitDirective):
 	``:vhdl:func:`Utilities_pkg.to_index(natural, positive)```. A subprogram's qualified name ends in its signature, the
 	type marks of its parameters. A protected type's methods are objects too, named after the type:
 	``:vhdl:proc:`T_ERROR_COUNTER.Increment```. A component's generics and ports are no objects: a reference to a port
-	names the entity's port.
+	names the entity's port. Option ``:style:`` - default: ``vhdl_style`` - selects the style of the interface lists, see
+	:class:`InterfaceStyle`.
 	"""
 
 	directiveName: ClassVar[str] = "vhdl:package"  #: Name the directive is invoked by.
+
+	option_spec = {
+		**DesignUnitDirective.option_spec,
+		"style": InterfaceStyle.Parse,
+	}  #: The options of every design-unit directive, and the style of the interface lists.
 
 	_KEYWORD:     ClassVar[str] = "package"   #: The unit's keyword in VHDL.
 	_COLLECTION:  ClassVar[str] = "Packages"  #: The collection of :class:`~pyVHDLModel.Library` holding packages.
@@ -614,8 +669,9 @@ class PackageDirective(DesignUnitDirective):
 		:param content:       The package's description content.
 		"""
 		package: Package = unit  # type: ignore[assignment]
+		self._style = self._InterfaceStyle()
 		if (generics := self._Generics(package, qualifiedName)) is not None:
-			content += nodes.field_list("", generics, classes=["vhdl-interface"])
+			content += self._FieldList(generics)
 
 		for item in package.DeclaredItems:
 			if isinstance(item, BaseType):
@@ -730,9 +786,7 @@ class PackageDirective(DesignUnitDirective):
 			content, keyword, qualifiedName, item.Identifier, suffix, item.Documentation, variants=variants, members=members
 		)
 		if isinstance(item, RecordType) and len(entries) > 0:
-			typeContent += nodes.field_list(
-				"", self._InterfaceField("Elements", None, qualifiedName, entries), classes=["vhdl-interface"]
-			)
+			typeContent += self._FieldList(self._InterfaceField("Elements", None, qualifiedName, entries))
 		elif isinstance(item, PhysicalType):
 			bodies: list[list[Node]] = []
 			for unit, value in units:
@@ -743,7 +797,7 @@ class PackageDirective(DesignUnitDirective):
 
 				bodies.append(self._Item(paragraph, unit.Documentation))
 
-			typeContent += nodes.field_list("", self._Field("Units", bodies), classes=["vhdl-interface"])
+			typeContent += self._FieldList(self._Field("Units", bodies))
 		elif isinstance(item, ProtectedType):
 			for method in item.Methods:
 				self._Subprogram(typeContent, f"{qualifiedName}.{item.Identifier}", method, method=True)
@@ -790,7 +844,7 @@ class PackageDirective(DesignUnitDirective):
 		if (entity := item.Entity) is not None:
 			reference = self._EntityReference(qualifiedName.partition(".")[0], entity.Library.Identifier, entity.Identifier)
 			if fields is None:
-				fields = nodes.field_list(classes=["vhdl-interface"])
+				fields = self._FieldList()
 
 			fields.insert(0, self._Field("Entity", [[nodes.paragraph("", "", reference)]]))
 
@@ -896,7 +950,7 @@ class PackageDirective(DesignUnitDirective):
 			content, objectType, qualifiedName, f"{subprogram.Identifier}({signature})", suffix, subprogram.Documentation,
 			keywords, variants
 		)
-		fields = nodes.field_list(classes=["vhdl-interface"])
+		fields = self._FieldList()
 		if (generics := self._Generics(subprogram, qualifiedName, objects=False)) is not None:
 			fields += generics
 

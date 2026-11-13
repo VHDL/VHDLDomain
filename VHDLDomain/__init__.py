@@ -53,7 +53,7 @@ design, a library or a design unit from the model, and a role refers to what a d
   ``:vhdl:func:``, ``:vhdl:proc:``, ``:vhdl:generic:``, ``:vhdl:port:``
 * Indices: ``vhdl-entities``, ``vhdl-packages``, ``vhdl-subprograms``, ``vhdl-types``
 * Configuration values ``vhdl_designs``, ``vhdl_architectures``, ``vhdl_architecture_descriptions``,
-  ``vhdl_reference_popups``
+  ``vhdl_reference_popups``, ``vhdl_style``
 * Node :class:`~VHDLDomain.Symbol.Directive.SymbolNode` with visitors for HTML and LaTeX, and LaTeX package ``tikz``
 * Nodes :class:`~VHDLDomain.Popup.PopupReferenceNode` and :class:`~VHDLDomain.Popup.PopupNode` with visitors for HTML,
   and the stylesheet :file:`VHDLDomain.css` (see :mod:`VHDLDomain.Popup`)
@@ -106,7 +106,7 @@ from pyTooling.Exceptions        import MissingDependencyError
 from pyVHDLModel                 import Design
 
 from VHDLDomain.DesignUnit       import ArchitectureDescriptions, ArchitectureListing, ConfigurationDirective, \
-                                        ContextDirective, EntityDirective, PackageDirective
+                                        ContextDirective, EntityDirective, InterfaceStyle, PackageDirective
 from VHDLDomain.Directive        import DesignDirective, LibraryDirective
 from VHDLDomain.Frontend         import DesignConfiguration, VHDLDomainException
 from VHDLDomain.Index            import EntityIndex, PackageIndex, SubprogramIndex, TypeIndex
@@ -282,11 +282,15 @@ class VHDLDomain(Domain):
 	#: ``reference_popups``
 	#:    Whether a reference to a declaration of a package shows the declaration in a popup, in HTML; otherwise the
 	#:    link's title is the declaration's signature.
+	#: ``style``
+	#:    The style of the interface lists of ``vhdl:entity`` and ``vhdl:package``, a value of
+	#:    :class:`~VHDLDomain.DesignUnit.InterfaceStyle`, ``None`` for its default; option ``:style:`` overrides it.
 	configValues: ClassVar[dict[str, tuple[Any, str, Any]]] = {
 		"designs":                   ({},       "env",  dict),
 		"architectures":             (None,     "env",  (str, ArchitectureListing)),
 		"architecture_descriptions": (None,     "env",  (str, ArchitectureDescriptions)),
 		"reference_popups":          (True,     "html", bool),
+		"style":                     (None,     "env",  (str, InterfaceStyle)),
 	}
 
 	_designs:    dict[str, Design]                                     #: The designs read by this build, by name.
@@ -653,11 +657,11 @@ class VHDLDomain(Domain):
 @export
 def readConfiguration(sphinx: Sphinx, config: Config) -> None:
 	"""
-	Call-back for Sphinx' ``config-inited`` event, replacing ``vhdl_architectures`` and
-	``vhdl_architecture_descriptions`` by the member of their enumeration they name - ``None`` names the default.
+	Call-back for Sphinx' ``config-inited`` event, replacing ``vhdl_architectures``, ``vhdl_architecture_descriptions``
+	and ``vhdl_style`` by the member of their enumeration they name - ``None`` names the default.
 
-	The enumerations are :class:`~VHDLDomain.DesignUnit.ArchitectureListing` and
-	:class:`~VHDLDomain.DesignUnit.ArchitectureDescriptions`.
+	The enumerations are :class:`~VHDLDomain.DesignUnit.ArchitectureListing`,
+	:class:`~VHDLDomain.DesignUnit.ArchitectureDescriptions` and :class:`~VHDLDomain.DesignUnit.InterfaceStyle`.
 
 	:param sphinx:       The Sphinx application.
 	:param config:       The configuration, after :file:`conf.py` was read.
@@ -669,10 +673,14 @@ def readConfiguration(sphinx: Sphinx, config: Config) -> None:
 	:raises ConfigError: If ``vhdl_architecture_descriptions`` names no member of
 	                     :class:`~VHDLDomain.DesignUnit.ArchitectureDescriptions`. |br|
 	                     The note lists the allowed values.
+	:raises ConfigError: If ``vhdl_style`` is neither ``None`` nor a string.
+	:raises ConfigError: If ``vhdl_style`` names no member of :class:`~VHDLDomain.DesignUnit.InterfaceStyle`. |br|
+	                     The note lists the allowed values.
 	"""
 	for name, enumeration, meaning in (
 		("vhdl_architectures",             ArchitectureListing,      "listing of architectures"),
 		("vhdl_architecture_descriptions", ArchitectureDescriptions, "choice of architecture descriptions"),
+		("vhdl_style",                     InterfaceStyle,           "style of interface lists"),
 	):
 		if (value := config[name]) is not None and not isinstance(value, str):
 			ex = ConfigError(f"conf.py: {name}: Value is not of type 'str'.")
