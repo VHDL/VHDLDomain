@@ -18,7 +18,7 @@ jobs:
     uses: pyTooling/Actions/.github/workflows/CompletePipeline.yml@r9
     with:
       package_name:      'VHDLDomain'
-      unittest_python_version_list: '3.12 3.13 3.14 3.15'
+      unittest_python_version_list: '3.13 3.14 3.15'
       bandit:            'true'
       pylint:            'false'
       codecov:           'true'

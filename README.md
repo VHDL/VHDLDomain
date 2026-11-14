@@ -17,7 +17,7 @@
 A Sphinx domain providing VHDL language support.
 
 > [!IMPORTANT]
-> VHDLDomain requires **Python 3.12 or newer**, because it requires Sphinx 9.1 and Sphinx 9.1 does.
+> VHDLDomain requires **Python 3.13 or newer**, because it requires Sphinx 9.2 and Sphinx 9.2 does.
 
 
 ## Main Goals
