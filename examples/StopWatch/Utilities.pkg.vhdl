@@ -30,6 +30,23 @@ package Utilities_pkg is
 		Value : positive  -- The number of values.
 	) return positive;
 
+	-- The value ``Value``, limited to the range ``Low`` to ``High``.
+	function clamp(
+		Value : integer;  -- The value to limit.
+		Low   : integer;  -- The lower bound.
+		High  : integer   -- The upper bound.
+	) return integer;
+
+	-- Swap the values of two variables of any type.
+	procedure swap
+		generic (
+			type T_VALUE  -- The type of the values.
+		)
+		parameter (
+			variable A : inout T_VALUE;  -- The first value; ``B``'s value after the call.
+			variable B : inout T_VALUE   -- The second value; ``A``'s value after the call.
+		);
+
 	function bin2onehot(binary : std_logic_vector; bits : natural := 0) return std_logic_vector;
 	function bin2onehot(binary : unsigned;         bits : natural := 0) return std_logic_vector;
 
@@ -85,6 +102,32 @@ package body Utilities_pkg is
 		end loop;
 		return result;
 	end function;
+
+	function clamp(Value : integer; Low : integer; High : integer) return integer is
+	begin
+		if (Value < Low) then
+			return Low;
+		elsif (Value > High) then
+			return High;
+		else
+			return Value;
+		end if;
+	end function;
+
+	procedure swap
+		generic (
+			type T_VALUE
+		)
+		parameter (
+			variable A : inout T_VALUE;
+			variable B : inout T_VALUE
+		) is
+		variable temp : T_VALUE;
+	begin
+		temp := A;
+		A    := B;
+		B    := temp;
+	end procedure;
 
 	function bin2onehot(binary : std_logic_vector; bits : natural := 0) return std_logic_vector is
 	begin
