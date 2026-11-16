@@ -173,7 +173,7 @@ class VHDLConverter(metaclass=ExtendedType, slots=True):
 		"""
 		if isinstance(port, SinglePortSimpleSignalDeclaration):
 			typeLabel = self._formatter(port.Subtype)
-			side =      PinSide.Left if port.Mode in (Mode.Default, Mode.In) else PinSide.Right
+			side =      PinSide.Left if (mode := port.Mode) is Mode.Default or mode is Mode.In else PinSide.Right
 			isBus =     self._IsBus(port.Subtype)
 		else:
 			typeLabel = f"view {self._formatter(port.ModeViewIndication)}"  # type: ignore[attr-defined]
