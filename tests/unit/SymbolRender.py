@@ -261,6 +261,8 @@ class Matplotlib(Testcase):
 				MatplotlibRenderer().Render(Inverter())
 
 		self.assertEqual("Optional dependency 'matplotlib' not installed.", str(context.exception))
+		self.assertEqual("diagram", context.exception.Extra)
+		self.assertEqual("VHDLDomain", context.exception.Package)
 
 	def test_DPI_None(self) -> None:
 		with self.assertRaises(ValueError) as context:
