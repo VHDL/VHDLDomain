@@ -95,8 +95,12 @@ vhdl:entity
 
 .. rst:directive:: .. vhdl:entity:: [library.]name
 
-   Describe an entity: its generics (name, type, default value, documentation), its ports (name, mode, type, default
-   value, documentation) and its architectures.
+   Describe an entity: its generics, its ports and its architectures.
+
+   The generics and ports are the fields *Generics* and *Ports*, as Sphinx writes a Python function's parameters: per
+   declaration its names in bold, its subtype - a port's with the mode -, its default value, and its documentation
+   comment after a dash. A declaration with several names, e.g. ``Q0, Q1 : out std_logic``, is one item. A generic
+   type, package or subprogram shows its kind: ``type``, ``package``, ``function`` or ``procedure``.
 
    .. code-block:: rst
 
@@ -115,8 +119,8 @@ vhdl:package
 
 .. rst:directive:: .. vhdl:package:: [library.]name
 
-   Describe a package: its generics, and - in declaration order - its types, subtypes, constants (also deferred ones),
-   functions and procedures.
+   Describe a package: its generics - the field *Generics*, as an entity's -, and - in declaration order - its types,
+   subtypes, constants (also deferred ones), functions and procedures.
 
    .. code-block:: rst
 

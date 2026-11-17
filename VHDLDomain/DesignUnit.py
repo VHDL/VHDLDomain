@@ -54,8 +54,8 @@ from pyTooling.MetaClasses       import abstractmethod
 from pyVHDLModel                 import Library
 from pyVHDLModel.Base            import identifiersOf
 from pyVHDLModel.DesignUnit      import Configuration, Context, DesignUnit, Entity, Package
-from pyVHDLModel.Interface       import GenericConstantInterfaceItem, GenericPackageInterfaceItem, \
-                                        GenericTypeInterfaceItem, PortSignalInterfaceItem
+from pyVHDLModel.Interface       import GenericConstantInterfaceItem, GenericFunctionInterfaceItem, \
+                                        GenericPackageInterfaceItem, GenericTypeInterfaceItem, PortSignalInterfaceItem
 from pyVHDLModel.Object          import Constant, DeferredConstant
 from pyVHDLModel.Subprogram      import Function, Procedure
 from pyVHDLModel.Type            import BaseType, Subtype
@@ -182,87 +182,77 @@ class DesignUnitDirective(VHDLDirective):
 
 		return description, content, index
 
-	def _RowTarget(self, row: nodes.row, objectType: str, qualifiedNames: Iterable[str]) -> None:
+	def _InterfaceField(
+		self,
+		label:         str,
+		objectType:    str,
+		qualifiedName: str,
+		entries:       Iterable[tuple[Iterable[str], str, str, Nullable[str]]]
+	) -> nodes.field:
 		"""
-		Make a table row the target of the objects it describes, and register them in the domain.
+		Create the field of an interface list - generics or ports -, as Sphinx writes a Python function's parameters.
 
-		A row describes several objects, if its declaration has an identifier list, e.g. a port ``Q0, Q1``.
+		Each entry is an item of the list: its names in bold, its declaration - e.g. mode and subtype -, its default value
+		and its documentation. A field of one item writes it as a paragraph, a field of several items as a bullet list.
+		Each item is the target of the objects it declares; an item declares several objects, if its declaration has an
+		identifier list, e.g. a port ``Q0, Q1``.
 
-		:param row:            The row.
-		:param objectType:     The objects' type, as ``port``.
-		:param qualifiedNames: The objects' qualified names.
+		:param label:         The field's name, as ``Ports``.
+		:param objectType:    The object type of the items, as ``port``.
+		:param qualifiedName: The qualified name of the unit declaring the items.
+		:param entries:       Per item: its identifiers, its declaration, its default value or an empty string, and its
+		                      documentation comment.
+		:returns:             The field.
 		"""
-		if "no-index" in self.options:
-			return
+		bodies: list[list[Node]] = []
+		for identifiers, declaration, default, documentation in entries:
+			names =     ", ".join(identifiers)
+			paragraph = nodes.paragraph()
+			paragraph += addnodes.literal_strong(names, names)
+			paragraph += nodes.Text(" : ")
+			paragraph += addnodes.literal_emphasis(declaration, declaration)
+			if default != "":
+				paragraph += nodes.Text(" := ")
+				paragraph += addnodes.literal_emphasis(default, default)
 
-		for qualifiedName in qualifiedNames:
-			nodeID = self._NodeID(objectType, qualifiedName)
-			row["ids"].append(nodeID)
-			self._Domain().NoteObject(objectType, qualifiedName, nodeID, row)
+			body: list[Node] = [paragraph]
+			if len(description := self._Documentation(documentation)) > 0:
+				paragraph += nodes.Text(" -- ")
+				if isinstance(description[0], nodes.paragraph):
+					paragraph.extend(list(description.pop(0).children))
 
-	@staticmethod
-	def _Table(
-		columns: list[tuple[str, int]],
-		rows:    list[list[list[Node]]],
-		classes: list[str]
-	) -> tuple[nodes.table, list[nodes.row]]:
+				body.extend(description)
+
+			if "no-index" not in self.options:
+				for identifier in identifiers:
+					itemName = f"{qualifiedName}.{identifier}"
+					nodeID =   self._NodeID(objectType, itemName)
+					paragraph["ids"].append(nodeID)
+					self._Domain().NoteObject(objectType, itemName, nodeID, paragraph)
+
+			bodies.append(body)
+
+		if len(bodies) == 1:
+			fieldBody = nodes.field_body("", *bodies[0])
+		else:
+			fieldBody = nodes.field_body("", nodes.bullet_list("", *(nodes.list_item("", *body) for body in bodies)))
+
+		return nodes.field("", nodes.field_name(label, label), fieldBody)
+
+	def _Generics(self, unit: Entity | Package, qualifiedName: str) -> Nullable[nodes.field]:
 		"""
-		Create a table with a header row.
-
-		:param columns: One ``(title, width)`` pair per column.
-		:param rows:    The rows: per row, per cell, the cell's nodes.
-		:param classes: CSS classes of the table.
-		:returns:       The table, and its body rows in the order of ``rows``.
-		"""
-		table = nodes.table("", classes=["vhdl", *classes])
-		table += (tableGroup := nodes.tgroup(cols=len(columns)))
-		for _, width in columns:
-			tableGroup += nodes.colspec(colwidth=width)
-
-		tableGroup += (tableHeader := nodes.thead())
-		tableHeader += (headerRow := nodes.row())
-		for title, _ in columns:
-			headerRow += nodes.entry("", nodes.paragraph(title, title))
-
-		tableGroup += (tableBody := nodes.tbody())
-		bodyRows = []
-		for cells in rows:
-			tableBody += (row := nodes.row())
-			for cell in cells:
-				row += nodes.entry("", *cell)
-
-			bodyRows.append(row)
-
-		return table, bodyRows
-
-	@staticmethod
-	def _Code(text: str) -> list[Node]:
-		"""
-		Create a cell's content showing VHDL source text.
-
-		:param text: The text, or an empty string for an empty cell.
-		:returns:    A paragraph with the text as literal, or nothing.
-		"""
-		if text == "":
-			return []
-
-		return [nodes.paragraph("", "", nodes.literal(text, text, language="vhdl"))]
-
-	def _Generics(self, unit: Entity | Package, qualifiedName: str, content: addnodes.desc_content) -> None:
-		"""
-		Write a unit's generics as a table: name, kind or type, default value and documentation.
+		Create the field of a unit's generics: per generic its name, its subtype - or the kind of a generic type, package
+		or subprogram -, its default value and its documentation.
 
 		:param unit:          The entity or package.
 		:param qualifiedName: The unit's qualified name.
-		:param content:       The unit's description content, the table is added to.
+		:returns:             The field, or ``None`` if the unit has no generics.
 		"""
 		if len(unit.GenericItems) == 0:
-			return
+			return None
 
-		rows: list[list[list[Node]]] = []
-		names: list[list[str]] = []
+		entries: list[tuple[Iterable[str], str, str, Nullable[str]]] = []
 		for item in unit.GenericItems:
-			identifiers = identifiersOf(item)
 			default = ""
 			if isinstance(item, GenericConstantInterfaceItem):
 				kind = self._Format(item.Subtype)
@@ -272,25 +262,14 @@ class DesignUnitDirective(VHDLDirective):
 				kind = "type"
 			elif isinstance(item, GenericPackageInterfaceItem):
 				kind = "package"
+			elif isinstance(item, GenericFunctionInterfaceItem):
+				kind = "function"
 			else:
-				kind = "subprogram"
+				kind = "procedure"
 
-			rows.append([
-				self._Code(", ".join(identifiers)),
-				self._Code(kind),
-				self._Code(default),
-				self._Documentation(item.Documentation)
-			])
-			names.append([f"{qualifiedName}.{identifier}" for identifier in identifiers])
+			entries.append((identifiersOf(item), kind, default, item.Documentation))
 
-		table, bodyRows = self._Table(
-			[("Generic", 20), ("Type", 20), ("Default", 20), ("Description", 40)], rows, ["vhdl-generics"]
-		)
-		for row, qualifiedNames in zip(bodyRows, names):
-			self._RowTarget(row, "generic", qualifiedNames)
-
-		content += nodes.rubric("Generics", "Generics")
-		content += table
+		return self._InterfaceField("Generics", "generic", qualifiedName, entries)
 
 	@abstractmethod
 	def _Interface(self, unit: DesignUnit, library: Library, qualifiedName: str, content: addnodes.desc_content) -> None:
@@ -333,13 +312,13 @@ class EntityDirective(DesignUnitDirective):
 		:param content:       The entity's description content.
 		"""
 		entity: Entity = unit  # type: ignore[assignment]
-		self._Generics(entity, qualifiedName, content)
+		fields = nodes.field_list(classes=["vhdl-interface"])
+		if (generics := self._Generics(entity, qualifiedName)) is not None:
+			fields += generics
 
 		if len(entity.PortItems) > 0:
-			rows: list[list[list[Node]]] = []
-			names: list[list[str]] = []
+			entries: list[tuple[Iterable[str], str, str, Nullable[str]]] = []
 			for item in entity.PortItems:
-				identifiers = identifiersOf(item)
 				if isinstance(item, PortSignalInterfaceItem) and hasattr(item, "Mode"):
 					mode = str(item.Mode)
 				elif hasattr(item, "ModeViewIndication"):
@@ -349,20 +328,14 @@ class EntityDirective(DesignUnitDirective):
 
 				subtype = "" if (symbol := getattr(item, "Subtype", None)) is None else self._Format(symbol)
 				default = "" if (expression := getattr(item, "DefaultExpression", None)) is None else self._Format(expression)
-				rows.append([
-					self._Code(", ".join(identifiers)), self._Code(mode), self._Code(subtype), self._Code(default),
-					self._Documentation(item.Documentation)
-				])
-				names.append([f"{qualifiedName}.{identifier}" for identifier in identifiers])
 
-			table, bodyRows = self._Table(
-				[("Port", 18), ("Mode", 8), ("Type", 20), ("Default", 14), ("Description", 40)], rows, ["vhdl-ports"]
-			)
-			for row, qualifiedNames in zip(bodyRows, names):
-				self._RowTarget(row, "port", qualifiedNames)
+				declaration = " ".join(part for part in (mode, subtype) if part != "")
+				entries.append((identifiersOf(item), declaration, default, item.Documentation))
 
-			content += nodes.rubric("Ports", "Ports")
-			content += table
+			fields += self._InterfaceField("Ports", "port", qualifiedName, entries)
+
+		if len(fields) > 0:
+			content += fields
 
 		if len(entity.Architectures) > 0:
 			content += nodes.rubric("Architectures", "Architectures")
@@ -409,7 +382,8 @@ class PackageDirective(DesignUnitDirective):
 		:param content:       The package's description content.
 		"""
 		package: Package = unit  # type: ignore[assignment]
-		self._Generics(package, qualifiedName, content)
+		if (generics := self._Generics(package, qualifiedName)) is not None:
+			content += nodes.field_list("", generics, classes=["vhdl-interface"])
 
 		for item in package.DeclaredItems:
 			if isinstance(item, Subtype):

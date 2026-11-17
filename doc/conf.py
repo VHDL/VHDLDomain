@@ -2,6 +2,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 from sys                          import path as sys_path
+from importlib.util               import find_spec
 from os                           import environ
 from os.path                      import abspath
 from pathlib                      import Path
@@ -68,7 +69,6 @@ exclude_patterns = [
 	"_theme",
 	"Thumbs.db",
 	".DS_Store",
-	"StopWatch"
 ]
 
 # The name of the Pygments (syntax highlighting) style to use.
@@ -347,18 +347,26 @@ pyTooling_ExternalLink_Icons = "all"
 # ==============================================================================
 # VHDLDomain
 # ==============================================================================
-vhdl_designs = {
-#	"StopWatch": {
-#		"directory": "../examples/StopWatch",
-#		"libraries": {
-#			"lib_Utilities": ["Utilities.pkg.vhdl", "Utilities.ctx.vhdl", "Counter.vhdl", "sync_Bits.vhdl", "Debouncer.vhdl"],
-#			"lib_StopWatch": [
-#				"StopWatch.pkg.vhdl", "StopWatch.ctx.vhdl", "seg7_Encoder.vhdl", "seg7_Display.vhdl", "seg7_Display.cfg.vhdl",
-#				"StopWatch.vhdl", "toplevel.vhdl"
-#			],
-#		},
-#	},
-}
+if find_spec("pyGHDL") is None:
+	# Without pyGHDL, as in CI, the StopWatch example isn't read and its page isn't built.
+	exclude_patterns.append("StopWatch/**")
+	suppress_warnings.append("toc.excluded")
+	vhdl_designs = {}
+else:
+	vhdl_designs = {
+		"StopWatch": {
+			"directory": "../examples/StopWatch",
+			"libraries": {
+				"lib_Utilities": [
+					"Utilities.pkg.vhdl", "Utilities.ctx.vhdl", "Counter.vhdl", "sync_Bits.vhdl", "Debouncer.vhdl"
+				],
+				"lib_StopWatch": [
+					"StopWatch.pkg.vhdl", "StopWatch.ctx.vhdl", "seg7_Encoder.vhdl", "seg7_Display.vhdl", "seg7_Display.cfg.vhdl",
+					"StopWatch.vhdl", "toplevel.vhdl"
+				],
+			},
+		},
+	}
 
 
 # ==============================================================================
