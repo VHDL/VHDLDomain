@@ -143,7 +143,7 @@ class MatplotlibRenderer(metaclass=ExtendedType, slots=True):
 			from matplotlib.lines   import Line2D
 			from matplotlib.patches import Circle as CirclePatch, Polygon as PolygonPatch, Rectangle as RectanglePatch
 		except ImportError as ex:
-			raise MissingDependencyError(dependency="matplotlib") from ex
+			raise MissingDependencyError(dependency="matplotlib", extra="diagram", package="VHDLDomain") from ex
 
 		canvas = SymbolLayout(symbol).Canvas
 		size =   canvas.Size
