@@ -1,7 +1,7 @@
 -r ../requirements.txt
 
 # The extension the documentation uses: pyTooling.Sphinx with its domain 'report'
-pyTooling.Sphinx[reports] ~= 1.0
+pyTooling.Sphinx[reports] ~= 1.1
 
 # Renderer of the interface symbols' PNG images
 matplotlib >= 3.11.2
