@@ -48,6 +48,7 @@ from docutils.parsers.rst        import directives
 from sphinx                      import addnodes
 from sphinx.util.logging         import getLogger
 
+from pyTooling.Common            import StringEnum
 from pyTooling.Decorators        import export
 from pyTooling.MetaClasses       import abstractmethod
 
@@ -65,6 +66,32 @@ from VHDLDomain.Directive        import VHDLDirective
 
 
 _logger = getLogger(__name__)
+
+
+@export
+class ArchitectureListing(StringEnum):
+	"""
+	Which architectures ``vhdl:entity`` lists, as option ``:architectures:`` and ``vhdl_architectures`` state it.
+	"""
+
+	Always =   "always"    #: Every architecture.
+	Multiple = "multiple"  #: Every architecture, if the entity has more than one, e.g. a testbench with one per test.
+	Never =    "never"     #: No architecture.
+
+	DEFAULT =  Always      #: Without a value, every architecture is listed.
+
+
+@export
+class ArchitectureDescriptions(StringEnum):
+	"""
+	Whether a listed architecture shows its documentation comment, as option ``:architecture-descriptions:`` and
+	``vhdl_architecture_descriptions`` state it.
+	"""
+
+	Show = "show"  #: The architecture's declaration and documentation comment.
+	Hide = "hide"  #: The architecture's declaration only.
+
+	DEFAULT = Show  #: Without a value, the documentation comment is shown.
 
 
 @export
@@ -417,12 +444,22 @@ class EntityDirective(DesignUnitDirective):
 	.. code-block:: rst
 
 	   .. vhdl:entity:: lib_Utilities.Counter
+	      :architectures: multiple
 
-	Each generic, port and architecture is an object of the domain: ``:vhdl:generic:`Counter.BITS```,
-	``:vhdl:port:`Counter.Clock``` and ``:vhdl:arch:`Counter.rtl```.
+	Each generic, port and listed architecture is an object of the domain: ``:vhdl:generic:`Counter.BITS```,
+	``:vhdl:port:`Counter.Clock``` and ``:vhdl:arch:`Counter.rtl```. Option ``:architectures:`` - default:
+	``vhdl_architectures`` - lists the architectures ``always``, only for ``multiple`` architectures, or ``never``;
+	option ``:architecture-descriptions:`` - default: ``vhdl_architecture_descriptions`` - shows or hides their
+	documentation.
 	"""
 
 	directiveName: ClassVar[str] = "vhdl:entity"  #: Name the directive is invoked by.
+
+	option_spec = {
+		**DesignUnitDirective.option_spec,
+		"architectures":             ArchitectureListing.Parse,
+		"architecture-descriptions": ArchitectureDescriptions.Parse,
+	}  #: The options of every design-unit directive, and which architectures are listed, with or without documentation.
 
 	_KEYWORD:     ClassVar[str] = "entity"    #: The unit's keyword in VHDL.
 	_COLLECTION:  ClassVar[str] = "Entities"  #: The collection of :class:`~pyVHDLModel.Library` holding entities.
@@ -431,6 +468,10 @@ class EntityDirective(DesignUnitDirective):
 	def _Interface(self, unit: DesignUnit, library: Library, qualifiedName: str, content: addnodes.desc_content) -> None:
 		"""
 		Write an entity's generics, ports and architectures.
+
+		The architectures are listed per option ``:architectures:`` - default: ``vhdl_architectures`` -: ``always``, only
+		for more than one architecture (``multiple``), or ``never``. With ``:architecture-descriptions: hide`` - default:
+		``vhdl_architecture_descriptions`` -, a listed architecture shows its declaration only.
 
 		:param unit:          The entity.
 		:param library:       The entity's library.
@@ -441,18 +482,28 @@ class EntityDirective(DesignUnitDirective):
 		if (fields := self._InterfaceFields(entity, qualifiedName)) is not None:
 			content += fields
 
-		if len(entity.Architectures) > 0:
-			content += nodes.rubric("Architectures", "Architectures")
-			for architecture in entity.Architectures.values():
-				description, archContent, index = self._Description(
-					"architecture", f"{qualifiedName}.{architecture.Identifier}", ["architecture"], architecture.Identifier,
-					f"{architecture.Identifier} (VHDL architecture of {entity.Identifier} in {library.Identifier})",
-					[addnodes.desc_annotation(" of ", "", addnodes.desc_sig_space(), addnodes.desc_sig_keyword("of", "of"),
-						addnodes.desc_sig_space()), addnodes.desc_addname(entity.Identifier, entity.Identifier)]
-				)
+		listing = self.options.get("architectures", self.config.vhdl_architectures)
+		if (
+			(count := len(entity.Architectures)) == 0
+			or listing is ArchitectureListing.Never
+			or (listing is ArchitectureListing.Multiple and count == 1)
+		):
+			return
+
+		descriptions = self.options.get("architecture-descriptions", self.config.vhdl_architecture_descriptions)
+		content += nodes.rubric("Architectures", "Architectures")
+		for architecture in entity.Architectures.values():
+			description, archContent, index = self._Description(
+				"architecture", f"{qualifiedName}.{architecture.Identifier}", ["architecture"], architecture.Identifier,
+				f"{architecture.Identifier} (VHDL architecture of {entity.Identifier} in {library.Identifier})",
+				[addnodes.desc_annotation(" of ", "", addnodes.desc_sig_space(), addnodes.desc_sig_keyword("of", "of"),
+					addnodes.desc_sig_space()), addnodes.desc_addname(entity.Identifier, entity.Identifier)]
+			)
+			if descriptions is ArchitectureDescriptions.Show:
 				archContent.extend(self._Documentation(architecture.Documentation))
-				content += index
-				content += description
+
+			content += index
+			content += description
 
 
 @export

@@ -347,6 +347,8 @@ pyTooling_ExternalLink_Icons = "all"
 # ==============================================================================
 # VHDLDomain
 # ==============================================================================
+vhdl_architectures = "multiple"
+
 if find_spec("pyGHDL") is None:
 	# Without pyGHDL, as in CI, the StopWatch example isn't read and its page isn't built.
 	exclude_patterns.append("StopWatch/**")
