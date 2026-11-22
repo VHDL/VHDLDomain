@@ -17,6 +17,12 @@ emphasis, literals, a bullet list and a ``.. seealso::`` referring to other unit
 The documentation's :file:`conf.py` sets :ref:`vhdl_architectures = "multiple" <CONFIG/architectures>`: only
 :vhdl:ent:`Counter` - with an architecture for synthesis and one for simulation - lists its architectures.
 
+A reference to a declaration of a package shows the declaration in a popup, while the mouse is over it or it has the
+keyboard focus (see :ref:`ROLE/popups`): e.g. the type mark ``T_BCD`` of the port ``BCDValue`` of
+:vhdl:ent:`seg7_Encoder`, or the record :vhdl:type:`T_DIGIT_CONFIGURATION` with its elements, the physical type
+:vhdl:type:`freq` with its units, the function :vhdl:func:`clamp`, the method :vhdl:func:`T_ERROR_COUNTER.Errors` and
+the component :vhdl:comp:`seg7_Display`.
+
 lib_Utilities
 *************
 

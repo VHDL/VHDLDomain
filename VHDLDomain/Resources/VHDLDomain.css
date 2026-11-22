@@ -1,0 +1,90 @@
+/* Stylesheet of the Sphinx domain 'vhdl' (VHDLDomain), linked into every HTML page while 'vhdl_reference_popups' is on.
+ *
+ * Popups of references: a reference to a type, subprogram or component is
+ *
+ *   <span class="vhdl-popup-anchor">
+ *     <a class="reference internal" href="..." aria-describedby="vhdl-popup-1">T_DIGIT_CONFIGURATION</a>
+ *     <span class="vhdl-popup no-search" id="vhdl-popup-1" role="tooltip">
+ *       <span class="vhdl-popup-location">lib_StopWatch.StopWatch_pkg</span>
+ *       <span class="vhdl-popup-signature">type T_DIGIT_CONFIGURATION is record</span>
+ *       <span class="vhdl-popup-documentation">The configuration of one digit of a stop watch.</span>
+ *       <span class="vhdl-popup-members">
+ *         <span class="vhdl-popup-label">Elements</span>
+ *         <span class="vhdl-popup-member">Modulo : positive</span>
+ *         <span class="vhdl-popup-member">Dot : std_logic</span>
+ *       </span>
+ *     </span>
+ *   </span>
+ *
+ * The popup is shown while the anchor is hovered or holds the keyboard focus. Its colors and fonts follow the theme's
+ * variables, where the theme has them (furo, pydata-sphinx-theme), else the look of sphinx_rtd_theme; each can be set
+ * by a variable '--vhdl-popup-*', e.g. ':root { --vhdl-popup-background: #ffffe0; }'.
+ */
+.vhdl-popup-anchor {
+	position: relative;
+}
+
+.vhdl-popup {
+	display: none;
+	position: absolute;
+	top: 100%;
+	left: 0;
+	z-index: 1000;
+	box-sizing: border-box;
+	width: max-content;
+	max-width: min(36em, 90vw);
+	padding: 0.5em 0.75em;
+	border: 1px solid var(--vhdl-popup-border, var(--color-background-border, var(--pst-color-border, #e1e4e5)));
+	border-radius: 4px;
+	background: var(--vhdl-popup-background, var(--color-background-primary, var(--pst-color-surface, #ffffff)));
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+	color: var(--vhdl-popup-foreground, var(--color-foreground-primary, var(--pst-color-text-base, #404040)));
+	font: normal normal 400 0.875rem/1.4 var(--vhdl-popup-font, var(--font-stack, var(--pst-font-family-base,
+		Lato, "proxima-nova", "Helvetica Neue", Arial, sans-serif)));
+	text-align: left;
+	text-indent: 0;
+	text-transform: none;
+	letter-spacing: normal;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	cursor: auto;
+}
+
+.vhdl-popup-anchor:hover > .vhdl-popup,
+.vhdl-popup-anchor:focus-within > .vhdl-popup {
+	display: block;
+}
+
+.vhdl-popup > span {
+	display: block;
+}
+
+.vhdl-popup-location {
+	color: var(--vhdl-popup-muted, var(--color-foreground-muted, var(--pst-color-text-muted, #808080)));
+	font-size: 0.85em;
+}
+
+.vhdl-popup-signature,
+.vhdl-popup-member {
+	font-family: var(--vhdl-popup-code-font, var(--font-stack--monospace, var(--pst-font-family-monospace,
+		SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", Courier, monospace)));
+}
+
+.vhdl-popup-signature .sig-name {
+	font-weight: 700;
+}
+
+.vhdl-popup-documentation,
+.vhdl-popup-members {
+	margin-top: 0.35em;
+}
+
+.vhdl-popup-label {
+	display: block;
+	font-weight: 700;
+}
+
+.vhdl-popup-member {
+	display: block;
+	padding-left: 1em;
+}
