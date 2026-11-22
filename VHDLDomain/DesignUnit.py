@@ -40,6 +40,7 @@ configuration's entity. Each of them is an object of the domain, which a role re
 """
 from __future__                  import annotations
 
+from re                          import compile as re_compile
 from typing                      import ClassVar, Iterable, Optional as Nullable
 
 from docutils                    import nodes
@@ -53,19 +54,23 @@ from pyTooling.Decorators        import export
 from pyTooling.MetaClasses       import abstractmethod
 
 from pyVHDLModel                 import Library
-from pyVHDLModel.Base            import identifiersOf
+from pyVHDLModel.Base            import DocumentedEntityMixin, identifiersOf
 from pyVHDLModel.DesignUnit      import Component, Configuration, Context, DesignUnit, Entity, Package
 from pyVHDLModel.Interface       import GenericConstantInterfaceItem, GenericFunctionInterfaceItem, \
                                         GenericInterfaceItemMixin, GenericPackageInterfaceItem, \
                                         GenericTypeInterfaceItem, InterfaceItemWithModeMixin, PortSignalInterfaceItem
 from pyVHDLModel.Object          import Constant, DeferredConstant, SharedVariable, Signal, WithDefaultExpressionMixin
 from pyVHDLModel.Subprogram      import Function, Procedure, Subprogram
+from pyVHDLModel.Symbol          import SubtypeSymbol
 from pyVHDLModel.Type            import BaseType, PhysicalType, ProtectedType, RecordType, Subtype
 
 from VHDLDomain.Directive        import VHDLDirective
 
 
 _logger = getLogger(__name__)
+
+_NAME = re_compile(r"[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)*")
+"""A name in VHDL text: a basic identifier, or a selected name of them, e.g. ``ieee.numeric_std.unsigned``."""
 
 
 @export
@@ -254,31 +259,31 @@ class DesignUnitDirective(VHDLDirective):
 		label:         str,
 		objectType:    Nullable[str],
 		qualifiedName: str,
-		entries:       Iterable[tuple[Iterable[str], str, str, Nullable[str]]]
+		entries:       Iterable[tuple[Iterable[str], str, str, DocumentedEntityMixin]]
 	) -> nodes.field:
 		"""
 		Create the field of an interface list, as Sphinx writes a Python function's parameters.
 
 		An interface list is e.g. an entity's generics or ports. Each entry is an item of the list: its names in bold, its
-		declaration - e.g. mode and subtype -, its default value and its documentation. Each item is the target of the
-		objects it declares; an item declares several objects, if its declaration has an identifier list, e.g. a port
-		``Q0, Q1``.
+		declaration - e.g. mode and subtype, its type mark referring to the type's description -, its default value and
+		its documentation. Each item is the target of the objects it declares; an item declares several objects, if its
+		declaration has an identifier list, e.g. a port ``Q0, Q1``.
 
 		:param label:         The field's name, as ``Ports``.
 		:param objectType:    The object type of the items, as ``port``, or ``None`` if they are no objects of the domain,
 		                      as a subprogram's parameters.
 		:param qualifiedName: The qualified name of the unit or declaration declaring the items.
-		:param entries:       Per item: its identifiers, its declaration, its default value or an empty string, and its
-		                      documentation comment.
+		:param entries:       Per item: its identifiers, its declaration, its default value or an empty string, and the
+		                      model element - with the documentation comment and the subtype.
 		:returns:             The field.
 		"""
 		bodies: list[list[Node]] = []
-		for identifiers, declaration, default, documentation in entries:
+		for identifiers, declaration, default, element in entries:
 			names =     ", ".join(identifiers)
 			paragraph = nodes.paragraph()
 			paragraph += addnodes.literal_strong(names, names)
 			paragraph += nodes.Text(" : ")
-			paragraph += addnodes.literal_emphasis(declaration, declaration)
+			paragraph += addnodes.literal_emphasis("", "", *self._TypeReferences(declaration, element, qualifiedName))
 			if default != "":
 				paragraph += nodes.Text(" := ")
 				paragraph += addnodes.literal_emphasis(default, default)
@@ -290,9 +295,56 @@ class DesignUnitDirective(VHDLDirective):
 					paragraph["ids"].append(nodeID)
 					self._Domain().NoteObject(objectType, itemName, nodeID, paragraph)
 
-			bodies.append(self._Item(paragraph, documentation))
+			bodies.append(self._Item(paragraph, element.Documentation))
 
 		return self._Field(label, bodies)
+
+	def _TypeReferences(self, text: str, element: object, qualifiedName: str) -> list[Node]:
+		"""
+		Write the VHDL text of a declaration, its type marks referring to the types' descriptions.
+
+		The type marks are the names of the subtypes the model element refers to: an object's or interface item's subtype,
+		a function's return type, an array's element type, a subtype's type, an access or file type's designated subtype.
+		Each is a reference by role ``:vhdl:type:``, in the design and library of the unit; a type mark of an undescribed
+		type, e.g. ``std_logic``, or of several described types, stays text without a warning.
+
+		:param text:          The VHDL text, e.g. ``in unsigned(BITS - 1 downto 0)``.
+		:param element:       The model element the text is written from.
+		:param qualifiedName: The qualified name of the unit or declaration, giving the design and library.
+		:returns:             The text and reference nodes.
+		"""
+		typeMarks: set[str] = set()
+		for fieldName in ("Subtype", "ReturnType", "ElementType", "Type", "DesignatedSubtype"):
+			if isinstance(symbol := getattr(element, fieldName, None), SubtypeSymbol):
+				typeMarks.add(symbol.TypeMark.lower())
+
+		if len(typeMarks) == 0:
+			return [nodes.Text(text)]
+
+		designName, libraryName, _ = qualifiedName.split(".", 2)
+		result: list[Node] = []
+		position = 0
+		for match in _NAME.finditer(text):
+			if (name := match.group()).lower() not in typeMarks:
+				continue
+
+			if match.start() > position:
+				result.append(nodes.Text(text[position:match.start()]))
+
+			reference = addnodes.pending_xref(
+				"", nodes.Text(name), refdomain="vhdl", reftype="type", reftarget=name, refexplicit=True, refwarn=False,
+				refdoc=self.env.docname
+			)
+			reference["vhdl:design"] =   designName
+			reference["vhdl:library"] =  libraryName
+			reference["vhdl:implicit"] = True
+			result.append(reference)
+			position = match.end()
+
+		if position < len(text):
+			result.append(nodes.Text(text[position:]))
+
+		return result
 
 	def _Generics(
 		self,
@@ -313,7 +365,7 @@ class DesignUnitDirective(VHDLDirective):
 		if len(unit.GenericItems) == 0:
 			return None
 
-		entries: list[tuple[Iterable[str], str, str, Nullable[str]]] = []
+		entries: list[tuple[Iterable[str], str, str, DocumentedEntityMixin]] = []
 		for item in unit.GenericItems:
 			default = ""
 			if isinstance(item, GenericConstantInterfaceItem):
@@ -329,7 +381,7 @@ class DesignUnitDirective(VHDLDirective):
 			else:
 				kind = "procedure"
 
-			entries.append((self._Designators(item), kind, default, item.Documentation))
+			entries.append((self._Designators(item), kind, default, item))
 
 		return self._InterfaceField("Generics", "generic" if objects else None, qualifiedName, entries)
 
@@ -361,7 +413,7 @@ class DesignUnitDirective(VHDLDirective):
 		if len(unit.PortItems) == 0:
 			return None
 
-		entries: list[tuple[Iterable[str], str, str, Nullable[str]]] = []
+		entries: list[tuple[Iterable[str], str, str, DocumentedEntityMixin]] = []
 		for item in unit.PortItems:
 			if isinstance(item, PortSignalInterfaceItem) and hasattr(item, "Mode"):
 				mode = str(item.Mode)
@@ -374,7 +426,7 @@ class DesignUnitDirective(VHDLDirective):
 			default = "" if (expression := getattr(item, "DefaultExpression", None)) is None else self._Format(expression)
 
 			declaration = " ".join(part for part in (mode, subtype) if part != "")
-			entries.append((identifiersOf(item), declaration, default, item.Documentation))
+			entries.append((identifiersOf(item), declaration, default, item))
 
 		return self._InterfaceField("Ports", "port" if objects else None, qualifiedName, entries)
 
@@ -612,15 +664,13 @@ class PackageDirective(DesignUnitDirective):
 
 		suffix: list[Node] = []
 		if declaration.startswith(prefix) and (definition := declaration[len(prefix):]) != "":
-			suffix.append(addnodes.desc_annotation(definition, definition))
+			suffix.append(addnodes.desc_annotation("", "", *self._TypeReferences(definition, item, qualifiedName)))
 
 		typeContent = self._Declaration(
 			content, keyword, qualifiedName, item.Identifier, suffix, item.Documentation
 		)
 		if isinstance(item, RecordType) and len(item.Elements) > 0:
-			entries = [
-				(element.Identifiers, self._Format(element.Subtype), "", element.Documentation) for element in item.Elements
-			]
+			entries = [(element.Identifiers, self._Format(element.Subtype), "", element) for element in item.Elements]
 			typeContent += nodes.field_list(
 				"", self._InterfaceField("Elements", None, qualifiedName, entries), classes=["vhdl-interface"]
 			)
@@ -691,7 +741,7 @@ class PackageDirective(DesignUnitDirective):
 			text += f" := {self._Format(item.DefaultExpression)}"
 
 		for identifier in item.Identifiers:
-			suffix = [addnodes.desc_annotation(text, text)]
+			suffix = [addnodes.desc_annotation("", "", *self._TypeReferences(text, item, qualifiedName))]
 			self._Declaration(content, objectType, qualifiedName, identifier, suffix, item.Documentation, keywords)
 
 	def _Subprogram(
@@ -713,7 +763,7 @@ class PackageDirective(DesignUnitDirective):
 		:param subprogram:    The subprogram.
 		"""
 		parameters = addnodes.desc_parameterlist()
-		entries: list[tuple[Iterable[str], str, str, Nullable[str]]] = []
+		entries: list[tuple[Iterable[str], str, str, DocumentedEntityMixin]] = []
 		for item in subprogram.ParameterItems:
 			mode =    str(item.Mode) if isinstance(item, InterfaceItemWithModeMixin) else ""
 			subtype = "" if (symbol := getattr(item, "Subtype", None)) is None else self._Format(symbol)
@@ -725,9 +775,9 @@ class PackageDirective(DesignUnitDirective):
 				if default != "":
 					text += f" := {default}"
 
-				parameters += addnodes.desc_parameter(text, text)
+				parameters += addnodes.desc_parameter("", "", *self._TypeReferences(text, item, qualifiedName))
 
-			entries.append((identifiersOf(item), declaration, default, item.Documentation))
+			entries.append((identifiersOf(item), declaration, default, item))
 
 		suffix: list[Node] = [parameters]
 		if len(subprogram.GenericItems) > 0:
@@ -742,7 +792,7 @@ class PackageDirective(DesignUnitDirective):
 			objectType = "function"
 			keywords =   ["function"] if subprogram.IsPure else ["impure", "function"]
 			returnType = self._Format(subprogram.ReturnType)
-			suffix.append(addnodes.desc_returns(returnType, returnType))
+			suffix.append(addnodes.desc_returns("", "", *self._TypeReferences(returnType, subprogram, qualifiedName)))
 		else:
 			objectType = "procedure"
 			keywords =   ["procedure"]
@@ -756,7 +806,7 @@ class PackageDirective(DesignUnitDirective):
 		if (generics := self._Generics(subprogram, qualifiedName, objects=False)) is not None:
 			fields += generics
 
-		if any(documentation is not None for *_, documentation in entries):
+		if any(item.Documentation is not None for *_, item in entries):
 			fields += self._InterfaceField("Parameters", None, qualifiedName, entries)
 
 		if len(fields) > 0:
