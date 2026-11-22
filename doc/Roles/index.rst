@@ -71,6 +71,18 @@ Declarations
 
    Refer to a constant.
 
+.. rst:role:: vhdl:sig
+
+   Refer to a signal.
+
+.. rst:role:: vhdl:var
+
+   Refer to a shared variable.
+
+.. rst:role:: vhdl:comp
+
+   Refer to a component, e.g. ``StopWatch_pkg.seg7_Encoder``.
+
 .. rst:role:: vhdl:func
 
    Refer to a function, optionally with its signature.

@@ -49,8 +49,8 @@ design, a library or a design unit from the model, and a role refers to what a d
 * Directives: ``vhdl:design``, ``vhdl:library``, ``vhdl:context``, ``vhdl:entity``, ``vhdl:package``,
   ``vhdl:configuration``, ``vhdl:symbol``
 * Roles: ``:vhdl:design:``, ``:vhdl:lib:``, ``:vhdl:ctx:``, ``:vhdl:ent:``, ``:vhdl:arch:``, ``:vhdl:pack:``,
-  ``:vhdl:config:``, ``:vhdl:type:``, ``:vhdl:const:``, ``:vhdl:func:``, ``:vhdl:proc:``, ``:vhdl:generic:``,
-  ``:vhdl:port:``
+  ``:vhdl:config:``, ``:vhdl:type:``, ``:vhdl:const:``, ``:vhdl:sig:``, ``:vhdl:var:``, ``:vhdl:comp:``,
+  ``:vhdl:func:``, ``:vhdl:proc:``, ``:vhdl:generic:``, ``:vhdl:port:``
 * Indices: ``vhdl-entities``, ``vhdl-packages``, ``vhdl-subprograms``, ``vhdl-types``
 * Configuration value ``vhdl_designs``
 * Node :class:`~VHDLDomain.Symbol.Directive.SymbolNode` with visitors for HTML and LaTeX, and LaTeX package ``tikz``
@@ -124,6 +124,9 @@ OBJECT_TYPES: dict[str, str] = {
 	"type":          "type",
 	"subtype":       "subtype",
 	"constant":      "constant",
+	"signal":        "signal",
+	"variable":      "shared variable",
+	"component":     "component",
 	"function":      "function",
 	"procedure":     "procedure",
 	"generic":       "generic",
@@ -141,6 +144,9 @@ ROLES: dict[str, tuple[str, ...]] = {
 	"config":  ("configuration", ),
 	"type":    ("type", "subtype"),
 	"const":   ("constant", ),
+	"sig":     ("signal", ),
+	"var":     ("variable", ),
+	"comp":    ("component", ),
 	"func":    ("function", ),
 	"proc":    ("procedure", ),
 	"generic": ("generic", ),

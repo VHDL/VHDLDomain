@@ -54,16 +54,17 @@ CONF = dedent("""\
 	from pyVHDLModel               import Design, Document
 	from pyVHDLModel.Base          import Direction, Mode, SimpleRange
 	from pyVHDLModel.Configuration import BlockConfiguration
-	from pyVHDLModel.DesignUnit    import Architecture, Configuration, Context, Entity, LibraryClause, Package
-	from pyVHDLModel.Expression    import FunctionCall, IntegerLiteral
+	from pyVHDLModel.DesignUnit    import Architecture, Component, Configuration, Context, Entity, LibraryClause, Package
+	from pyVHDLModel.Expression    import FunctionCall, IntegerLiteral, PhysicalIntegerLiteral
 	from pyVHDLModel.Interface     import GenericConstantInterfaceItem, GenericTypeInterfaceItem
 	from pyVHDLModel.Interface     import ParameterConstantInterfaceItem, PortSimpleSignalInterfaceItem
 	from pyVHDLModel.Name          import SimpleName
-	from pyVHDLModel.Object        import Constant
+	from pyVHDLModel.Object        import Constant, DeferredConstant, SharedVariable, Signal
 	from pyVHDLModel.Subprogram    import Function, Procedure
 	from pyVHDLModel.Symbol        import ConstrainedArraySubtypeSymbol, EntitySymbol, LibraryReferenceSymbol
 	from pyVHDLModel.Symbol        import PossibleReference, SimpleSubtypeSymbol, Symbol
-	from pyVHDLModel.Type          import EnumeratedType, EnumerationLiteral, Subtype
+	from pyVHDLModel.Type          import EnumeratedType, EnumerationLiteral, PhysicalType, PhysicalUnit, RecordType
+	from pyVHDLModel.Type          import RecordTypeElement, Subtype
 
 	extensions = ["VHDLDomain"]
 
@@ -101,6 +102,7 @@ CONF = dedent("""\
 				),
 			]
 		))
+		document._AddDesignUnit(Entity("Adder"))
 		document._AddDesignUnit(Architecture("rtl", EntitySymbol(SimpleName("Counter")), documentation="-- The RTL model."))
 		document._AddDesignUnit(Package(
 			"Utilities",
@@ -109,6 +111,7 @@ CONF = dedent("""\
 				EnumeratedType("T_STATE", [EnumerationLiteral("Idle"), EnumerationLiteral("Run")], documentation="-- States."),
 				Subtype("T_SMALL", subtype("natural")),
 				Constant(("C_ONE", "C_UNO"), subtype("natural"), IntegerLiteral(1), documentation="-- One."),
+				DeferredConstant(("C_LATE", ), subtype("boolean"), documentation="-- Set by the body."),
 				Function("to_index", subtype("natural"), parameterItems=[
 					ParameterConstantInterfaceItem(("value", ), Mode.In, subtype("natural"))
 				]),
@@ -118,6 +121,31 @@ CONF = dedent("""\
 				]),
 				Function("random", subtype("natural"), isPure=False),
 				Procedure("reset", parameterItems=[ParameterConstantInterfaceItem(("value", ), Mode.In, subtype("natural"))]),
+				RecordType(
+					"T_PAIR",
+					[RecordTypeElement(("Low", "High"), subtype("natural"), documentation="-- The bounds.")],
+					documentation="-- A pair."
+				),
+				PhysicalType(
+					"T_FREQ", SimpleRange(IntegerLiteral(0), IntegerLiteral(1000), Direction.To), PhysicalUnit("Hz"),
+					[PhysicalUnit("kHz", PhysicalIntegerLiteral(1000, "Hz"), documentation="-- Kilohertz.")]
+				),
+				Signal(("S_READY", ), subtype("std_logic"), IntegerLiteral(0), documentation="-- Ready."),
+				SharedVariable(("V_COUNT", ), subtype("natural")),
+				Component(
+					"Adder",
+					genericItems=[GenericConstantInterfaceItem(("WIDTH", ), Mode.In, subtype("positive"))],
+					portItems=[
+						PortSimpleSignalInterfaceItem(("A", "B"), Mode.In, subtype("std_logic"), documentation="-- Summands."),
+						PortSimpleSignalInterfaceItem(("Sum", ), Mode.Out, subtype("std_logic")),
+					],
+					documentation="-- An adder."
+				),
+				Function("clip", subtype("natural"), parameterItems=[
+					ParameterConstantInterfaceItem(
+						("value", ), Mode.Default, subtype("natural"), IntegerLiteral(0), documentation="-- The value."
+					)
+				]),
 			],
 			documentation="-- Utilities."
 		))
@@ -130,6 +158,8 @@ CONF = dedent("""\
 		design.AddDocument(document, design.GetLibrary("lib_A"))
 		design.CreateDependencyGraph()
 		design.LinkArchitectures()
+		design.IndexPackages()
+		design.LinkComponents()
 
 		return design
 
@@ -320,10 +350,17 @@ class Package(DesignUnitProject):
 				("subtype",   "demo.lib_a.utilities.t_small"),
 				("constant",  "demo.lib_a.utilities.c_one"),
 				("constant",  "demo.lib_a.utilities.c_uno"),
+				("constant",  "demo.lib_a.utilities.c_late"),
 				("function",  "demo.lib_a.utilities.to_index(natural)"),
 				("function",  "demo.lib_a.utilities.to_index(unsigned,positive,positive)"),
 				("function",  "demo.lib_a.utilities.random()"),
 				("procedure", "demo.lib_a.utilities.reset(natural)"),
+				("type",      "demo.lib_a.utilities.t_pair"),
+				("type",      "demo.lib_a.utilities.t_freq"),
+				("signal",    "demo.lib_a.utilities.s_ready"),
+				("variable",  "demo.lib_a.utilities.v_count"),
+				("component", "demo.lib_a.utilities.adder"),
+				("function",  "demo.lib_a.utilities.clip(natural)"),
 			},
 			set(domain.Objects)
 		)
@@ -339,6 +376,91 @@ class Package(DesignUnitProject):
 		):
 			with self.subTest(text=text):
 				self.assertIn(text, html)
+
+	def test_Types(self) -> None:
+		"""A signature shows a type's definition as pyVHDLModel writes it; a record has elements, a physical type units."""
+		self._page(".. vhdl:package:: Utilities\n")
+
+		html = self._html("page")
+		for text in (
+			'<span class="property"> <span class="pre">is</span> <span class="pre">(Idle,</span> '
+			'<span class="pre">Run)</span></span>',
+			'<span class="property"> <span class="pre">is</span> <span class="pre">natural</span></span>',
+			'<span class="property"> <span class="pre">is</span> <span class="pre">record</span></span>',
+			'<dt class="field-odd">Elements<span class="colon">:</span></dt>\n'
+			'<dd class="field-odd"><p><strong>Low, High</strong> : <em>natural</em> – The bounds.</p>',
+			'<span class="property"> <span class="pre">is</span> <span class="pre">range</span> <span class="pre">0</span> '
+			'<span class="pre">to</span> <span class="pre">1000</span></span>',
+			'<li><p><strong>Hz</strong></p></li>\n<li><p><strong>kHz</strong> = <em>1000 Hz</em> – Kilohertz.</p></li>',
+		):
+			with self.subTest(text=text):
+				self.assertIn(text, html)
+
+	def test_Objects_Values(self) -> None:
+		"""A constant shows its value, a signal its default value; a shared variable has the keywords of both words."""
+		self._page(".. vhdl:package:: Utilities\n")
+
+		html = self._html("page")
+		for text in (
+			'<span class="sig-name descname"><span class="pre">C_ONE</span></span><span class="property"> <span class="pre">:'
+			'</span> <span class="pre">natural</span> <span class="pre">:=</span> <span class="pre">1</span></span>',
+			'<span class="sig-name descname"><span class="pre">S_READY</span></span><span class="property"> '
+			'<span class="pre">:</span> <span class="pre">std_logic</span> <span class="pre">:=</span> '
+			'<span class="pre">0</span></span>',
+			'<span class="pre">shared</span></span><span class="w"> </span></span><span class="property"><span class="k">'
+			'<span class="pre">variable</span>',
+			"<p>Ready.</p>",
+			'<span class="pre">deferred</span></span><span class="w"> </span></span><span class="property"><span class="k">'
+			'<span class="pre">constant</span></span><span class="w"> </span></span><span class="sig-name descname">'
+			'<span class="pre">C_LATE</span></span><span class="property"> <span class="pre">:</span> '
+			'<span class="pre">boolean</span></span>',
+		):
+			with self.subTest(text=text):
+				self.assertIn(text, html)
+
+	def test_Component(self) -> None:
+		"""A component has the fields of an entity; its generics and ports are no objects, an entity's port is."""
+		self._page(".. vhdl:package:: Utilities\n\n.. vhdl:entity:: Adder\n\n:vhdl:comp:`Adder` :vhdl:sig:`S_READY`\n")
+
+		self.assertEqual([], self._warningLines())
+		html = self._html("page")
+		for text in (
+			"<p>An adder.</p>",
+			'<dt class="field-odd">Entity<span class="colon">:</span></dt>\n<dd class="field-odd"><p>'
+			'<a class="reference internal" href="#vhdl-entity-demo.lib_a.adder" title="Demo.lib_A.Adder">'
+			'<code class="docutils literal notranslate"><span class="pre">Adder</span></code></a></p>\n</dd>',
+			'<dd class="field-even"><p><strong>WIDTH</strong> : <em>positive</em></p>',
+			'<li><p><strong>A, B</strong> : <em>in std_logic</em> – Summands.</p></li>',
+			'href="#vhdl-component-demo.lib_a.utilities.adder"', 'href="#vhdl-signal-demo.lib_a.utilities.s_ready"',
+		):
+			with self.subTest(text=text):
+				self.assertIn(text, html)
+
+	def test_Parameters(self) -> None:
+		"""A parameter shows its default value; a documented parameter gives the subprogram the field *Parameters*."""
+		self._page(".. vhdl:package:: Utilities\n")
+
+		html = self._html("page")
+		for text in (
+			'<em class="sig-param"><span class="pre">value</span> <span class="pre">:</span> '
+			'<span class="pre">natural</span> <span class="pre">:=</span> <span class="pre">0</span></em>',
+			'<dt class="field-odd">Parameters<span class="colon">:</span></dt>\n'
+			'<dd class="field-odd"><p><strong>value</strong> : <em>natural</em> := <em>0</em> – The value.</p>',
+		):
+			with self.subTest(text=text):
+				self.assertIn(text, html)
+
+		self.assertEqual(1, html.count("Parameters<span"))
+
+	def test_Component_Undocumented(self) -> None:
+		"""A component's entity without a description is its name, without a warning."""
+		self._page(".. vhdl:package:: Utilities\n")
+
+		self.assertEqual([], self._warningLines())
+		self.assertIn(
+			'<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">Adder</span></code></p>',
+			self._html("page")
+		)
 
 	def test_References(self) -> None:
 		body = dedent("""\
