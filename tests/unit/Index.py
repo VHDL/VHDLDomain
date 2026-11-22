@@ -64,6 +64,16 @@ class Indices(DesignUnitProject):
 		self.assertIn('href="vhdl-entities.html"', html)
 		self.assertIn('href="vhdl-subprograms.html"', html)
 
+	def test_TableOfContents(self) -> None:
+		"""An index page is a generated document, which a table of contents lists, as ``genindex``."""
+		index = "Index\n#####\n\n.. toctree::\n\n   Entities <vhdl-entities>\n   vhdl-types\n"
+		self._page(".. vhdl:entity:: Counter\n", {"index": index})
+
+		self.assertEqual([], self._warningLines())
+		html = self._html("index")
+		self.assertIn('<a class="reference internal" href="vhdl-entities.html">Entities</a>', html)
+		self.assertIn('<a class="reference internal" href="vhdl-types.html">Type Index</a>', html)
+
 	def test_Entries(self) -> None:
 		domain = self._page(".. vhdl:entity:: Counter\n\n.. vhdl:package:: Utilities\n")
 
@@ -74,10 +84,28 @@ class Indices(DesignUnitProject):
 		anchor = "vhdl-function-demo.lib_a.utilities"
 		self.assertEqual(
 			[
+				("C", [
+					IndexEntry("clip(natural)", 0, "page", f"{anchor}.clip-natural", extra, "", ""),
+				]),
+				("I", [
+					IndexEntry(
+						"Increment(positive)", 0, "page", "vhdl-procedure-demo.lib_a.utilities.t_counter.increment-positive",
+						"procedure in lib_A.Utilities.T_COUNTER", "", ""
+					),
+				]),
+				("M", [
+					IndexEntry("maximum(T_VALUE, T_VALUE)", 0, "page", f"{anchor}.maximum-t_value-t_value", extra, "", ""),
+				]),
 				("R", [
 					IndexEntry("random()", 0, "page", f"{anchor}.random", extra, "", ""),
 					IndexEntry(
 						"reset(natural)", 0, "page", "vhdl-procedure-demo.lib_a.utilities.reset-natural",
+						"procedure in lib_A.Utilities", "", ""
+					),
+				]),
+				("S", [
+					IndexEntry(
+						"swap(T_VALUE, T_VALUE)", 0, "page", "vhdl-procedure-demo.lib_a.utilities.swap-t_value-t_value",
 						"procedure in lib_A.Utilities", "", ""
 					),
 				]),
@@ -86,6 +114,11 @@ class Indices(DesignUnitProject):
 					IndexEntry(
 						"to_index(unsigned, positive, positive)", 0, "page", f"{anchor}.to_index-unsigned-positive-positive",
 						extra, "", ""
+					),
+				]),
+				("V", [
+					IndexEntry(
+						"Value()", 0, "page", f"{anchor}.t_counter.value", "function in lib_A.Utilities.T_COUNTER", "", ""
 					),
 				]),
 			],
@@ -98,7 +131,13 @@ class Indices(DesignUnitProject):
 		content, _ = TypeIndex(domain).generate()
 
 		self.assertEqual(
-			[("T", ["subtype in lib_A.Utilities", "type in lib_A.Utilities"])],
+			[(
+				"T",
+				[
+					"type in lib_A.Utilities", "type in lib_A.Utilities", "type in lib_A.Utilities", "subtype in lib_A.Utilities",
+					"type in lib_A.Utilities"
+				]
+			)],
 			[(letter, [entry.extra for entry in entries]) for letter, entries in content]
 		)
 

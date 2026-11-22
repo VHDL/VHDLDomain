@@ -5,7 +5,8 @@ Directives
 
 A directive describes an object of a design read into the domain (see :ref:`CONFIG`): a design, a library, or a
 design unit - entity, package, context, configuration. ``vhdl:design`` and ``vhdl:library`` also set the design and
-library, which the following directives and references of the document are in, until the next one.
+library, which the following directives and references of the document are in, until the next one. ``vhdl:symbol``
+draws an entity's or a component's interface symbol.
 
 .. contents:: Table of Contents
    :local:
@@ -68,11 +69,17 @@ Design units
 
 A design-unit directive's argument is the unit's name, optionally preceded by its library, e.g.
 ``lib_Utilities.Counter``; without a library, the unit is in the current one. The unit is described by its declaration,
-its documentation comment - without the comment markers ``--``, parsed as reStructuredText -, the directive's content,
-and its public interface. The interface's parts are objects of the domain too, which the roles refer to.
+its documentation comment - without the comment markers ``--``, parsed as reStructuredText or Markdown, see option
+``doc-syntax`` below -, the directive's content, and its public interface. The interface's parts are objects of the
+domain too, which the roles refer to. The declaration's signature names the library as well, if
+:ref:`CONFIG/add-library-names` is set.
 
 Types, default values and parameter subtypes are written as VHDL by pyVHDLModel's writer; an element the writer can't
-write yet is written by its name and warned about (warning type ``vhdl.writer``).
+write yet is written by its name and warned about (warning type ``vhdl.writer``). A type mark - e.g. ``T_BCD`` of
+``array (natural range <>) of T_BCD``, or ``unsigned`` of ``unsigned(BITS - 1 downto 0)`` - refers to the type's
+description, as :rst:role:`vhdl:type` does, in the unit's design and library - in HTML with the type's declaration as
+popup (see :ref:`ROLE/popups`). A type mark of an undescribed type, e.g. ``std_logic``, or of several described types
+stays text, without a warning.
 
 Every design-unit directive takes these options:
 
@@ -86,6 +93,12 @@ Every design-unit directive takes these options:
 
    Describe the unit without targets and index entries - e.g. a second description of the same unit.
 
+.. rst:directive:option:: doc-syntax: rest | markdown | gfm
+   :noindex:
+
+   The syntax of the unit's documentation comments - and of its generics', ports' and declarations' comments -:
+   reStructuredText, CommonMark or GitHub-flavoured Markdown. Default: :ref:`CONFIG/doc-syntax`.
+
 
 .. _DIR/entity:
 
@@ -94,17 +107,41 @@ vhdl:entity
 
 .. rst:directive:: .. vhdl:entity:: [library.]name
 
-   Describe an entity: its generics (name, type, default value, documentation), its ports (name, mode, type, default
-   value, documentation) and its architectures.
+   Describe an entity: its generics, its ports and its architectures.
+
+   The generics and ports are the fields *Generics* and *Ports*, as Sphinx writes a Python function's parameters: per
+   declaration its names in bold, its subtype - a port's with the mode -, its default value, and its documentation
+   comment after a dash. A declaration with several names, e.g. ``Q0, Q1 : out std_logic``, is one item. A generic
+   type, package or subprogram shows its kind: ``type``, ``package``, ``function`` or ``procedure``.
+
+   The architectures follow, each with its documentation comment - which and whether with documentation, set the
+   options below.
+
+   .. rst:directive:option:: architectures: always | multiple | never
+
+      Which architectures to list: ``always`` all, ``multiple`` all if there are more than one - e.g. a testbench with
+      an architecture per test -, ``never`` none. Default: :ref:`CONFIG/architectures`.
+
+   .. rst:directive:option:: architecture-descriptions: show | hide
+
+      Whether a listed architecture shows its documentation comment, or its declaration only. Default:
+      :ref:`CONFIG/architecture-descriptions`.
+
+   .. rst:directive:option:: style: auto | list | table
+
+      The style of the generics and ports: ``list`` - fields, as described above -, ``auto`` - the domain chooses,
+      ``list`` -, or ``table``, which isn't supported yet: it is warned about, and written as ``list``. Default:
+      :ref:`CONFIG/style`.
 
    .. code-block:: rst
 
       .. vhdl:entity:: lib_Utilities.Counter
+         :architectures: multiple
 
          The counter is used by the debouncer.
 
    Refer to its parts by ``:vhdl:generic:`Counter.BITS```, ``:vhdl:port:`Counter.Clock``` and
-   ``:vhdl:arch:`Counter.rtl```.
+   ``:vhdl:arch:`Counter.rtl```; an architecture not listed is no object.
 
 
 .. _DIR/package:
@@ -114,16 +151,56 @@ vhdl:package
 
 .. rst:directive:: .. vhdl:package:: [library.]name
 
-   Describe a package: its generics, and - in declaration order - its types, subtypes, constants (also deferred ones),
-   functions and procedures.
+   Describe a package: its generics - the field *Generics*, as an entity's -, and - in declaration order - its
+   declarations, each a description of its own with its documentation comment:
+
+   .. list-table::
+      :header-rows: 1
+      :widths: 25 75
+
+      * - Declaration
+        - Description
+      * - Type, subtype
+        - The definition's first line, as pyVHDLModel's writer writes it, e.g. ``type T_BCD_Vector is array (natural
+          range <>) of T_BCD``. A record type has the field *Elements*, a physical type the field *Units*. A protected
+          type's methods are descriptions of their own in the type's description, as a Python class' methods; the
+          protected type body isn't described.
+      * - Constant, signal, shared variable
+        - A description per name: the subtype and the value - a constant's, a signal's default value. A deferred
+          constant has no value in the package; its signature starts with ``deferred constant``.
+      * - Component
+        - The field *Entity*, referring to the entity of the same name in the package's library, if pyVHDLModel bound
+          the component to it, and the fields *Generics* and *Ports*, as an entity's.
+      * - Function, procedure
+        - The parameters - with their mode, if the declaration gives one, and their default values - and a function's
+          return type. If a parameter is documented, the field *Parameters*. A generic subprogram (VHDL-2008) names its
+          generics in brackets before the parameters, as Sphinx writes a Python function's type parameters, e.g.
+          ``procedure swap[T_VALUE](A : inout T_VALUE, B : inout T_VALUE)``, and has the field *Generics*.
+
+   .. rst:directive:option:: style: auto | list | table
+
+      The style of the fields *Generics*, *Elements*, *Units*, *Ports* and *Parameters*, as
+      :rst:dir:`vhdl:entity:style`. Default: :ref:`CONFIG/style`.
+
+   .. rst:directive:option:: undoc-members
+
+      Describe the declarations - and a protected type's methods - without documentation comment too. Default:
+      :ref:`CONFIG/undoc-members`, on.
+
+   .. rst:directive:option:: no-undoc-members
+
+      Describe only the declarations - and methods - with a documentation comment.
+      :rst:dir:`vhdl:package:undoc-members` wins over it, as in Sphinx' autodoc. The interface lists - generics, a
+      record's elements, a physical type's units, a component's ports, a subprogram's parameters - are always complete.
 
    .. code-block:: rst
 
       .. vhdl:package:: lib_Utilities.Utilities_pkg
 
-   Refer to its declarations by ``:vhdl:type:`Utilities_pkg.freq```, ``:vhdl:const:`IS_SIMULATION``` or
-   ``:vhdl:func:`to_index(natural, positive)```. A subprogram's qualified name ends in its signature, the type marks of
-   its parameters, so overloads are told apart.
+   Refer to its declarations by ``:vhdl:type:`Utilities_pkg.freq```, ``:vhdl:const:`IS_SIMULATION```,
+   ``:vhdl:comp:`Debouncer``` or ``:vhdl:func:`to_index(natural, positive)```. A subprogram's qualified name ends in its
+   signature, the type marks of its parameters, so overloads are told apart. A component's generics and ports are no
+   objects of the domain: ``:vhdl:port:`Debouncer.Clock``` refers to the entity's port.
 
 
 .. _DIR/context:
@@ -152,3 +229,115 @@ vhdl:configuration
    .. code-block:: rst
 
       .. vhdl:configuration:: lib_StopWatch.seg7_Display_cfg
+
+
+.. _DIR/symbol:
+
+vhdl:symbol
+***********
+
+.. rst:directive:: .. vhdl:symbol:: [library.]name
+
+   Draw an entity's or a component's interface symbol: a box named as the unit, its generics as parameters in a box on
+   top, and its ports as pins on the left and right edge.
+
+   The argument names an entity as ``[library.]entity``, a component declared in a package as
+   ``[library.]package.component``, or a component declared in an architecture as
+   ``[library.]entity.architecture.component``. The name is looked up in the current library and - if its first part
+   names a library - in that library; a name matching no unit or several units is warned about (warning type
+   ``vhdl.symbol``). The symbol describes no object of the domain: it has no target and no index entry.
+
+   .. rst:directive:option:: design: name
+
+      The design the unit is in. Default: the current design.
+
+   .. code-block:: rst
+
+      .. vhdl:symbol:: lib_Utilities.Counter
+
+      .. vhdl:symbol:: lib_StopWatch.StopWatch_pkg.seg7_Display
+
+
+Parameters and pins
+===================
+
+Each identifier of a generic or port declaration becomes a parameter or pin of its own: ``a, b : in bit`` gives two
+pins. A generic constant's parameter shows its subtype and default value, written as VHDL by pyVHDLModel's writer
+(warning type ``vhdl.writer`` for what it can't write yet); a generic type, package, function or procedure shows its
+VHDL keyword. A pin shows the port's subtype, or ``view`` and the name of the port's mode view. A pin's properties
+follow from the port:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Property
+     - Rule
+   * - Side
+     - Mode ``in`` - or no mode - on the left edge; ``out``, ``inout``, ``buffer``, ``linkage`` and a mode view on the
+       right edge.
+   * - Clock
+     - The name is ``clk`` or ``clock``.
+   * - Reset
+     - The name is ``rst``, ``reset`` or ``reset_n``.
+   * - Inverted (low-active)
+     - The name ends in ``_n``.
+   * - Bus
+     - A constrained array or record subtype - as ``unsigned(BITS - 1 downto 0)`` -, a type mark of an array type of
+       the libraries ``std`` and ``ieee`` - as ``std_logic_vector`` -, or a mode view.
+
+Names are compared case-insensitively. The entity ``Counter`` of the StopWatch example gets the parameters ``MODULO``
+and ``BITS``, the pins ``Clock`` (a clock), ``Reset`` (a reset) and ``Enable`` on the left edge, and ``Value`` (a bus)
+and ``WrapAround`` on the right edge.
+
+
+Output formats
+==============
+
+HTML
+   An inline SVG picture.
+
+LaTeX
+   A TikZ picture; the LaTeX package ``tikz`` and the TikZ libraries the picture needs are loaded in the preamble.
+
+Other builders, e.g. text
+   A listing of the symbol: its name, a line per parameter and a line per pin with its side.
+
+
+.. _DIR/css:
+
+CSS classes
+***********
+
+A description is written as Sphinx writes a Python object's: an HTML ``dl`` with the classes ``vhdl`` and the object
+type, e.g. ``<dl class="vhdl entity">``; its ``dt`` is the signature, its ``dd`` the content. A variant of the object
+type adds a class ``vhdl-<variant>``, so a theme can shade each kind of object:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 30 45
+
+   * - Object type
+     - Variant classes
+     - Description of
+   * - ``type``
+     - ``vhdl-enumeration``, ``vhdl-integer``, ``vhdl-real``, ``vhdl-physical``, ``vhdl-array``, ``vhdl-record``,
+       ``vhdl-access``, ``vhdl-file``, ``vhdl-protected``
+     - The kind of type, e.g. ``<dl class="vhdl type vhdl-protected">``.
+   * - ``constant``
+     - ``vhdl-deferred``
+     - A deferred constant.
+   * - ``function``, ``procedure``
+     - ``vhdl-generic``, ``vhdl-method``, ``vhdl-impure``
+     - A generic subprogram, a method of a protected type, an impure function.
+
+The other object types - ``entity``, ``architecture``, ``package``, ``context``, ``configuration``, ``subtype``,
+``signal``, ``variable``, ``component`` - have no variants. The fields *Generics*, *Ports*, *Parameters*, *Elements* and
+*Units* are a field list with the classes ``vhdl-interface`` and ``vhdl-<style>`` of the style of the interface lists,
+e.g. ``vhdl-list`` (see :rst:dir:`vhdl:entity:style`); a library's table of design units has the classes ``vhdl``
+and ``vhdl-library-units``. The classes of a reference's popup: see :ref:`ROLE/popups`.
+
+This documentation adds the style sheet :file:`_static/css/vhdl.css` (``html_css_files`` in :file:`conf.py`) for the
+theme ``sphinx_rtd_theme``; the examples (see :ref:`EX`) show it:
+
+.. literalinclude:: ../_static/css/vhdl.css
+   :language: CSS

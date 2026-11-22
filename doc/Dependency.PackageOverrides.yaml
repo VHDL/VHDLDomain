@@ -38,6 +38,12 @@ packages:
     license:    BSD-3-Clause
     licenseURL: https://GitHub.com/tartley/colorama/blob/master/LICENSE.txt
 
+  # 'license' holds the copyright line, the classifier is the ambiguous BSD one. LICENSE carries the third "Neither the
+  # name" clause.
+  cycler:
+    license:    BSD-3-Clause
+    licenseURL: https://GitHub.com/matplotlib/cycler/blob/main/LICENSE
+
   # Three License classifiers at once (BSD, GPL, Public Domain) and no 'license' field. COPYING.txt of 0.21.2, 0.22.4
   # and 0.23 says the majority of files are public domain and several are BSD-2-Clause; the eLyXer-derived
   # 'math2html.py' and 'math.css' were GPL-3.0-or-later, but their author relicensed them as BSD-2-Clause.
@@ -51,6 +57,12 @@ packages:
   jinja2:
     license:    BSD-3-Clause
     licenseURL: https://GitHub.com/pallets/jinja/blob/main/LICENSE.txt
+
+  # 'license' holds the whole LICENSE file, the classifier is the ambiguous BSD one. LICENSE names the Modified BSD
+  # License and carries the third "Neither the name" clause.
+  kiwisolver:
+    license:    BSD-3-Clause
+    licenseURL: https://GitHub.com/nucleic/kiwi/blob/main/LICENSE
 
   # 'MIT License' is the license's name; its identifier is 'MIT'.
   sphinx-copybutton:

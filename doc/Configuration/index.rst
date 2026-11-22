@@ -77,3 +77,171 @@ event in :file:`conf.py`, with :meth:`~VHDLDomain.VHDLDomain.AddDesign`:
 
    def setup(app):
      app.connect("builder-inited", addDesigns)
+
+
+.. _CONFIG/architectures:
+
+vhdl_architectures
+******************
+
+Which entities :rst:dir:`vhdl:entity` lists the architectures of; option :rst:dir:`vhdl:entity:architectures`
+overrides it per entity.
+
+``"always"``
+  Every entity lists its architectures. Default.
+``"multiple"``
+  Only an entity with more than one architecture lists them, e.g. a testbench with an architecture per test.
+``"never"``
+  No entity lists its architectures.
+
+An architecture which isn't listed is no object of the domain: :rst:role:`vhdl:arch` can't refer to it. Another value
+ends the build with a configuration error.
+
+.. code-block:: Python
+
+   vhdl_architectures = "multiple"
+
+
+.. _CONFIG/architecture-descriptions:
+
+vhdl_architecture_descriptions
+******************************
+
+Whether a listed architecture shows its documentation comment: ``"show"`` (default) or ``"hide"`` - the
+architecture's declaration only, e.g. ``architecture rtl of Counter``. Option
+:rst:dir:`vhdl:entity:architecture-descriptions` overrides it per entity. Another value ends the build with a
+configuration error.
+
+.. code-block:: Python
+
+   vhdl_architecture_descriptions = "hide"
+
+
+.. _CONFIG/style:
+
+vhdl_style
+**********
+
+The style of the interface lists - an entity's generics and ports, a record's elements, a subprogram's parameters -
+of :rst:dir:`vhdl:entity` and :rst:dir:`vhdl:package`; option :rst:dir:`vhdl:entity:style` overrides it per unit.
+
+``"auto"``
+  The domain chooses the style: ``"list"``. Default.
+``"list"``
+  A field per list, an item per declaration, as Sphinx writes a Python function's parameters.
+``"table"``
+  A table per list - not supported yet: a unit is written as ``"list"``, and warned about.
+
+Another value ends the build with a configuration error.
+
+.. code-block:: Python
+
+   vhdl_style = "list"
+
+
+.. _CONFIG/add-library-names:
+
+vhdl_add_library_names
+**********************
+
+Whether a design unit's signature names its library, as Sphinx' ``add_module_names`` names a Python class' module:
+``False`` (default) - ``entity Counter`` - or ``True`` - ``entity lib_Utilities.Counter``. The declarations of a
+package and the architectures of an entity are named without library and unit, as a Python class' methods.
+
+.. code-block:: Python
+
+   vhdl_add_library_names = True
+
+
+.. _CONFIG/undoc-members:
+
+vhdl_undoc_members
+******************
+
+Whether :rst:dir:`vhdl:package` describes the declarations - and a protected type's methods - without documentation
+comment too: ``True`` (default) or ``False`` - only documented declarations are described, as Sphinx' autodoc does
+without ``undoc-members``. Options :rst:dir:`vhdl:package:undoc-members` and :rst:dir:`vhdl:package:no-undoc-members`
+override it per package. A declaration not described is no object of the domain: a role can't refer to it, and a type
+mark naming it isn't linked.
+
+.. code-block:: Python
+
+   vhdl_undoc_members = False
+
+
+.. _CONFIG/doc-syntax:
+
+vhdl_doc_syntax
+***************
+
+The syntax of the documentation comments; option ``doc-syntax`` of the design-unit directives (see :ref:`DIR/units`)
+overrides it per unit. A comment is the text of its comment lines, without the comment markers ``--`` and the space
+after them.
+
+``"rest"``
+  reStructuredText, as a Python doc-string: roles - e.g. :rst:role:`vhdl:ent` -, directives - e.g. ``.. seealso::`` -
+  and field lists. Default.
+``"markdown"``
+  CommonMark, markdown-it-py's preset ``commonmark``: emphasis, code, links, lists, block quotes, code blocks, raw
+  HTML.
+``"gfm"``
+  GitHub-flavoured Markdown: CommonMark with tables, strikethrough, task lists, alerts - ``> [!NOTE]`` -, autolinks
+  and footnotes. GitHub's references - ``#12``, ``@user``, a commit's hash - stay text: a VHDL comment has no
+  repository.
+
+Markdown needs the extra ``markdown`` (see :ref:`DEP/markdown`) and the extension ``pyTooling.Sphinx`` in
+``extensions``; pyTooling.Sphinx' :class:`~pyTooling.Sphinx.Markdown.MarkdownTranslator` translates it. A heading
+becomes a topic or a rubric, never a section. Without either, a comment in Markdown is written as text, and warned
+about once (warning type ``vhdl.markdown``). Another value ends the build with a configuration error.
+
+.. tab-set::
+
+   .. tab-item:: VHDL source
+
+      .. code-block:: VHDL
+
+         -- A **debouncer** of `BITS` inputs.
+         --
+         -- | Generic         | Default |
+         -- |-----------------|---------|
+         -- | `CLOCK_PERIOD`  | 10 ns   |
+         -- | `DEBOUNCE_TIME` | 3 ms    |
+         --
+         -- > [!NOTE]
+         -- > An input passes, once it is stable for `DEBOUNCE_TIME`.
+         entity Debouncer is
+
+   .. tab-item:: conf.py
+
+      .. code-block:: Python
+
+         extensions = [
+           # ...
+           "pyTooling.Sphinx",
+           "VHDLDomain",
+         ]
+
+         vhdl_doc_syntax = "gfm"
+
+   .. tab-item:: reStructuredText
+
+      .. code-block:: rst
+
+         .. vhdl:entity:: lib_Utilities.Debouncer
+            :doc-syntax: gfm
+
+The syntax is the same for every comment of a unit; this documentation's examples use reStructuredText.
+
+
+.. _CONFIG/reference-popups:
+
+vhdl_reference_popups
+*********************
+
+Whether a reference to a declaration of a package shows the declaration in a popup, in HTML (see :ref:`ROLE/popups`):
+``True`` (default) or ``False`` - the reference's title is the declaration's signature then, and the domain adds no
+style sheet to the pages.
+
+.. code-block:: Python
+
+   vhdl_reference_popups = False

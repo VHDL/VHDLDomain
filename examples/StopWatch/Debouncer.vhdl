@@ -10,27 +10,31 @@ use     IEEE.numeric_std.all;
 context work.Utilities_ctx;
 
 
+-- A debouncer of ``BITS`` inputs: an input passes, once it is stable for ``DEBOUNCE_TIME``.
+--
+-- With ``INPUT_SYNC``, the inputs are synchronized to ``Clock`` by :vhdl:ent:`sync_Bits` first.
 entity Debouncer is
 	generic (
-		CLOCK_PERIOD   : time := 10 ns;
-		DEBOUNCE_TIME  : time := 3 ms;
+		CLOCK_PERIOD   : time := 10 ns;    -- The period of ``Clock``.
+		DEBOUNCE_TIME  : time := 3 ms;     -- The time an input must be stable to pass.
 
-		BITS           : positive;
-		INPUT_SYNC     : boolean := true
+		BITS           : positive;         -- The number of inputs.
+		INPUT_SYNC     : boolean := true   -- The inputs are synchronized to ``Clock`` first.
 	);
 	port (
-		Clock  : in  std_logic;
+		Clock  : in  std_logic;  -- The clock.
 
-		Input  : in  std_logic_vector(BITS - 1 downto 0);
-		Output : out std_logic_vector(BITS - 1 downto 0) := (others => '0')
+		Input  : in  std_logic_vector(BITS - 1 downto 0);                     -- The bouncing inputs.
+		Output : out std_logic_vector(BITS - 1 downto 0) := (others => '0')   -- The debounced inputs.
 	);
 end entity;
 
+-- The implementation: a counter per input, counting while the input differs from the output.
 architecture rtl of Debouncer is
 	constant DEBOUNCE_COUNTER_MAX  : positive := DEBOUNCE_TIME / (CLOCK_PERIOD* ite(IS_SIMULATION, 20, 1));
 	constant DEBOUNCE_COUNTER_BITS : positive := log2(DEBOUNCE_COUNTER_MAX);
 
-	signal Input_sync : Input'subtype;
+	signal Input_synchronized : Input'subtype;
 begin
 	assert false report "CLOCK_PERIOD:         " & time'image(CLOCK_PERIOD);
 	assert false report "DEBOUNCE_TIME:        " & time'image(DEBOUNCE_TIME);
@@ -45,10 +49,10 @@ begin
 			port map (
 				Clock  => Clock,
 				Input  => Input,
-				Output => Input_sync
+				Output => Input_synchronized
 			);
 	else generate
-		Input_sync <= Input;
+		Input_synchronized <= Input;
 	end generate;
 
 	genBits: for i in Input'range generate

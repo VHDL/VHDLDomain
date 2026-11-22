@@ -47,12 +47,16 @@ design, a library or a design unit from the model, and a role refers to what a d
 .. rubric:: What it registers
 
 * Directives: ``vhdl:design``, ``vhdl:library``, ``vhdl:context``, ``vhdl:entity``, ``vhdl:package``,
-  ``vhdl:configuration``
+  ``vhdl:configuration``, ``vhdl:symbol``
 * Roles: ``:vhdl:design:``, ``:vhdl:lib:``, ``:vhdl:ctx:``, ``:vhdl:ent:``, ``:vhdl:arch:``, ``:vhdl:pack:``,
-  ``:vhdl:config:``, ``:vhdl:type:``, ``:vhdl:const:``, ``:vhdl:func:``, ``:vhdl:proc:``, ``:vhdl:generic:``,
-  ``:vhdl:port:``
+  ``:vhdl:config:``, ``:vhdl:type:``, ``:vhdl:const:``, ``:vhdl:sig:``, ``:vhdl:var:``, ``:vhdl:comp:``,
+  ``:vhdl:func:``, ``:vhdl:proc:``, ``:vhdl:generic:``, ``:vhdl:port:``
 * Indices: ``vhdl-entities``, ``vhdl-packages``, ``vhdl-subprograms``, ``vhdl-types``
-* Configuration value ``vhdl_designs``
+* Configuration values ``vhdl_designs``, ``vhdl_architectures``, ``vhdl_architecture_descriptions``,
+  ``vhdl_reference_popups``, ``vhdl_style``, ``vhdl_add_library_names``, ``vhdl_undoc_members``, ``vhdl_doc_syntax``
+* Node :class:`~VHDLDomain.Symbol.Directive.SymbolNode` with visitors for HTML and LaTeX, and LaTeX package ``tikz``
+* Nodes :class:`~VHDLDomain.Popup.PopupReferenceNode` and :class:`~VHDLDomain.Popup.PopupNode` with visitors for HTML,
+  and the stylesheet :file:`VHDLDomain.css` (see :mod:`VHDLDomain.Popup`)
 * Generated pages per library and design unit, for a design declared with ``pages`` (see :mod:`VHDLDomain.Pages`)
 
 .. rubric:: Names
@@ -70,39 +74,48 @@ reference, otherwise it is warned about. VHDL identifiers are case-insensitive, 
    :copyright: Copyright 2016-2017 Patrick Lehmann - Dresden, Germany
    :license: Apache License, Version 2.0
 """
-from __future__            import annotations
+from __future__                  import annotations
 
 __author__ =    "Patrick Lehmann"
 __email__ =     "Paebbels@gmail.com"
 __copyright__ = "2016-2026, Patrick Lehmann"
 __license__ =   "Apache License, Version 2.0"
-__version__ =   "0.2.0"
+__version__ =   "0.3.0"
 
-from pathlib               import Path
-from typing                import Any, ClassVar, Iterable, Iterator, Optional as Nullable
+from pathlib                     import Path
+from typing                      import Any, ClassVar, Iterable, Iterator, Optional as Nullable
 
-from docutils              import nodes
-from docutils.nodes        import Element, Node
-from sphinx                import addnodes
-from sphinx.application    import Sphinx
-from sphinx.builders       import Builder
-from sphinx.domains        import Domain, Index, ObjType
-from sphinx.environment    import BuildEnvironment
-from sphinx.roles          import XRefRole
-from sphinx.util.logging   import getLogger
-from sphinx.util.nodes     import make_refnode
+from docutils                    import nodes
+from docutils.nodes              import Element, Node
+from sphinx                      import addnodes
+from sphinx.application          import Sphinx
+from sphinx.builders             import Builder
+from sphinx.config               import Config
+from sphinx.domains              import Domain, Index, ObjType
+from sphinx.domains.std          import StandardDomain
+from sphinx.environment          import BuildEnvironment
+from sphinx.errors               import ConfigError
+from sphinx.roles                import XRefRole
+from sphinx.util.logging         import getLogger
+from sphinx.util.nodes           import make_refnode
 
-from pyTooling.Common      import getFullyQualifiedName
-from pyTooling.Decorators  import export, readonly
-from pyTooling.Exceptions  import MissingDependencyError
+from pyTooling.Common            import getFullyQualifiedName
+from pyTooling.Decorators        import export, readonly
+from pyTooling.Exceptions        import MissingDependencyError
 
-from pyVHDLModel           import Design
+from pyVHDLModel                 import Design
 
-from VHDLDomain.DesignUnit import ConfigurationDirective, ContextDirective, EntityDirective, PackageDirective
-from VHDLDomain.Directive  import DesignDirective, LibraryDirective
-from VHDLDomain.Frontend   import DesignConfiguration, VHDLDomainException
-from VHDLDomain.Index      import EntityIndex, PackageIndex, SubprogramIndex, TypeIndex
-from VHDLDomain.Pages      import DesignPages
+from VHDLDomain.DesignUnit       import ArchitectureDescriptions, ArchitectureListing, ConfigurationDirective, \
+                                        ContextDirective, EntityDirective, InterfaceStyle, PackageDirective
+from VHDLDomain.Directive        import DesignDirective, LibraryDirective
+from VHDLDomain.Documentation    import DocumentationSyntax
+from VHDLDomain.Frontend         import DesignConfiguration, VHDLDomainException
+from VHDLDomain.Index            import EntityIndex, PackageIndex, SubprogramIndex, TypeIndex
+from VHDLDomain.Pages            import DesignPages
+from VHDLDomain.Popup            import PopupNode, PopupReferenceNode, html_depart_PopupNode, html_visit_PopupNode, \
+                                        html_visit_PopupReferenceNode, installStylesheet
+from VHDLDomain.Symbol.Directive import SymbolDirective, SymbolNode, html_visit_SymbolNode, latex_visit_SymbolNode, \
+                                        loadTikZLibraries
 
 
 __all__ = ["OBJECT_TYPES", "ROLES"]
@@ -121,6 +134,9 @@ OBJECT_TYPES: dict[str, str] = {
 	"type":          "type",
 	"subtype":       "subtype",
 	"constant":      "constant",
+	"signal":        "signal",
+	"variable":      "shared variable",
+	"component":     "component",
 	"function":      "function",
 	"procedure":     "procedure",
 	"generic":       "generic",
@@ -138,6 +154,9 @@ ROLES: dict[str, tuple[str, ...]] = {
 	"config":  ("configuration", ),
 	"type":    ("type", "subtype"),
 	"const":   ("constant", ),
+	"sig":     ("signal", ),
+	"var":     ("variable", ),
+	"comp":    ("component", ),
 	"func":    ("function", ),
 	"proc":    ("procedure", ),
 	"generic": ("generic", ),
@@ -200,14 +219,15 @@ class VHDLDomain(Domain):
 	"""
 	The Sphinx domain ``vhdl``, documenting VHDL designs from their model.
 
-	Its objects are keyed by object type and normalized qualified name - ``("entity", "stopwatch.lib_stopwatch.counter")``
-	- and located by document and anchor. The designs are no domain data, as the environment pickles the data: they are
-	read again by every build, and handed to the domain by :meth:`AddDesign`.
+	Its objects are keyed by object type and normalized qualified name, e.g.
+	``("entity", "stopwatch.lib_stopwatch.counter")``, and located by document and anchor; a declaration of a package has
+	a popup too, which a reference shows in HTML (see :mod:`VHDLDomain.Popup`). The designs are no domain data, as the
+	environment pickles the data: they are read again by every build, and handed to the domain by :meth:`AddDesign`.
 	"""
 
 	name =         "vhdl"  #: Name of the domain, the prefix of its directives and roles.
 	label =        "VHDL"  #: Name of the domain, as displayed.
-	data_version = 1       #: Version of the data layout; a change discards pickled environments.
+	data_version = 2       #: Version of the data layout; a change discards pickled environments.
 
 	object_types: ClassVar[dict[str, ObjType]] = {
 		objectType: ObjType(displayName, *[roleName for roleName, types in ROLES.items() if objectType in types])
@@ -221,6 +241,7 @@ class VHDLDomain(Domain):
 		"entity":        EntityDirective,
 		"package":       PackageDirective,
 		"configuration": ConfigurationDirective,
+		"symbol":        SymbolDirective,
 	}  #: The directives, by name.
 
 	roles: ClassVar[dict[str, XRefRole]] = {  # type: ignore[assignment]
@@ -241,7 +262,9 @@ class VHDLDomain(Domain):
 
 	initial_data: ClassVar[dict[str, Any]] = {
 		"objects": {},
-	}  #: The domain's data: ``objects`` maps (object type, normalized name) to (document, anchor, qualified name).
+		"popups":  {},
+	}  #: The domain's data: ``objects`` maps (object type, normalized name) to (document, anchor, qualified name),
+	#: ``popups`` maps it to (signature as text, popup).
 
 	#: The configuration values the domain adds to :file:`conf.py`, as ``name: (default, rebuild, types)``. Each is
 	#: registered with the domain's name as prefix, e.g. ``vhdl_designs``.
@@ -249,12 +272,43 @@ class VHDLDomain(Domain):
 	#: ``designs``
 	#:    The designs to read, by name: the directory of the source files and the libraries' files, see
 	#:    :mod:`VHDLDomain.Frontend`.
+	#: ``architectures``
+	#:    Which entities ``vhdl:entity`` lists the architectures of, a value of
+	#:    :class:`~VHDLDomain.DesignUnit.ArchitectureListing`, ``None`` for its default; option ``:architectures:``
+	#:    overrides it.
+	#: ``architecture_descriptions``
+	#:    Whether a listed architecture shows its documentation, a value of
+	#:    :class:`~VHDLDomain.DesignUnit.ArchitectureDescriptions`, ``None`` for its default; option
+	#:    ``:architecture-descriptions:`` overrides it.
+	#: ``reference_popups``
+	#:    Whether a reference to a declaration of a package shows the declaration in a popup, in HTML; otherwise the
+	#:    link's title is the declaration's signature.
+	#: ``style``
+	#:    The style of the interface lists of ``vhdl:entity`` and ``vhdl:package``, a value of
+	#:    :class:`~VHDLDomain.DesignUnit.InterfaceStyle`, ``None`` for its default; option ``:style:`` overrides it.
+	#: ``add_library_names``
+	#:    Whether a design unit's signature names its library, e.g. ``entity lib_Utilities.Counter``, as Sphinx'
+	#:    ``add_module_names`` names a Python class' module.
+	#: ``undoc_members``
+	#:    Whether ``vhdl:package`` describes declarations without documentation comment; options ``:undoc-members:``
+	#:    and ``:no-undoc-members:`` override it.
+	#: ``doc_syntax``
+	#:    The syntax of the documentation comments, a value of :class:`~VHDLDomain.Documentation.DocumentationSyntax`,
+	#:    ``None`` for its default; option ``:doc-syntax:`` overrides it.
 	configValues: ClassVar[dict[str, tuple[Any, str, Any]]] = {
-		"designs": ({}, "env", dict),
+		"designs":                   ({},       "env",  dict),
+		"architectures":             (None,     "env",  (str, ArchitectureListing)),
+		"architecture_descriptions": (None,     "env",  (str, ArchitectureDescriptions)),
+		"reference_popups":          (True,     "html", bool),
+		"style":                     (None,     "env",  (str, InterfaceStyle)),
+		"add_library_names":         (False,    "env",  bool),
+		"undoc_members":             (True,     "env",  bool),
+		"doc_syntax":                (None,     "env",  (str, DocumentationSyntax)),
 	}
 
-	_designs: dict[str, Design]                                     #: The designs read by this build, by name.
-	_lookup:  Nullable[dict[tuple[str, str], list[tuple[str, str]]]]  #: Object keys by (object type, last name part).
+	_designs:    dict[str, Design]                                     #: The designs read by this build, by name.
+	_lookup:     Nullable[dict[tuple[str, str], list[tuple[str, str]]]]  #: Object keys by (object type, last name part).
+	_popupCount: int                                                   #: The number of popups written by this build.
 
 	def __init__(self, env: BuildEnvironment) -> None:
 		"""
@@ -264,8 +318,9 @@ class VHDLDomain(Domain):
 		"""
 		super().__init__(env)
 
-		self._designs = {}
-		self._lookup =  None
+		self._designs =    {}
+		self._lookup =     None
+		self._popupCount = 0
 
 	@readonly
 	def Objects(self) -> dict[tuple[str, str], tuple[str, str, str]]:
@@ -275,6 +330,15 @@ class VHDLDomain(Domain):
 		:returns: A mapping of (object type, normalized qualified name) to (document, anchor, qualified name).
 		"""
 		return self.data["objects"]
+
+	@readonly
+	def Popups(self) -> dict[tuple[str, str], tuple[str, PopupNode]]:
+		"""
+		Read-only property to return the popups of the documented objects.
+
+		:returns: A mapping of (object type, normalized qualified name) to (signature as text, popup).
+		"""
+		return self.data["popups"]
 
 	@readonly
 	def Designs(self) -> dict[str, Design]:
@@ -366,6 +430,23 @@ class VHDLDomain(Domain):
 		objects[key] = (self.env.docname, nodeID, qualifiedName)
 		self._lookup = None
 
+	def NotePopup(self, objectType: str, qualifiedName: str, title: str, popup: PopupNode) -> None:
+		"""
+		Register the popup of a documented object, which a reference to the object shows in HTML.
+
+		:param objectType:    The object type, as ``type``.
+		:param qualifiedName: The object's qualified name, as ``StopWatch.lib_StopWatch.StopWatch_pkg.T_BCD``.
+		:param title:         The object's signature as text: the title of a reference without popup.
+		:param popup:         The popup.
+		:raises ValueError:   If parameter 'qualifiedName' names no documented object of the object type.
+		"""
+		if (key := (objectType, normalizeName(qualifiedName))) not in self.data["objects"]:
+			ex = ValueError(f"Parameter 'qualifiedName' names no documented vhdl:{objectType}.")
+			ex.add_note(f"Got value '{qualifiedName}'.")
+			raise ex
+
+		self.data["popups"][key] = (title, popup)
+
 	def FindObjects(
 		self,
 		objectTypes: Iterable[str],
@@ -449,8 +530,10 @@ class VHDLDomain(Domain):
 		:param docname: The document.
 		"""
 		objects = self.data["objects"]
+		popups =  self.data["popups"]
 		for key in [key for key, (document, _, _) in objects.items() if document == docname]:
 			del objects[key]
+			popups.pop(key, None)
 
 		self._lookup = None
 
@@ -462,10 +545,13 @@ class VHDLDomain(Domain):
 		:param otherdata: The other reader's data.
 		"""
 		documents = set(docnames)
-		objects = self.data["objects"]
+		objects =   self.data["objects"]
+		popups =    self.data["popups"]
 		for key, location in otherdata["objects"].items():
 			if location[0] in documents:
 				objects[key] = location
+				if (popup := otherdata["popups"].get(key, None)) is not None:
+					popups[key] = popup
 
 		self._lookup = None
 
@@ -482,6 +568,9 @@ class VHDLDomain(Domain):
 		"""
 		Resolve a reference by one of the domain's roles.
 
+		An ambiguous name is warned about, except for an implicit reference - a type mark in a description, marked
+		``vhdl:implicit``.
+
 		:param env:         The build environment.
 		:param fromdocname: The document containing the reference.
 		:param builder:     The builder.
@@ -489,7 +578,8 @@ class VHDLDomain(Domain):
 		:param target:      The target, as ``lib_StopWatch.Counter``.
 		:param node:        The pending reference.
 		:param contnode:    The node rendering the reference's title.
-		:returns:           The reference, the title if the name is ambiguous, or ``None`` if the target isn't documented.
+		:returns:           The reference - see :meth:`_Reference` -, the title if the name is ambiguous, or ``None`` if the
+		                    target isn't documented.
 		"""
 		if typ not in ROLES:
 			return None
@@ -497,6 +587,8 @@ class VHDLDomain(Domain):
 		matches = self.FindObjects(ROLES[typ], target, node.get("vhdl:design", None), node.get("vhdl:library", None))
 		if len(matches) == 0:
 			return None
+		elif len(matches) > 1 and node.get("vhdl:implicit", False):
+			return contnode
 		elif len(matches) > 1:
 			candidates = ", ".join(sorted(self.data["objects"][key][2] for key in matches))
 			_logger.warning(
@@ -505,8 +597,7 @@ class VHDLDomain(Domain):
 			)
 			return contnode
 
-		document, nodeID, qualifiedName = self.data["objects"][matches[0]]
-		return make_refnode(builder, fromdocname, document, nodeID, contnode, qualifiedName)
+		return self._Reference(builder, fromdocname, matches[0], contnode)
 
 	def resolve_any_xref(
 		self,
@@ -532,11 +623,38 @@ class VHDLDomain(Domain):
 		for roleName, objectTypes in ROLES.items():
 			matches = self.FindObjects(objectTypes, target, node.get("vhdl:design", None), node.get("vhdl:library", None))
 			if len(matches) == 1:
-				document, nodeID, qualifiedName = self.data["objects"][matches[0]]
-				reference = make_refnode(builder, fromdocname, document, nodeID, contnode, qualifiedName)
-				results.append((f"{self.name}:{roleName}", reference))
+				results.append((f"{self.name}:{roleName}", self._Reference(builder, fromdocname, matches[0], contnode)))
 
 		return results
+
+	def _Reference(self, builder: Builder, fromdocname: str, key: tuple[str, str], contnode: Element) -> Element:
+		"""
+		Create the reference to a documented object.
+
+		In HTML, while ``vhdl_reference_popups`` is on, a reference to an object with a popup is a
+		:class:`~VHDLDomain.Popup.PopupReferenceNode`: the link and a copy of the popup. Otherwise, the link's title is the
+		object's signature - or its qualified name, if the object has no popup.
+
+		:param builder:     The builder.
+		:param fromdocname: The document containing the reference.
+		:param key:         The object's key, (object type, normalized qualified name).
+		:param contnode:    The node rendering the reference's title.
+		:returns:           The link, or the link with its popup.
+		"""
+		document, nodeID, qualifiedName = self.data["objects"][key]
+		if (popup := self.data["popups"].get(key, None)) is None:
+			return make_refnode(builder, fromdocname, document, nodeID, contnode, qualifiedName)
+
+		title, content = popup
+		if builder.format != "html" or not self.env.config.vhdl_reference_popups:
+			return make_refnode(builder, fromdocname, document, nodeID, contnode, title)
+
+		self._popupCount += 1
+		popupNode =        content.deepcopy()
+		popupNode["ids"] = [f"vhdl-popup-{self._popupCount}"]
+		reference =        make_refnode(builder, fromdocname, document, nodeID, contnode)
+
+		return PopupReferenceNode("", "", reference, popupNode, classes=["vhdl-popup-anchor"])
 
 	def get_objects(self) -> Iterator[tuple[str, str, str, str, str, int]]:
 		"""
@@ -547,6 +665,53 @@ class VHDLDomain(Domain):
 		for (objectType, _), (document, nodeID, qualifiedName) in self.data["objects"].items():
 			priority = 1 if objectType in ("design", "library", "context", "entity", "package", "configuration") else 2
 			yield qualifiedName, qualifiedName, objectType, document, nodeID, priority
+
+
+@export
+def readConfiguration(sphinx: Sphinx, config: Config) -> None:
+	"""
+	Call-back for Sphinx' ``config-inited`` event, replacing ``vhdl_architectures``, ``vhdl_architecture_descriptions``,
+	``vhdl_style`` and ``vhdl_doc_syntax`` by the member of their enumeration they name - ``None`` names the default.
+
+	The enumerations are :class:`~VHDLDomain.DesignUnit.ArchitectureListing`,
+	:class:`~VHDLDomain.DesignUnit.ArchitectureDescriptions`, :class:`~VHDLDomain.DesignUnit.InterfaceStyle` and
+	:class:`~VHDLDomain.Documentation.DocumentationSyntax`.
+
+	:param sphinx:       The Sphinx application.
+	:param config:       The configuration, after :file:`conf.py` was read.
+	:raises ConfigError: If ``vhdl_architectures`` is neither ``None`` nor a string.
+	:raises ConfigError: If ``vhdl_architectures`` names no member of
+	                     :class:`~VHDLDomain.DesignUnit.ArchitectureListing`. |br|
+	                     The note lists the allowed values.
+	:raises ConfigError: If ``vhdl_architecture_descriptions`` is neither ``None`` nor a string.
+	:raises ConfigError: If ``vhdl_architecture_descriptions`` names no member of
+	                     :class:`~VHDLDomain.DesignUnit.ArchitectureDescriptions`. |br|
+	                     The note lists the allowed values.
+	:raises ConfigError: If ``vhdl_style`` is neither ``None`` nor a string.
+	:raises ConfigError: If ``vhdl_style`` names no member of :class:`~VHDLDomain.DesignUnit.InterfaceStyle`. |br|
+	                     The note lists the allowed values.
+	:raises ConfigError: If ``vhdl_doc_syntax`` is neither ``None`` nor a string.
+	:raises ConfigError: If ``vhdl_doc_syntax`` names no member of
+	                     :class:`~VHDLDomain.Documentation.DocumentationSyntax`. |br|
+	                     The note lists the allowed values.
+	"""
+	for name, enumeration, meaning in (
+		("vhdl_architectures",             ArchitectureListing,      "listing of architectures"),
+		("vhdl_architecture_descriptions", ArchitectureDescriptions, "choice of architecture descriptions"),
+		("vhdl_style",                     InterfaceStyle,           "style of interface lists"),
+		("vhdl_doc_syntax",                DocumentationSyntax,      "syntax of documentation comments"),
+	):
+		if (value := config[name]) is not None and not isinstance(value, str):
+			ex = ConfigError(f"conf.py: {name}: Value is not of type 'str'.")
+			ex.add_note(f"Got type '{getFullyQualifiedName(value)}'.")
+			raise ex
+
+		try:
+			config[name] = enumeration.Parse(value)
+		except ValueError as cause:
+			ex = ConfigError(f"conf.py: {name}: '{value}' is not a {meaning}.")
+			ex.add_note(f"Allowed values: {', '.join(enumeration)}.")
+			raise ex from cause
 
 
 @export
@@ -575,6 +740,9 @@ def setup(sphinx: Sphinx) -> dict[str, Any]:
 	"""
 	Register the domain ``vhdl`` and its configuration values with Sphinx.
 
+	The domain's index pages, e.g. ``vhdl-entities``, are registered as generated documents, as Sphinx registers
+	``genindex``, so a table of contents can list them.
+
 	:param sphinx: The Sphinx application to register with.
 	:returns:      The extension's metadata.
 	"""
@@ -582,10 +750,23 @@ def setup(sphinx: Sphinx) -> dict[str, Any]:
 	for configName, (default, rebuild, types) in VHDLDomain.configValues.items():
 		sphinx.add_config_value(f"{VHDLDomain.name}_{configName}", default, rebuild, types)
 
+	for index in VHDLDomain.indices:
+		documentName =                                    f"{VHDLDomain.name}-{index.name}"
+		StandardDomain._virtual_doc_names[documentName] = (documentName, index.localname)
+
+	sphinx.connect("config-inited", readConfiguration)
 	sphinx.connect("builder-inited", DesignPages.Reset)
 	sphinx.connect("builder-inited", readDesigns)
 	sphinx.connect("env-before-read-docs", DesignPages.GenerateAll)
 	sphinx.connect("html-page-context", DesignPages.HideSource)
+
+	sphinx.add_node(SymbolNode, html=(html_visit_SymbolNode, None), latex=(latex_visit_SymbolNode, None))
+	sphinx.add_latex_package("tikz")
+	sphinx.connect("builder-inited", loadTikZLibraries)
+
+	sphinx.add_node(PopupReferenceNode, html=(html_visit_PopupReferenceNode, None))
+	sphinx.add_node(PopupNode, html=(html_visit_PopupNode, html_depart_PopupNode))
+	sphinx.connect("builder-inited", installStylesheet)
 
 	return {
 		"version":             __version__,

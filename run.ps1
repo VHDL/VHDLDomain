@@ -38,9 +38,17 @@ Param(
 
 $ProjectName =    "VHDLDomain"
 $PackageName =    $ProjectName
-$PackageVersion = "0.2.0"
+$VersionFile =    "$($PackageName.Replace('.', '/'))/__init__.py"
 $PythonVersion =  "3.15"
 $LaTeXDocument =  "${ProjectName}.tex"
+
+# Read the package version from the version file
+$versionMatch = Select-String -Path (Join-Path $PSScriptRoot $VersionFile) -Pattern '^__version__\s*=\s*"([^"]+)"' -CaseSensitive -List
+if ($null -eq $versionMatch) {
+  Write-Host -ForegroundColor Red "[ERROR] No '__version__' found in '$VersionFile'."
+  exit 1
+}
+$PackageVersion = $versionMatch.Matches[0].Groups[1].Value
 
 # set default values
 $EnableDebug =   [bool]$PSCmdlet.MyInvocation.BoundParameters["Debug"]

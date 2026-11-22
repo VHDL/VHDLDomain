@@ -1,16 +1,18 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-from sys                 import path as sys_path
-from os                  import environ
-from os.path             import abspath
-from pathlib             import Path
-from textwrap            import dedent
-from typing              import Any, Optional as Nullable
+from sys                          import path as sys_path
+from importlib.util               import find_spec
+from os                           import environ
+from os.path                      import abspath
+from pathlib                      import Path
+from runpy                        import run_path
+from textwrap                     import dedent
+from typing                       import Any, Optional as Nullable
 
-from sphinx.application  import Sphinx
+from sphinx.application           import Sphinx
 
-from pyTooling.Packaging import extractVersionInformation
+from pyTooling.Packaging          import extractVersionInformation
 
 # ==============================================================================
 # Project configuration
@@ -28,6 +30,10 @@ ROOT = Path(__file__).resolve().parent
 sys_path.insert(0, abspath("."))
 sys_path.insert(0, abspath(".."))
 sys_path.insert(0, abspath(f"../{directoryName}"))
+
+from VHDLDomain.Symbol.Matplotlib import MatplotlibRenderer
+from VHDLDomain.Symbol.SVG        import SVGRenderer
+from VHDLDomain.Symbol.TikZ       import TikZRenderer
 
 
 # ==============================================================================
@@ -63,7 +69,6 @@ exclude_patterns = [
 	"_theme",
 	"Thumbs.db",
 	".DS_Store",
-	"StopWatch"
 ]
 
 # The name of the Pygments (syntax highlighting) style to use.
@@ -94,6 +99,7 @@ html_theme_options = {
 }
 html_css_files = [
 	'css/override.css',
+	'css/vhdl.css',
 ]
 
 # GoatCounter counts the page views of the published documentation, which is built on GitHub Actions.
@@ -130,6 +136,7 @@ modindex_common_prefix = [
 # ==============================================================================
 latex_engine = "lualatex"
 latex_use_xindy = False
+tikzLibraries = ",".join(TikZRenderer.TIKZ_LIBRARIES)
 latex_elements = {
 	"papersize":   "a4paper",      # The paper size ('letterpaper' or 'a4paper').
 	"pointsize":   "10pt",         # The font size ('10pt', '11pt' or '12pt').
@@ -146,6 +153,10 @@ latex_elements = {
 	"""),
 # "sphinxsetup": "verbatimvisiblespace=\\textvisiblespace"
 # "figure_align": "htbp",     # Latex figure (float) alignment
+	"preamble":   dedent(f"""\
+		\\usepackage{{tikz}}
+		\\usetikzlibrary{{{tikzLibraries}}}
+	"""),
 	"makeindex":  r"\usepackage[columns=1]{idxlayout}\makeindex",
 	"printindex": r"\def\twocolumn[#1]{#1}\printindex",
 }
@@ -319,6 +330,7 @@ pyTooling_Abbreviation_ShowSummary = True
 # ==============================================================================
 pyTooling_Dependency_Requirements = {
 	"package":       {"file":      "../requirements.txt"},
+	"markdown":      {"package":   "pyTooling.Sphinx[markdown]"},
 	"unittest":      {"file":      "../tests/unit/requirements.txt"},
 	"typing":        {"file":      "../tests/typing/requirements.txt"},
 	"documentation": {"file":      "requirements.txt"},
@@ -337,18 +349,28 @@ pyTooling_ExternalLink_Icons = "all"
 # ==============================================================================
 # VHDLDomain
 # ==============================================================================
-vhdl_designs = {
-#	"StopWatch": {
-#		"directory": "../examples/StopWatch",
-#		"libraries": {
-#			"lib_Utilities": ["Utilities.pkg.vhdl", "Utilities.ctx.vhdl", "Counter.vhdl", "sync_Bits.vhdl", "Debouncer.vhdl"],
-#			"lib_StopWatch": [
-#				"StopWatch.pkg.vhdl", "StopWatch.ctx.vhdl", "seg7_Encoder.vhdl", "seg7_Display.vhdl", "seg7_Display.cfg.vhdl",
-#				"StopWatch.vhdl", "toplevel.vhdl"
-#			],
-#		},
-#	},
-}
+vhdl_architectures = "multiple"
+
+if find_spec("pyGHDL") is None:
+	# Without pyGHDL, as in CI, the StopWatch example isn't read and its page isn't built.
+	exclude_patterns.append("Examples/StopWatch/**")
+	suppress_warnings.append("toc.excluded")
+	vhdl_designs = {}
+else:
+	vhdl_designs = {
+		"StopWatch": {
+			"directory": "../examples/StopWatch",
+			"libraries": {
+				"lib_Utilities": [
+					"Utilities.pkg.vhdl", "Utilities.ctx.vhdl", "Counter.vhdl", "sync_Bits.vhdl", "Debouncer.vhdl"
+				],
+				"lib_StopWatch": [
+					"StopWatch.pkg.vhdl", "StopWatch.ctx.vhdl", "seg7_Encoder.vhdl", "seg7_Display.vhdl", "seg7_Display.cfg.vhdl",
+					"StopWatch.vhdl", "toplevel.vhdl"
+				],
+			},
+		},
+	}
 
 
 # ==============================================================================
@@ -383,6 +405,46 @@ for module in Path(f"../{project.replace('.', '/')}").iterdir():
 		"output":   project,
 		"override": True
 	}
+
+
+# ==============================================================================
+# Interface symbols - renderings of the examples
+# ==============================================================================
+symbolExamples =   ROOT / "Symbol" / "StopWatch.py"
+symbolRenderings = ROOT / "Symbol" / "Renderings"
+
+
+def renderSymbols(app: Sphinx) -> None:
+	"""
+	Render the interface symbols of :file:`Symbol/StopWatch.py` into :file:`Symbol/Renderings`.
+
+	Each symbol is written as SVG, PNG and TikZ file, named as the symbol, e.g. :file:`Counter.svg`. A file is only
+	written, if its content changed.
+
+	:param app: The Sphinx application.
+	"""
+	def writeIfChanged(path: Path, content: bytes) -> None:
+		"""
+		Nested function writing the content into a file, unless the file has this content already.
+
+		:param path:    The file to write.
+		:param content: The file's new content.
+		"""
+		if not path.exists() or path.read_bytes() != content:
+			with path.open("wb") as file:
+				file.write(content)
+
+	examples =     run_path(str(symbolExamples))
+	svgRenderer =  SVGRenderer()
+	pngRenderer =  MatplotlibRenderer(dpi=192)
+	tikzRenderer = TikZRenderer()
+
+	symbolRenderings.mkdir(exist_ok=True)
+	for build in (examples["Counter"], examples["Seg7Display"], examples["TopLevel"]):
+		symbol = build()
+		writeIfChanged(symbolRenderings / f"{symbol.Name}.svg", svgRenderer.Render(symbol).encode("utf-8"))
+		writeIfChanged(symbolRenderings / f"{symbol.Name}.png", pngRenderer.Render(symbol, "png"))
+		writeIfChanged(symbolRenderings / f"{symbol.Name}.tikz", tikzRenderer.Render(symbol).encode("utf-8"))
 
 
 # ==============================================================================
@@ -427,4 +489,5 @@ def setup(app: Sphinx) -> None:
 
 	:param app: The Sphinx application.
 	"""
+	app.connect("builder-inited", renderSymbols)
 	app.connect("autodoc-skip-member", skipForeignMembers)

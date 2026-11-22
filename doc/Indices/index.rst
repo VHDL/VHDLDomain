@@ -27,7 +27,9 @@ documentation describes several. A subprogram's entry shows its signature, so it
      - types and subtypes
      - ``:ref:`vhdl-types```
 
-An index can be listed in a table of contents by its name, e.g. ``vhdl-entities``:
+An index can be listed in a table of contents by its name, e.g. ``vhdl-entities``: the domain registers its index pages
+as generated documents, as Sphinx registers ``genindex``. As for ``genindex``, the LaTeX builder warns about such an
+entry (``toc.not_readable``); this documentation lists the indices in its appendix.
 
 .. code-block:: rst
 

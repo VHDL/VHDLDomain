@@ -10,6 +10,14 @@ use     IEEE.numeric_std.all;
 use     work.Utilities_pkg.all;
 
 -- A generic implementation of an up-counting counter.
+--
+-- The counter counts the cycles of ``Clock`` with ``Enable`` high, from 0 to ``MODULO - 1``; then it wraps around to 0
+-- and signals it on ``WrapAround`` for one cycle. ``Reset`` restarts it at 0, with priority over ``Enable``.
+--
+-- .. seealso::
+--
+--    :vhdl:ent:`StopWatch`
+--       |rarr| The stop watch, counting the time base and each digit with a counter.
 entity Counter is
 	generic (
 		MODULO : positive;                -- Modulo value of the modulo N counter.
@@ -26,6 +34,7 @@ entity Counter is
 end entity;
 
 
+-- The implementation for synthesis.
 architecture rtl of Counter is
 	signal CounterValue : unsigned(log2(MODULO) - 1 downto 0) := (others => '0');
 begin
@@ -45,6 +54,7 @@ begin
 end architecture;
 
 
+-- The implementation for simulation, the same as ``rtl``.
 architecture sim of Counter is
 	signal CounterValue : unsigned(log2(MODULO) - 1 downto 0) := (others => '0');
 begin
