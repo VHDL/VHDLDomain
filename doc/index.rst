@@ -96,7 +96,16 @@ License
    Roles/index
    Indices/index
    Symbol/index
-   StopWatch/index
+
+.. raw:: latex
+
+   \part{Examples}
+
+.. toctree::
+   :caption: Examples
+   :hidden:
+
+   Examples/index
 
 .. raw:: latex
 
@@ -125,4 +134,8 @@ License
    Glossary
    genindex
    Python Module Index <modindex>
+   VHDL Entity Index <vhdl-entities>
+   VHDL Package Index <vhdl-packages>
+   VHDL Subprogram Index <vhdl-subprograms>
+   VHDL Type Index <vhdl-types>
    TODO
