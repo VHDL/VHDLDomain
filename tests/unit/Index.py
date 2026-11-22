@@ -77,6 +77,12 @@ class Indices(DesignUnitProject):
 				("C", [
 					IndexEntry("clip(natural)", 0, "page", f"{anchor}.clip-natural", extra, "", ""),
 				]),
+				("I", [
+					IndexEntry(
+						"Increment(positive)", 0, "page", "vhdl-procedure-demo.lib_a.utilities.t_counter.increment-positive",
+						"procedure in lib_A.Utilities.T_COUNTER", "", ""
+					),
+				]),
 				("M", [
 					IndexEntry("maximum(T_VALUE, T_VALUE)", 0, "page", f"{anchor}.maximum-t_value-t_value", extra, "", ""),
 				]),
@@ -100,6 +106,11 @@ class Indices(DesignUnitProject):
 						extra, "", ""
 					),
 				]),
+				("V", [
+					IndexEntry(
+						"Value()", 0, "page", f"{anchor}.t_counter.value", "function in lib_A.Utilities.T_COUNTER", "", ""
+					),
+				]),
 			],
 			content
 		)
@@ -112,7 +123,10 @@ class Indices(DesignUnitProject):
 		self.assertEqual(
 			[(
 				"T",
-				["type in lib_A.Utilities", "type in lib_A.Utilities", "subtype in lib_A.Utilities", "type in lib_A.Utilities"]
+				[
+					"type in lib_A.Utilities", "type in lib_A.Utilities", "type in lib_A.Utilities", "subtype in lib_A.Utilities",
+					"type in lib_A.Utilities"
+				]
 			)],
 			[(letter, [entry.extra for entry in entries]) for letter, entries in content]
 		)
