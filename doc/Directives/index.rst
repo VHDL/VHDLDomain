@@ -139,7 +139,9 @@ vhdl:package
           the component to it, and the fields *Generics* and *Ports*, as an entity's.
       * - Function, procedure
         - The parameters - with their mode, if the declaration gives one, and their default values - and a function's
-          return type. If a parameter is documented, the field *Parameters*.
+          return type. If a parameter is documented, the field *Parameters*. A generic subprogram (VHDL-2008) names its
+          generics in brackets before the parameters, as Sphinx writes a Python function's type parameters, e.g.
+          ``procedure swap[T_VALUE](A : inout T_VALUE, B : inout T_VALUE)``, and has the field *Generics*.
 
    .. code-block:: rst
 

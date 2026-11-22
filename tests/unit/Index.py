@@ -77,10 +77,19 @@ class Indices(DesignUnitProject):
 				("C", [
 					IndexEntry("clip(natural)", 0, "page", f"{anchor}.clip-natural", extra, "", ""),
 				]),
+				("M", [
+					IndexEntry("maximum(T_VALUE, T_VALUE)", 0, "page", f"{anchor}.maximum-t_value-t_value", extra, "", ""),
+				]),
 				("R", [
 					IndexEntry("random()", 0, "page", f"{anchor}.random", extra, "", ""),
 					IndexEntry(
 						"reset(natural)", 0, "page", "vhdl-procedure-demo.lib_a.utilities.reset-natural",
+						"procedure in lib_A.Utilities", "", ""
+					),
+				]),
+				("S", [
+					IndexEntry(
+						"swap(T_VALUE, T_VALUE)", 0, "page", "vhdl-procedure-demo.lib_a.utilities.swap-t_value-t_value",
 						"procedure in lib_A.Utilities", "", ""
 					),
 				]),
