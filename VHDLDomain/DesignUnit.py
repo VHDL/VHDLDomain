@@ -66,6 +66,7 @@ from pyVHDLModel.Type            import AccessType, ArrayType, BaseType, Enumera
                                         PhysicalType, ProtectedType, RealType, RecordType, Subtype
 
 from VHDLDomain.Directive        import VHDLDirective
+from VHDLDomain.Documentation    import DocumentationSyntax
 from VHDLDomain.Popup            import PopupNode, popupContent
 
 
@@ -135,9 +136,11 @@ class DesignUnitDirective(VHDLDirective):
 	has_content =        True  #: The content describes the unit.
 	required_arguments = 1     #: The unit's name, optionally with its library.
 	option_spec =        {
-		"design":   directives.unchanged_required,
-		"no-index": directives.flag,
-	}  #: The design, if not the current one; ``:no-index:`` describes the unit without targets and index entries.
+		"design":     directives.unchanged_required,
+		"no-index":   directives.flag,
+		"doc-syntax": DocumentationSyntax.Parse,
+	}  #: The design, if not the current one; ``:no-index:`` describes the unit without targets and index entries;
+	#: ``:doc-syntax:`` is the syntax of the documentation comments.
 
 	def run(self) -> list[Node]:
 		"""

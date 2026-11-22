@@ -330,6 +330,7 @@ pyTooling_Abbreviation_ShowSummary = True
 # ==============================================================================
 pyTooling_Dependency_Requirements = {
 	"package":       {"file":      "../requirements.txt"},
+	"markdown":      {"package":   "pyTooling.Sphinx[markdown]"},
 	"unittest":      {"file":      "../tests/unit/requirements.txt"},
 	"typing":        {"file":      "../tests/typing/requirements.txt"},
 	"documentation": {"file":      "requirements.txt"},

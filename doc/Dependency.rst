@@ -35,6 +35,36 @@ PyPI (see :ref:`INSTALL`).
    :caption: Mandatory dependencies of the VHDLDomain package.
 
 
+.. _DEP/markdown:
+
+Markdown Documentation Comments (Optional)
+******************************************
+
+Documentation comments in Markdown (see :ref:`CONFIG/doc-syntax`) are parsed by :pypi:`markdown-it-py` and
+:pypi:`mdit-py-plugins` and translated by :pypi:`pyTooling.Sphinx`; the extra ``markdown`` installs them:
+
+.. tab-set::
+
+   .. tab-item:: Linux/macOS
+      :sync: Linux
+
+      .. code-block:: bash
+
+         pip3 install -U VHDLDomain[markdown]
+
+   .. tab-item:: Windows
+      :sync: Windows
+
+      .. code-block:: powershell
+
+         pip install -U VHDLDomain[markdown]
+
+.. rubric:: Dependency List
+
+.. dependency-table:: markdown
+   :caption: Dependencies added by the ``markdown`` extra.
+
+
 .. _DEP/testing:
 
 Unit Testing / Coverage (Optional)

@@ -44,7 +44,8 @@ packageDirectory =       packageName
 packageInformationFile = Path(f"{packageDirectory}/__init__.py")
 
 additionalRequirements = {
-	"diagram": ["matplotlib >= 3.10"],
+	"diagram":  ["matplotlib >= 3.10"],
+	"markdown": ["pyTooling.Sphinx[markdown] ~= 1.0"],
 }
 
 with WarningCollector() as warnings:
