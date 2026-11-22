@@ -99,6 +99,7 @@ html_theme_options = {
 }
 html_css_files = [
 	'css/override.css',
+	'css/vhdl.css',
 ]
 
 # GoatCounter counts the page views of the published documentation, which is built on GitHub Actions.

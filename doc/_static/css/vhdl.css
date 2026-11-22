@@ -1,0 +1,55 @@
+/* Shading of the descriptions of domain 'vhdl', per kind of object, for the theme 'sphinx_rtd_theme'.
+ *
+ * A description is a 'dl' with the classes 'vhdl', its object type and its variants, e.g.
+ * '<dl class="vhdl function vhdl-impure">'; its 'dt' is the signature. The theme styles every signature, so the
+ * rules below need '!important'.
+ */
+
+/* Types: green; a protected type: purple. */
+.rst-content dl.vhdl.type > dt,
+.rst-content dl.vhdl.subtype > dt {
+	background: #e8f5e9 !important;
+	border-top-color: #66bb6a !important;
+}
+.rst-content dl.vhdl.type.vhdl-protected > dt {
+	background: #f3e5f5 !important;
+	border-top-color: #ab47bc !important;
+}
+
+/* Objects: amber; a deferred constant has a dashed border. */
+.rst-content dl.vhdl.constant > dt,
+.rst-content dl.vhdl.signal > dt,
+.rst-content dl.vhdl.variable > dt {
+	background: #fff8e1 !important;
+	border-top-color: #ffca28 !important;
+}
+.rst-content dl.vhdl.constant.vhdl-deferred > dt {
+	border-top-style: dashed !important;
+}
+
+/* Subprograms: functions teal, procedures orange; a generic subprogram has a dashed border, an impure function an
+ * italic name; methods of a protected type keep the theme's look of nested descriptions (a left border). */
+.rst-content dl.vhdl.function > dt {
+	background: #e0f2f1 !important;
+	border-top-color: #26a69a !important;
+}
+.rst-content dl.vhdl.procedure > dt {
+	background: #fbe9e7 !important;
+	border-top-color: #ff7043 !important;
+}
+.rst-content dl.vhdl.vhdl-generic > dt {
+	border-top-style: dashed !important;
+}
+.rst-content dl.vhdl.function.vhdl-impure > dt .sig-name {
+	font-style: italic;
+}
+.rst-content dl.vhdl.vhdl-method > dt {
+	border-top: none !important;
+	border-left: 3px solid #ccc !important;
+}
+
+/* Architectures: grey. */
+.rst-content dl.vhdl.architecture > dt {
+	background: #f0f0f0 !important;
+	border-top-color: #9e9e9e !important;
+}
