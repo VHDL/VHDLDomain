@@ -25,11 +25,11 @@ use     IEEE.numeric_std.all;
 package Utilities_pkg is
 	-- A frequency, from Hz to THz.
 	type freq is range integer'low to integer'high units
-		Hz;
-		kHz = 1000 Hz;
-		MHz = 1000 kHz;
-		GHz = 1000 MHz;
-		THz = 1000 GHz;
+		Hz;              -- Hertz, the primary unit.
+		kHz = 1000 Hz;   -- Kilohertz.
+		MHz = 1000 kHz;  -- Megahertz.
+		GHz = 1000 MHz;  -- Gigahertz.
+		THz = 1000 GHz;  -- Terahertz.
 	end units;
 
 	-- A counter of errors, e.g. of the failed checks of a testbench.
@@ -50,7 +50,11 @@ package Utilities_pkg is
 	constant IS_SIMULATION : boolean;
 
 	-- An if-then-else expression: ``ThenValue``, if ``condition`` is true, else ``ElseValue``.
-	function ite(condition : boolean; ThenValue : integer; ElseValue : integer) return integer;
+	function ite(
+		condition : boolean;  -- The condition choosing the value.
+		ThenValue : integer;  -- The value, if ``condition`` is true.
+		ElseValue : integer   -- The value, if ``condition`` is false.
+	) return integer;
 
 	-- The number of bits needed for the values 0 to ``Value - 1``: ``ceil(log2(Value))``.
 	function log2(
@@ -74,24 +78,43 @@ package Utilities_pkg is
 			variable B : inout T_VALUE   -- The second value; ``A``'s value after the call.
 		);
 
-	function bin2onehot(binary : std_logic_vector; bits : natural := 0) return std_logic_vector;
-	function bin2onehot(binary : unsigned;         bits : natural := 0) return std_logic_vector;
+	-- The one-hot code of the binary number ``binary``: bit ``binary`` set, every other bit cleared.
+	function bin2onehot(
+		binary : std_logic_vector;  -- The binary number.
+		bits   : natural := 0       -- The number of bits of the code; ``0`` for all ``2**binary'length`` bits.
+	) return std_logic_vector;
 
-	function to_index(value : unsigned; max : positive) return natural;
-	function to_index(value : natural;  max : positive) return natural;
+	-- The one-hot code of the unsigned number ``binary``: bit ``binary`` set, every other bit cleared.
+	function bin2onehot(
+		binary : unsigned;      -- The unsigned number.
+		bits   : natural := 0   -- The number of bits of the code; ``0`` for all ``2**binary'length`` bits.
+	) return std_logic_vector;
 
+	-- The index ``value`` as a natural number, limited to ``max``.
+	function to_index(
+		value : unsigned;  -- The index, an unsigned number.
+		max   : positive   -- The highest index.
+	) return natural;
+
+	-- The index ``value``, limited to ``max``.
+	function to_index(
+		value : natural;   -- The index.
+		max   : positive   -- The highest index.
+	) return natural;
+
+	-- The component of entity :vhdl:ent:`Debouncer`, for a component instantiation.
 	component Debouncer is
 		generic (
-			CLOCK_PERIOD   : time := 10 ns;
-			DEBOUNCE_TIME  : time := 3 ms;
+			CLOCK_PERIOD   : time := 10 ns;  -- The period of ``Clock``.
+			DEBOUNCE_TIME  : time := 3 ms;   -- The time an input must be stable to pass.
 
-			BITS           : positive
+			BITS           : positive        -- The number of inputs.
 		);
 		port (
-			Clock  : in  std_logic;
+			Clock  : in  std_logic;  -- The clock.
 
-			Input  : in  std_logic_vector(BITS - 1 downto 0);
-			Output : out std_logic_vector(BITS - 1 downto 0) := (others => '0')
+			Input  : in  std_logic_vector(BITS - 1 downto 0);                     -- The bouncing inputs.
+			Output : out std_logic_vector(BITS - 1 downto 0) := (others => '0')   -- The debounced inputs.
 		);
 	end component;
 end package;

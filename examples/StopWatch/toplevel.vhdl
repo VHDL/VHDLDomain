@@ -13,21 +13,25 @@ use     lib_Utilities.Utilities_pkg.all;
 use     work.StopWatch_pkg.all;
 
 
+-- The top-level entity for a Digilent Nexys A7 board: a stop watch of minutes, seconds and hundredths of a second on
+-- the board's 7-segment display.
 entity toplevel is
 	generic (
-		constant CLOCK_PERIOD       : time := 10 ns
+		constant CLOCK_PERIOD       : time := 10 ns  -- The period of the system clock.
 	);
 	port (
-		NexysA7_SystemClock         : in  std_logic;
-		NexysA7_GPIO_Button_Reset_n : in  std_logic;
+		NexysA7_SystemClock         : in  std_logic;                     -- The system clock.
+		NexysA7_GPIO_Button_Reset_n : in  std_logic;                     -- The reset button, low-active.
 
-		NexysA7_GPIO_Button         : in  std_logic_vector(0 downto 0);
-		NexysA7_GPIO_Seg7_Cathode_n : out std_logic_vector(7 downto 0);
-		NexysA7_GPIO_Seg7_Anode_n   : out std_logic_vector(7 downto 0)
+		NexysA7_GPIO_Button         : in  std_logic_vector(0 downto 0);  -- The button starting and pausing the watch.
+		NexysA7_GPIO_Seg7_Cathode_n : out std_logic_vector(7 downto 0);  -- The segments, low-active.
+		NexysA7_GPIO_Seg7_Anode_n   : out std_logic_vector(7 downto 0)   -- The digit selects, low-active.
 	);
 end entity;
 
 
+-- The implementation: the buttons debounced by a :vhdl:comp:`Debouncer`, a :vhdl:ent:`StopWatch` and a
+-- :vhdl:comp:`seg7_Display`.
 architecture rtl of toplevel is
 	constant STOPWATCH_CONFIGURATION : T_STOPWATCH_CONFIGURATION := (
 		0 => (Modulo => 10, Dot => '0'),

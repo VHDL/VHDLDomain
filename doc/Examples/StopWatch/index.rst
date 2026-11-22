@@ -11,8 +11,10 @@ The example design :file:`examples/StopWatch` is read by pyGHDL.dom (see :ref:`C
 described by a directive (see :ref:`DIR`). The packages :vhdl:pack:`Utilities_pkg` and :vhdl:pack:`StopWatch_pkg`,
 the context :vhdl:ctx:`Utilities_ctx` and the entity :vhdl:ent:`Counter` show a directive's output together with its
 input: the VHDL source, whose comments document the unit and its declarations, generics and ports, and the directive.
-A documentation comment is reStructuredText: :vhdl:pack:`Utilities_pkg`, :vhdl:ent:`Counter` and the contexts use
-emphasis, literals, a bullet list and a ``.. seealso::`` referring to other units by the roles of the domain.
+Every design unit, generic, port and declaration of a package has a documentation comment - except the units of the
+physical type :vhdl:type:`freq`, whose comments pyGHDL.dom doesn't read yet. A documentation comment is
+reStructuredText: :vhdl:pack:`Utilities_pkg`, :vhdl:ent:`Counter` and the contexts use emphasis, literals, a bullet
+list and a ``.. seealso::`` referring to other units by the roles of the domain.
 
 The documentation's :file:`conf.py` sets :ref:`vhdl_architectures = "multiple" <CONFIG/architectures>`: only
 :vhdl:ent:`Counter` - with an architecture for synthesis and one for simulation - lists its architectures.

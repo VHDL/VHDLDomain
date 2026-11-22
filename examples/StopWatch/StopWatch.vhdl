@@ -13,25 +13,27 @@ use     lib_Utilities.Utilities_pkg.all;
 use     work.StopWatch_pkg.all;
 
 
+-- A stop watch: a counter per digit, counting in steps of ``TIMEBASE``; ``Start`` starts and pauses it.
 entity Stopwatch is
 	generic (
-		CLOCK_PERIOD  : time := 10 ns;
+		CLOCK_PERIOD  : time := 10 ns;              -- The period of ``Clock``.
 
-		TIMEBASE      : time;
-		CONFIG        : T_STOPWATCH_CONFIGURATION
+		TIMEBASE      : time;                       -- The time the least significant digit counts.
+		CONFIG        : T_STOPWATCH_CONFIGURATION   -- The configuration of each digit, the least significant first.
 	);
 	port (
-		Clock  : in  std_logic;
-		Reset  : in  std_logic;
+		Clock  : in  std_logic;  -- The clock.
+		Reset  : in  std_logic;  -- Reset the digits to 0, and stop.
 
-		Start  : in  std_logic;
+		Start  : in  std_logic;  -- A pulse starts the counting, the next one pauses it.
 
-		Digits : out T_BCD_Vector(CONFIG'length - 1 downto 0);
-		Dots   : out std_logic_vector(CONFIG'length - 1 downto 0)
+		Digits : out T_BCD_Vector(CONFIG'length - 1 downto 0);     -- The value of each digit.
+		Dots   : out std_logic_vector(CONFIG'length - 1 downto 0)  -- The dot of each digit, as ``CONFIG`` sets it.
 	);
 end entity;
 
 
+-- The implementation: a state machine, a :vhdl:ent:`Counter` for the time base, and one per digit.
 architecture rtl of Stopwatch is
 	type T_STATE is (ST_RESET, ST_IDLE, ST_COUNTING, ST_PAUSE);
 
