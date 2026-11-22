@@ -9,7 +9,14 @@ See :gh:`VHDLDomain Release Pages <VHDL/VHDLDomain/releases>` for detail release
 Version 0.3.0 (2026)
 ********************
 
-.. topic:: :gh:`v0.3.0 - unreleased <VHDL/VHDLDomain/releases/v0.3.0>`
+.. topic:: :gh:`v0.3.1 - 22.11.2026 <VHDL/VHDLDomain/releases/v0.3.1>`
+
+   .. rubric:: Documentation
+
+   * News: the release date of v0.3.0.
+
+
+.. topic:: :gh:`v0.3.0 - 22.11.2026 <VHDL/VHDLDomain/releases/v0.3.0>`
 
    .. rubric:: Changes
 
