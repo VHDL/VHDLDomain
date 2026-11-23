@@ -3,6 +3,9 @@
 # The extension the documentation uses: pyTooling.Sphinx with its domain 'report'
 pyTooling.Sphinx[reports] ~= 1.1
 
+# Frontend reading the StopWatch example: GHDL's nightly pyGHDL, until pyGHDL is on PyPI
+pyGHDL @ https://github.com/ghdl/ghdl/releases/download/nightly/pyghdl-7.0.0.dev0-cp315-cp315-linux_x86_64.whl ; sys_platform == "linux" and python_version == "3.15"
+
 # Renderer of the interface symbols' PNG images
 matplotlib >= 3.11.2
 

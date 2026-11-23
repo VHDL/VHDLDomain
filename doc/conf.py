@@ -2,6 +2,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 from sys                          import path as sys_path
+from ctypes                       import CDLL, RTLD_GLOBAL
 from importlib.util               import find_spec
 from os                           import environ
 from os.path                      import abspath
@@ -352,11 +353,18 @@ pyTooling_ExternalLink_Icons = "all"
 vhdl_architectures = "multiple"
 
 if find_spec("pyGHDL") is None:
-	# Without pyGHDL, as in CI, the StopWatch example isn't read and its page isn't built.
+	# Without pyGHDL, the StopWatch example isn't read and its page isn't built.
 	exclude_patterns.append("Examples/StopWatch/**")
 	suppress_warnings.append("toc.excluded")
 	vhdl_designs = {}
 else:
+	# WORKAROUND: libghdl of GHDL's nightly wheels doesn't find the wheel's libgnat (no RPATH); load it first.
+	for libgnat in (Path(find_spec("pyGHDL").origin).parent / "lib").glob("libgnat-*.so"):
+		try:
+			CDLL(str(libgnat), mode=RTLD_GLOBAL)
+		except OSError as ex:
+			print(f"[conf.py] '{libgnat.name}' of pyGHDL not loaded, using the system's libgnat: {ex}")
+
 	vhdl_designs = {
 		"StopWatch": {
 			"directory": "../examples/StopWatch",
