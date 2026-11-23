@@ -5,7 +5,7 @@ Coverage ~= 7.17
 
 # Markdown documentation comments (extra 'markdown')
 markdown-it-py ~= 4.3
-mdit-py-plugins ~= 0.6
+mdit-py-plugins ~= 0.7
 
 # Test Runner
 pytest ~= 9.2
