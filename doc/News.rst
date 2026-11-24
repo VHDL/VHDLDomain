@@ -6,6 +6,17 @@ News
 See :gh:`VHDLDomain Release Pages <VHDL/VHDLDomain/releases>` for detail release notes on every release.
 
 
+Version 0.4.0 (2026)
+********************
+
+.. topic:: :gh:`v0.4.0 - unreleased <VHDL/VHDLDomain/releases/v0.4.0>`
+
+   .. rubric:: Documentation
+
+   * The published documentation shows the StopWatch example: the documentation job installs pyGHDL from PyPI,
+     which reads it.
+
+
 Version 0.3.0 (2026)
 ********************
 
