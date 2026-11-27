@@ -47,7 +47,7 @@ design, a library or a design unit from the model, and a role refers to what a d
 .. rubric:: What it registers
 
 * Directives: ``vhdl:design``, ``vhdl:library``, ``vhdl:context``, ``vhdl:entity``, ``vhdl:package``,
-  ``vhdl:configuration``, ``vhdl:symbol``
+  ``vhdl:configuration``, ``vhdl:symbol``, ``vhdl:dependencies``, ``vhdl:compile-order``, ``vhdl:hierarchy``
 * Roles: ``:vhdl:design:``, ``:vhdl:lib:``, ``:vhdl:ctx:``, ``:vhdl:ent:``, ``:vhdl:arch:``, ``:vhdl:pack:``,
   ``:vhdl:config:``, ``:vhdl:type:``, ``:vhdl:const:``, ``:vhdl:sig:``, ``:vhdl:var:``, ``:vhdl:comp:``,
   ``:vhdl:func:``, ``:vhdl:proc:``, ``:vhdl:generic:``, ``:vhdl:port:``
@@ -55,6 +55,7 @@ design, a library or a design unit from the model, and a role refers to what a d
 * Configuration values ``vhdl_designs``, ``vhdl_architectures``, ``vhdl_architecture_descriptions``,
   ``vhdl_reference_popups``, ``vhdl_style``, ``vhdl_add_library_names``, ``vhdl_undoc_members``, ``vhdl_doc_syntax``
 * Node :class:`~VHDLDomain.Symbol.Directive.SymbolNode` with visitors for HTML and LaTeX, and LaTeX package ``tikz``
+* Node :class:`~VHDLDomain.Graph.Directive.GraphNode` with visitors for HTML and LaTeX
 * Nodes :class:`~VHDLDomain.Popup.PopupReferenceNode` and :class:`~VHDLDomain.Popup.PopupNode` with visitors for HTML,
   and the stylesheet :file:`VHDLDomain.css` (see :mod:`VHDLDomain.Popup`)
 * Generated pages per library and design unit, for a design declared with ``pages`` (see :mod:`VHDLDomain.Pages`)
@@ -110,6 +111,8 @@ from VHDLDomain.DesignUnit       import ArchitectureDescriptions, ArchitectureLi
 from VHDLDomain.Directive        import DesignDirective, LibraryDirective
 from VHDLDomain.Documentation    import DocumentationSyntax
 from VHDLDomain.Frontend         import DesignConfiguration, VHDLDomainException
+from VHDLDomain.Graph.Directive  import CompileOrderDirective, DependenciesDirective, GraphNode, HierarchyDirective, \
+                                        html_visit_GraphNode, latex_visit_GraphNode
 from VHDLDomain.Index            import EntityIndex, PackageIndex, SubprogramIndex, TypeIndex
 from VHDLDomain.Pages            import DesignPages
 from VHDLDomain.Popup            import PopupNode, PopupReferenceNode, html_depart_PopupNode, html_visit_PopupNode, \
@@ -242,6 +245,9 @@ class VHDLDomain(Domain):
 		"package":       PackageDirective,
 		"configuration": ConfigurationDirective,
 		"symbol":        SymbolDirective,
+		"dependencies":  DependenciesDirective,
+		"compile-order": CompileOrderDirective,
+		"hierarchy":     HierarchyDirective,
 	}  #: The directives, by name.
 
 	roles: ClassVar[dict[str, XRefRole]] = {  # type: ignore[assignment]
@@ -763,6 +769,8 @@ def setup(sphinx: Sphinx) -> dict[str, Any]:
 	sphinx.add_node(SymbolNode, html=(html_visit_SymbolNode, None), latex=(latex_visit_SymbolNode, None))
 	sphinx.add_latex_package("tikz")
 	sphinx.connect("builder-inited", loadTikZLibraries)
+
+	sphinx.add_node(GraphNode, html=(html_visit_GraphNode, None), latex=(latex_visit_GraphNode, None))
 
 	sphinx.add_node(PopupReferenceNode, html=(html_visit_PopupReferenceNode, None))
 	sphinx.add_node(PopupNode, html=(html_visit_PopupNode, html_depart_PopupNode))
