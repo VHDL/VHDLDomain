@@ -6,7 +6,8 @@ Directives
 A directive describes an object of a design read into the domain (see :ref:`CONFIG`): a design, a library, or a
 design unit - entity, package, context, configuration. ``vhdl:design`` and ``vhdl:library`` also set the design and
 library, which the following directives and references of the document are in, until the next one. ``vhdl:symbol``
-draws an entity's or a component's interface symbol.
+draws an entity's or a component's interface symbol; ``vhdl:dependencies``, ``vhdl:compile-order`` and
+``vhdl:hierarchy`` draw a design's graphs (see :ref:`DIR/graphs`).
 
 .. contents:: Table of Contents
    :local:
@@ -301,6 +302,206 @@ LaTeX
 
 Other builders, e.g. text
    A listing of the symbol: its name, a line per parameter and a line per pin with its side.
+
+
+.. _DIR/graphs:
+
+Graphs
+******
+
+pyVHDLModel analyzes a design into three graphs: the dependency graph of its libraries, design units and source files,
+the compile-order graph of its source files, and the hierarchy graph of its entities and architectures. A graph
+directive draws one of them - the whole graph, or a portion of it -, laid out in layers by pyTooling's
+:class:`~pyTooling.Graph.Layout.Layered.LayeredLayout`: every edge points in the same direction, by default from top to
+bottom. An edge points from a user to what it uses. A box is named as the design names its unit, e.g.
+``lib_Utilities.Counter(rtl)``, and filled in the color of its kind:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 20 50
+
+   * - Kind
+     - Color
+     - Name
+   * - Library
+     - grey
+     - ``lib_Utilities``
+   * - Context
+     - violet
+     - ``lib_StopWatch.StopWatch_ctx``
+   * - Package
+     - blue
+     - ``lib_Utilities.Utilities_pkg``
+   * - Package body
+     - light blue
+     - ``lib_Utilities.Utilities_pkg(body)``
+   * - Entity
+     - green
+     - ``lib_Utilities.Counter``
+   * - Architecture
+     - orange
+     - ``lib_Utilities.Counter(rtl)``
+   * - Configuration
+     - red
+     - ``lib_StopWatch.seg7_Display_cfg``
+   * - Source file
+     - yellow
+     - ``Counter.vhdl``
+
+Lines, box outlines and the labels of boxes without color are drawn in the text color of the page, so a picture fits a
+light and a dark theme alike. A picture describes no object of the domain: it has no target and no index entry. The
+:ref:`StopWatch example <EX/StopWatch/graphs>` shows each directive's pictures.
+
+
+.. _DIR/graphs/portion:
+
+Portions
+========
+
+Without argument, a graph directive draws the whole graph. Its argument names the vertex a portion starts at: the
+portion holds this vertex and the vertices reached from it, by following the edges up to ``depth`` times. An edge to a
+vertex, which isn't drawn, is left out of the picture; the options select the vertices before the edges are followed,
+so a portion doesn't reach through a left-out vertex. A name matching no vertex or several vertices, and a start vertex
+left out by the options, are warned about (warning type ``vhdl.graph``).
+
+Every graph directive takes these options:
+
+.. rst:directive:option:: design: name
+   :noindex:
+
+   The design, whose graph is drawn. Default: the current design.
+
+.. rst:directive:option:: depth: number
+   :noindex:
+
+   The number of edges followed from the start vertex; ``0`` draws the start vertex only. Default: as many as there
+   are.
+
+.. rst:directive:option:: follow: outbound | inbound | both
+   :noindex:
+
+   The edges followed from the start vertex: ``outbound`` to what the start uses, ``inbound`` back to what uses the
+   start, or both. Default: ``outbound``.
+
+.. rst:directive:option:: libraries: names
+   :noindex:
+
+   The libraries, whose vertices are drawn, separated by commas or spaces. A library, which isn't in the design, is
+   warned about (warning type ``vhdl.library``). Default: every library.
+
+.. rst:directive:option:: direction: top-to-bottom | bottom-to-top | left-to-right | right-to-left
+   :noindex:
+
+   The direction the edges point in, from layer to layer. Default: ``top-to-bottom``; ``bottom-to-top`` for
+   ``vhdl:compile-order``.
+
+.. rst:directive:option:: format: svg | png
+   :noindex:
+
+   The picture's format: ``svg`` is a vector picture, inline SVG in HTML and a TikZ picture in LaTeX; ``png`` is a PNG
+   image in both, drawn by :term:`matplotlib` - installed by the extra ``diagram``; without it, the picture is a vector
+   picture and warned about. Default: ``svg``.
+
+.. rst:directive:option:: alt: text
+   :noindex:
+
+   The picture's alternative text: the SVG image's title, or the PNG image's ``alt`` text. Default: the graph's title
+   and the design's name, e.g. ``Hierarchy of design StopWatch, from lib_StopWatch.toplevel``.
+
+.. rst:directive:option:: caption: text
+   :noindex:
+
+   A caption: the picture becomes a figure with this caption.
+
+.. rst:directive:option:: name: label
+   :noindex:
+
+   A label to refer to the picture - or to its figure - by :rst:role:`ref` or :rst:role:`numref`.
+
+
+.. _DIR/dependencies:
+
+vhdl:dependencies
+=================
+
+.. rst:directive:: .. vhdl:dependencies:: [name]
+
+   Draw a design's dependency graph: an edge points from a design unit to what it references - a library, a package, a
+   context, an entity it instantiates or implements.
+
+   The argument names a library, a design unit as ``[library.]unit``, an architecture as ``[library.]entity(name)`` or
+   a package body as ``[library.]package(body)``; without library, the unit is looked up in the current library too.
+
+   .. rst:directive:option:: kinds: kinds
+
+      The kinds of vertices drawn, separated by commas or spaces: ``library``, ``context``, ``package``,
+      ``package-body``, ``entity``, ``architecture``, ``configuration`` and ``document`` (a source file). Default: the
+      design units, every kind but ``library`` and ``document``.
+
+   .. rst:directive:option:: predefined
+
+      Draw the vertices of the predefined libraries ``std`` and ``ieee`` too.
+
+   .. code-block:: rst
+
+      .. vhdl:dependencies:: lib_StopWatch.toplevel(rtl)
+         :depth: 1
+         :direction: left-to-right
+
+
+.. _DIR/compile-order:
+
+vhdl:compile-order
+==================
+
+.. rst:directive:: .. vhdl:compile-order:: [file]
+
+   Draw a design's compile-order graph: an edge points from a source file to a file compiled before it. Laid out from
+   bottom to top by default, a file is drawn below the files compiled before it.
+
+   The argument names a source file by its name or by the end of its path, e.g. ``Counter.vhdl`` or
+   ``StopWatch/Counter.vhdl``.
+
+   .. code-block:: rst
+
+      .. vhdl:compile-order::
+         :libraries: lib_Utilities
+
+
+.. _DIR/hierarchy:
+
+vhdl:hierarchy
+==============
+
+.. rst:directive:: .. vhdl:hierarchy:: [name]
+
+   Draw a design's hierarchy graph: an edge points from an entity to its architectures, and from an architecture to the
+   entities it instantiates.
+
+   The argument names an entity as ``[library.]entity`` or an architecture as ``[library.]entity(name)``; without
+   library, it is looked up in the current library too.
+
+   .. code-block:: rst
+
+      .. vhdl:hierarchy:: lib_StopWatch.toplevel
+         :caption: The design hierarchy of the StopWatch.
+
+
+Output formats
+==============
+
+HTML
+   An inline SVG picture in a ``div`` of the classes ``vhdl`` and ``vhdl-graph``, or an ``img`` of the PNG image. A
+   picture wider than the page's content scrolls horizontally.
+
+LaTeX
+   A TikZ picture, or the PNG image; a picture wider than the line is scaled down to the line width.
+
+Other builders, e.g. text
+   A listing of the graph: a line per vertex, followed by a line per edge to a vertex drawn.
+
+A PNG image is named by a hash of its content, e.g. :file:`_images/vhdl-graph-<hash>.png`, and written only if no file
+of that name exists: an unchanged picture is written once.
 
 
 .. _DIR/css:

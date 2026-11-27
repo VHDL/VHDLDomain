@@ -11,10 +11,17 @@ Version 0.4.0 (2026)
 
 .. topic:: :gh:`v0.4.0 - unreleased <VHDL/VHDLDomain/releases/v0.4.0>`
 
+   .. rubric:: Changes
+
+   * New directives ``vhdl:dependencies``, ``vhdl:compile-order`` and ``vhdl:hierarchy``: a design's dependency,
+     compile-order and hierarchy graph - or a portion of it -, as SVG in HTML and TikZ in LaTeX, or as PNG image.
+   * pyTooling 10.4 is required: its graph layout and Cartesian2D renderers draw the graphs.
+
    .. rubric:: Documentation
 
    * The published documentation shows the StopWatch example: the documentation job installs pyGHDL from PyPI,
      which reads it.
+   * The StopWatch example's graphs, drawn by the new graph directives.
 
 
 Version 0.3.0 (2026)

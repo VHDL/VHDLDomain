@@ -11,8 +11,12 @@ StopWatch
   A stop watch counting seconds and minutes on a 7-segment display: packages with types, constants, subprograms,
   a protected type and components, contexts, entities with generics and ports, and a configuration.
 
+StopWatch Graphs
+  The StopWatch's hierarchy, dependencies and compile order, drawn by the graph directives.
+
 An example page is built where pyGHDL is installed; without it, the page is left out.
 
 .. toctree::
 
    StopWatch/index
+   StopWatch/Graphs
